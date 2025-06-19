@@ -2,13 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, Mic, MicOff, RotateCcw } from 'lucide-react';
+import { Send, Bot, Mic, MicOff, RotateCcw, Menu } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import MessageBubble from './MessageBubble';
 import ChatSidebar from './ChatSidebar';
 import SuggestedQuestions from './SuggestedQuestions';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Message {
   id: string;
@@ -25,6 +26,7 @@ interface Chat {
 
 const EnhancedChatBot = () => {
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +35,7 @@ const EnhancedChatBot = () => {
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<'Rachel' | 'Cassidy'>('Rachel');
   const [isPlayingLatest, setIsPlayingLatest] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -40,7 +43,7 @@ const EnhancedChatBot = () => {
 
   // Voice IDs for ElevenLabs
   const voiceIds = {
-    Rachel: 'CwhRBWXzGAHq8TQ4Fs17',
+    Rachel: 'kqVT88a5QfII1HNAEPTJ', // Updated to use the provided voice ID
     Cassidy: '9BWtsMINqrJLrRacOk9x'
   };
 
@@ -51,6 +54,10 @@ const EnhancedChatBot = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   const initializeSpeechRecognition = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -340,24 +347,56 @@ const EnhancedChatBot = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex">
-      <ChatSidebar
-        currentChatId={currentChat?.id || null}
-        onChatSelect={loadChatMessages}
-        onNewChat={handleNewChat}
-        onSignOut={signOut}
-        userEmail={user?.email}
-        messages={messages}
-        onPlayLatestResponse={handlePlayLatestResponse}
-        selectedVoice={selectedVoice}
-        onVoiceChange={setSelectedVoice}
-        isPlaying={isPlayingLatest}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex w-full">
+      {/* Mobile Menu Button */}
+      {isMobile && (
+        <Button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          variant="ghost"
+          size="sm"
+          className="fixed top-4 left-4 z-50 md:hidden bg-white shadow-md"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
 
-      <div className="flex-1 flex flex-col h-screen">
+      {/* Sidebar */}
+      <div className={`${
+        isMobile 
+          ? `fixed inset-y-0 left-0 z-40 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out`
+          : ''
+      }`}>
+        {isMobile && sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-30"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        <ChatSidebar
+          currentChatId={currentChat?.id || null}
+          onChatSelect={(chatId) => {
+            loadChatMessages(chatId);
+            if (isMobile) setSidebarOpen(false);
+          }}
+          onNewChat={() => {
+            handleNewChat();
+            if (isMobile) setSidebarOpen(false);
+          }}
+          onSignOut={signOut}
+          userEmail={user?.email}
+          messages={messages}
+          onPlayLatestResponse={handlePlayLatestResponse}
+          selectedVoice={selectedVoice}
+          onVoiceChange={setSelectedVoice}
+          isPlaying={isPlayingLatest}
+        />
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
         <div className="bg-white border-b border-blue-100 shadow-sm flex-shrink-0">
-          <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="px-4 py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="bg-blue-600 p-2 rounded-lg">
@@ -365,7 +404,7 @@ const EnhancedChatBot = () => {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">NeuroChat</h1>
-                  <p className="text-gray-600">Powered by NeuroHeart.AI</p>
+                  <p className="text-gray-600">Welcome to the NeuroHeart.AI Mindfulness App</p>
                 </div>
               </div>
               <Button
@@ -381,100 +420,102 @@ const EnhancedChatBot = () => {
           </div>
         </div>
 
-        {/* Chat Messages Container - Scrollable */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto w-full px-4 py-6">
-              <div className="space-y-4 mb-6">
-                {messages.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                      <Bot className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Welcome to the NeuroHeart.AI Mindfulness App</h3>
-                    <p className="text-gray-500">Ask me anything about mindfulness, meditation, or mental wellness!</p>
+        {/* Chat Messages Container - Full Width Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="w-full px-4 py-6">
+            <div className="space-y-4 mb-6">
+              {messages.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <Bot className="h-8 w-8 text-blue-600" />
                   </div>
-                )}
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Welcome to the NeuroHeart.AI Mindfulness App</h3>
+                  <p className="text-gray-500">Ask me anything about mindfulness, meditation, or mental wellness!</p>
+                </div>
+              )}
 
-                {messages.map((message) => (
-                  <MessageBubble 
-                    key={message.id} 
-                    message={{
-                      id: message.id,
-                      text: message.content,
-                      isUser: message.is_user,
-                      timestamp: message.created_at
-                    }}
-                    onCopy={copyToClipboard}
-                    onSpeak={speakTextWithElevenLabs}
-                  />
-                ))}
+              {messages.map((message) => (
+                <MessageBubble 
+                  key={message.id} 
+                  message={{
+                    id: message.id,
+                    text: message.content,
+                    isUser: message.is_user,
+                    timestamp: message.created_at
+                  }}
+                  onCopy={copyToClipboard}
+                  onSpeak={speakTextWithElevenLabs}
+                />
+              ))}
 
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 border border-gray-200 rounded-2xl px-4 py-3 max-w-xs">
-                      <div className="flex items-center space-x-2">
-                        <Bot className="h-5 w-5 text-gray-600" />
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 border border-gray-200 rounded-2xl px-4 py-3 max-w-xs">
+                    <div className="flex items-center space-x-2">
+                      <Bot className="h-5 w-5 text-gray-600" />
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Suggested Questions */}
-              <SuggestedQuestions
-                questions={suggestedQuestions}
-                onQuestionClick={handleSuggestedQuestionClick}
-                isVisible={!isLoading && messages.length > 0}
-              />
-            </div>
-          </div>
-
-          {/* Input Form - Fixed at bottom */}
-          <div className="flex-shrink-0 max-w-4xl mx-auto w-full px-4 pb-6">
-            <Card className="border-blue-200 shadow-lg">
-              <form onSubmit={handleSubmit} className="p-4">
-                <div className="flex space-x-3">
-                  <div className="flex-1">
-                    <Textarea
-                      ref={textareaRef}
-                      value={question}
-                      onChange={(e) => setQuestion(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Ask me anything..."
-                      className="min-h-[60px] resize-none border-blue-200 focus:border-blue-400 focus:ring-blue-400"
-                      disabled={isLoading}
-                    />
-                  </div>
-                  <div className="flex flex-col space-y-2">
-                    <Button
-                      type="button"
-                      onClick={isListening ? stopVoiceInput : startVoiceInput}
-                      variant={isListening ? "destructive" : "outline"}
-                      className="h-auto px-3 py-3"
-                      disabled={isLoading}
-                    >
-                      {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={isLoading || !question.trim()}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 h-auto"
-                    >
-                      <Send className="h-5 w-5" />
-                    </Button>
-                  </div>
                 </div>
-              </form>
-            </Card>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Suggested Questions */}
+            <SuggestedQuestions
+              questions={suggestedQuestions}
+              onQuestionClick={handleSuggestedQuestionClick}
+              isVisible={!isLoading && messages.length > 0}
+            />
           </div>
+        </div>
+
+        {/* Input Form - Fixed at bottom, Full Width */}
+        <div className="flex-shrink-0 w-full px-4 pb-6">
+          <Card className="border-blue-200 shadow-lg">
+            <form onSubmit={handleSubmit} className="p-4">
+              <div className="flex space-x-3">
+                <div className="flex-1">
+                  <Textarea
+                    ref={textareaRef}
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask me anything..."
+                    className={`min-h-[60px] resize-none border-blue-200 focus:border-blue-400 focus:ring-blue-400 ${
+                      isMobile ? 'text-base' : ''
+                    }`}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <Button
+                    type="button"
+                    onClick={isListening ? stopVoiceInput : startVoiceInput}
+                    variant={isListening ? "destructive" : "outline"}
+                    className={`h-auto px-3 py-3 ${isMobile ? 'min-w-12 min-h-12' : ''}`}
+                    disabled={isLoading}
+                  >
+                    {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isLoading || !question.trim()}
+                    className={`bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 h-auto ${
+                      isMobile ? 'min-w-12 min-h-12' : ''
+                    }`}
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </Card>
         </div>
       </div>
     </div>

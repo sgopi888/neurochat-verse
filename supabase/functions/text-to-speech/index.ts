@@ -7,7 +7,7 @@ const corsHeaders = {
 }
 
 const voiceIds = {
-  Rachel: 'EXAVITQu4vr4xnSDxMaL',
+  Rachel: 'kqVT88a5QfII1HNAEPTJ', // Updated to use the provided voice ID
   Cassidy: '9BWtsMINqrJLrRacOk9x'
 };
 
@@ -44,6 +44,8 @@ serve(async (req) => {
 
     const voiceId = voiceIds[voice as keyof typeof voiceIds] || voiceIds.Rachel
 
+    console.log(`Generating TTS for voice: ${voice} (${voiceId}), text length: ${text.length}`)
+
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
@@ -75,6 +77,8 @@ serve(async (req) => {
 
     const audioBuffer = await response.arrayBuffer()
     const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
+
+    console.log('TTS generation successful')
 
     return new Response(
       JSON.stringify({ audio: audioBase64 }),

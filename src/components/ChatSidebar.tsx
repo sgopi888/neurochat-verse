@@ -206,7 +206,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
         
         {userEmail && (
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
             <span className="truncate">{userEmail}</span>
             <Button
               onClick={onSignOut}
@@ -219,27 +219,25 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </div>
         )}
 
-        {/* Play Controls */}
-        <div className="space-y-2 mb-2">
-          <div className="flex items-center space-x-2">
-            <Button
-              onClick={handlePlayLatest}
-              disabled={isPlaying || !getLatestAIResponse()}
-              size="sm"
-              variant="outline"
-              className="flex-1"
-            >
-              <Play className="h-4 w-4 mr-2" />
-              {isPlaying ? 'Playing...' : 'Play Script'}
-            </Button>
-          </div>
+        {/* Play Script Controls */}
+        <div className="space-y-3 mb-4">
+          <Button
+            onClick={handlePlayLatest}
+            disabled={isPlaying || !getLatestAIResponse()}
+            size="sm"
+            variant="outline"
+            className="w-full flex items-center justify-center space-x-2"
+          >
+            <Play className="h-4 w-4" />
+            <span>{isPlaying ? 'Playing...' : 'Play Script'}</span>
+          </Button>
           
-          <div className="flex items-center space-x-2">
-            <label className="text-xs text-gray-600">Voice:</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-600">Voice:</label>
             <select
               value={selectedVoice}
               onChange={(e) => onVoiceChange(e.target.value as 'Rachel' | 'Cassidy')}
-              className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-sm px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isPlaying}
             >
               <option value="Rachel">Rachel</option>
