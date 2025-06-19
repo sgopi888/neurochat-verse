@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Bot, ArrowLeft } from 'lucide-react';
+import { DISCLAIMER_TEXT } from '@/components/DisclaimerModal';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -16,6 +19,29 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [hasReadAgreement, setHasReadAgreement] = useState(false);
+  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
+
+  const saveUserAgreement = async (userId: string) => {
+    try {
+      const userAgent = navigator.userAgent;
+      
+      const { error } = await supabase
+        .from('user_agreements')
+        .insert({
+          user_id: userId,
+          agreement_type: 'terms_and_disclaimer',
+          agreement_text: DISCLAIMER_TEXT,
+          user_agent: userAgent
+        });
+
+      if (error) {
+        console.error('Error saving user agreement:', error);
+      }
+    } catch (error) {
+      console.error('Error saving user agreement:', error);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +49,13 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        if (!hasReadAgreement || !hasAgreedToTerms) {
+          toast.error('Please read and agree to the terms and disclaimer');
+          setIsLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -41,6 +73,10 @@ const Auth = () => {
             toast.error(error.message);
           }
         } else {
+          // Save user agreement if signup was successful
+          if (data.user) {
+            await saveUserAgreement(data.user.id);
+          }
           toast.success('Account created successfully! Please check your email to verify your account.');
         }
       } else {
@@ -142,7 +178,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-lg">
@@ -215,10 +251,57 @@ const Auth = () => {
               </div>
             </div>
 
+            {isSignUp && (
+              <div className="space-y-4 border-t pt-4">
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Important Disclaimer & Terms</h3>
+                  <ScrollArea className="h-32 w-full border rounded-md p-3 bg-gray-50">
+                    <div className="text-xs leading-relaxed space-y-2">
+                      {DISCLAIMER_TEXT.split('\n\n').map((paragraph, index) => (
+                        <p key={index} className="text-gray-700">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="hasReadAgreement"
+                        checked={hasReadAgreement}
+                        onCheckedChange={(checked) => setHasReadAgreement(checked as boolean)}
+                      />
+                      <label
+                        htmlFor="hasReadAgreement"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        I have read and understood the disclaimer above
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="hasAgreedToTerms"
+                        checked={hasAgreedToTerms}
+                        onCheckedChange={(checked) => setHasAgreedToTerms(checked as boolean)}
+                      />
+                      <label
+                        htmlFor="hasAgreedToTerms"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        I agree to the terms and acknowledge that this platform does not provide medical or therapeutic services
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Button 
               type="submit" 
               className="w-full bg-blue-600 hover:bg-blue-700" 
-              disabled={isLoading}
+              disabled={isLoading || (isSignUp && (!hasReadAgreement || !hasAgreedToTerms))}
             >
               {isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
             </Button>
