@@ -1,9 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, Mic, MicOff, RotateCcw, Settings } from 'lucide-react';
+import { Send, Bot, Mic, MicOff, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import MessageBubble from './MessageBubble';
@@ -33,7 +32,7 @@ const EnhancedChatBot = () => {
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<'Rachel' | 'Cassidy'>('Rachel');
-  const [showSettings, setShowSettings] = useState(false);
+  const [isPlayingLatest, setIsPlayingLatest] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -326,6 +325,15 @@ const EnhancedChatBot = () => {
     }
   };
 
+  const handlePlayLatestResponse = async (text: string) => {
+    setIsPlayingLatest(true);
+    try {
+      await speakTextWithElevenLabs(text);
+    } finally {
+      setIsPlayingLatest(false);
+    }
+  };
+
   const handleSuggestedQuestionClick = (question: string) => {
     setQuestion(question);
     setSuggestedQuestions([]);
@@ -339,11 +347,16 @@ const EnhancedChatBot = () => {
         onNewChat={handleNewChat}
         onSignOut={signOut}
         userEmail={user?.email}
+        messages={messages}
+        onPlayLatestResponse={handlePlayLatestResponse}
+        selectedVoice={selectedVoice}
+        onVoiceChange={setSelectedVoice}
+        isPlaying={isPlayingLatest}
       />
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-screen">
         {/* Header */}
-        <div className="bg-white border-b border-blue-100 shadow-sm">
+        <div className="bg-white border-b border-blue-100 shadow-sm flex-shrink-0">
           <div className="max-w-4xl mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -355,140 +368,113 @@ const EnhancedChatBot = () => {
                   <p className="text-gray-600">Powered by NeuroHeart.AI</p>
                 </div>
               </div>
-              <div className="flex space-x-2">
-                <Button
-                  onClick={() => setShowSettings(!showSettings)}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-1"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </Button>
-                <Button
-                  onClick={handleNewChat}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-1"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>New Chat</span>
-                </Button>
-              </div>
+              <Button
+                onClick={handleNewChat}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-1"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>New Chat</span>
+              </Button>
             </div>
-
-            {/* Settings Panel */}
-            {showSettings && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-semibold mb-3">Settings</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Voice Selection
-                    </label>
-                    <select
-                      value={selectedVoice}
-                      onChange={(e) => setSelectedVoice(e.target.value as 'Rachel' | 'Cassidy')}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Rachel">Rachel</option>
-                      <option value="Cassidy">Cassidy</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Chat Messages */}
-        <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
-          <div className="space-y-4 mb-6">
-            {messages.length === 0 && (
-              <div className="text-center py-12">
-                <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Bot className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Welcome to NeuroChat</h3>
-                <p className="text-gray-500">Ask me anything and I'll help you find the answer!</p>
-              </div>
-            )}
+        {/* Chat Messages Container - Scrollable */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-4xl mx-auto w-full px-4 py-6">
+              <div className="space-y-4 mb-6">
+                {messages.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                      <Bot className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Welcome to the NeuroHeart.AI Mindfulness App</h3>
+                    <p className="text-gray-500">Ask me anything about mindfulness, meditation, or mental wellness!</p>
+                  </div>
+                )}
 
-            {messages.map((message) => (
-              <MessageBubble 
-                key={message.id} 
-                message={{
-                  id: message.id,
-                  text: message.content,
-                  isUser: message.is_user,
-                  timestamp: message.created_at
-                }}
-                onCopy={copyToClipboard}
-                onSpeak={speakTextWithElevenLabs}
-              />
-            ))}
+                {messages.map((message) => (
+                  <MessageBubble 
+                    key={message.id} 
+                    message={{
+                      id: message.id,
+                      text: message.content,
+                      isUser: message.is_user,
+                      timestamp: message.created_at
+                    }}
+                    onCopy={copyToClipboard}
+                    onSpeak={speakTextWithElevenLabs}
+                  />
+                ))}
 
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 border border-gray-200 rounded-2xl px-4 py-3 max-w-xs">
-                  <div className="flex items-center space-x-2">
-                    <Bot className="h-5 w-5 text-gray-600" />
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 border border-gray-200 rounded-2xl px-4 py-3 max-w-xs">
+                      <div className="flex items-center space-x-2">
+                        <Bot className="h-5 w-5 text-gray-600" />
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Suggested Questions */}
+              <SuggestedQuestions
+                questions={suggestedQuestions}
+                onQuestionClick={handleSuggestedQuestionClick}
+                isVisible={!isLoading && messages.length > 0}
+              />
+            </div>
           </div>
 
-          {/* Suggested Questions */}
-          <SuggestedQuestions
-            questions={suggestedQuestions}
-            onQuestionClick={handleSuggestedQuestionClick}
-            isVisible={!isLoading && messages.length > 0}
-          />
-
-          {/* Input Form */}
-          <Card className="border-blue-200 shadow-lg">
-            <form onSubmit={handleSubmit} className="p-4">
-              <div className="flex space-x-3">
-                <div className="flex-1">
-                  <Textarea
-                    ref={textareaRef}
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Ask me anything..."
-                    className="min-h-[60px] resize-none border-blue-200 focus:border-blue-400 focus:ring-blue-400"
-                    disabled={isLoading}
-                  />
+          {/* Input Form - Fixed at bottom */}
+          <div className="flex-shrink-0 max-w-4xl mx-auto w-full px-4 pb-6">
+            <Card className="border-blue-200 shadow-lg">
+              <form onSubmit={handleSubmit} className="p-4">
+                <div className="flex space-x-3">
+                  <div className="flex-1">
+                    <Textarea
+                      ref={textareaRef}
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Ask me anything..."
+                      className="min-h-[60px] resize-none border-blue-200 focus:border-blue-400 focus:ring-blue-400"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <div className="flex flex-col space-y-2">
+                    <Button
+                      type="button"
+                      onClick={isListening ? stopVoiceInput : startVoiceInput}
+                      variant={isListening ? "destructive" : "outline"}
+                      className="h-auto px-3 py-3"
+                      disabled={isLoading}
+                    >
+                      {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isLoading || !question.trim()}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 h-auto"
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-col space-y-2">
-                  <Button
-                    type="button"
-                    onClick={isListening ? stopVoiceInput : startVoiceInput}
-                    variant={isListening ? "destructive" : "outline"}
-                    className="h-auto px-3 py-3"
-                    disabled={isLoading}
-                  >
-                    {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isLoading || !question.trim()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 h-auto"
-                  >
-                    <Send className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Card>
+              </form>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

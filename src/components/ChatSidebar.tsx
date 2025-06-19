@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle } from 'lucide-react';
+import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -23,12 +22,24 @@ interface Chat {
   updated_at: string;
 }
 
+interface Message {
+  id: string;
+  content: string;
+  is_user: boolean;
+  created_at: Date;
+}
+
 interface ChatSidebarProps {
   currentChatId: string | null;
   onChatSelect: (chatId: string) => void;
   onNewChat: () => void;
   onSignOut: () => void;
   userEmail?: string;
+  messages: Message[];
+  onPlayLatestResponse: (text: string) => void;
+  selectedVoice: 'Rachel' | 'Cassidy';
+  onVoiceChange: (voice: 'Rachel' | 'Cassidy') => void;
+  isPlaying: boolean;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -36,7 +47,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onChatSelect,
   onNewChat,
   onSignOut,
-  userEmail
+  userEmail,
+  messages,
+  onPlayLatestResponse,
+  selectedVoice,
+  onVoiceChange,
+  isPlaying
 }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,6 +176,20 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     return title.length > maxLength ? title.substring(0, maxLength) + '...' : title;
   };
 
+  const getLatestAIResponse = () => {
+    const aiMessages = messages.filter(msg => !msg.is_user);
+    return aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
+  };
+
+  const handlePlayLatest = () => {
+    const latestResponse = getLatestAIResponse();
+    if (latestResponse) {
+      onPlayLatestResponse(latestResponse.content);
+    } else {
+      toast.error('No AI response to play');
+    }
+  };
+
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
       {/* Header */}
@@ -189,6 +219,35 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </div>
         )}
 
+        {/* Play Controls */}
+        <div className="space-y-2 mb-2">
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={handlePlayLatest}
+              disabled={isPlaying || !getLatestAIResponse()}
+              size="sm"
+              variant="outline"
+              className="flex-1"
+            >
+              <Play className="h-4 w-4 mr-2" />
+              {isPlaying ? 'Playing...' : 'Play Script'}
+            </Button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <label className="text-xs text-gray-600">Voice:</label>
+            <select
+              value={selectedVoice}
+              onChange={(e) => onVoiceChange(e.target.value as 'Rachel' | 'Cassidy')}
+              className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              disabled={isPlaying}
+            >
+              <option value="Rachel">Rachel</option>
+              <option value="Cassidy">Cassidy</option>
+            </select>
+          </div>
+        </div>
+
         {/* Delete All Chats Button */}
         {chats.length > 0 && (
           <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
@@ -196,7 +255,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-2 text-red-600 border-red-200 hover:bg-red-50"
+                className="w-full text-red-600 border-red-200 hover:bg-red-50"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Clear All History
