@@ -32,7 +32,6 @@ const EnhancedChatBot = () => {
   const [isListening, setIsListening] = useState(false);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [elevenLabsApiKey, setElevenLabsApiKey] = useState<string>('');
   const [selectedVoice, setSelectedVoice] = useState<'Rachel' | 'Cassidy'>('Rachel');
   const [showSettings, setShowSettings] = useState(false);
 
@@ -47,28 +46,12 @@ const EnhancedChatBot = () => {
   };
 
   useEffect(() => {
-    loadElevenLabsApiKey();
     initializeSpeechRecognition();
   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const loadElevenLabsApiKey = async () => {
-    // In a real app, this would be loaded from Supabase secrets
-    // For now, we'll use localStorage as a placeholder
-    const key = localStorage.getItem('elevenlabs-api-key');
-    if (key) {
-      setElevenLabsApiKey(key);
-    }
-  };
-
-  const saveElevenLabsApiKey = (key: string) => {
-    localStorage.setItem('elevenlabs-api-key', key);
-    setElevenLabsApiKey(key);
-    toast.success('ElevenLabs API key saved!');
-  };
 
   const initializeSpeechRecognition = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -220,24 +203,19 @@ const EnhancedChatBot = () => {
     setQuestion('');
 
     try {
-      const response = await fetch('https://sreen8n.app.n8n.cloud/webhook/ask-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('webhook-handler', {
+        body: {
           question: userMessage.content,
           userId: user?.id,
-          chatId: chatId
-        }),
+          chatId: chatId,
+          sessionId: user?.id
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (error) {
+        throw error;
       }
 
-      const data = await response.json();
-      
       const aiMessage: Message = {
         id: `ai_${Date.now()}`,
         content: data.answer || data.response || data.message || 'Sorry, I could not generate a response.',
@@ -250,12 +228,10 @@ const EnhancedChatBot = () => {
       // Save AI message
       await saveMessage(chatId, aiMessage.content, false);
 
-      // Generate suggested questions (mock for now)
-      setSuggestedQuestions([
-        "Can you explain this in more detail?",
-        "What are the practical applications?",
-        "Are there any related topics I should know about?"
-      ]);
+      // Set suggested questions from the response
+      if (data.suggestedQuestions && data.suggestedQuestions.length > 0) {
+        setSuggestedQuestions(data.suggestedQuestions);
+      }
 
       toast.success("Response received!");
 
@@ -311,34 +287,20 @@ const EnhancedChatBot = () => {
   };
 
   const speakTextWithElevenLabs = async (text: string) => {
-    if (!elevenLabsApiKey) {
-      toast.error('Please set your ElevenLabs API key in settings');
-      return;
-    }
-
     try {
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceIds[selectedVoice]}`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': elevenLabsApiKey
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
           text: text,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5
-          }
-        })
+          voice: selectedVoice
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate speech');
+      if (error) {
+        throw error;
       }
 
-      const audioBlob = await response.blob();
+      // Convert base64 to blob and play
+      const audioBlob = new Blob([Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       
@@ -420,27 +382,6 @@ const EnhancedChatBot = () => {
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <h3 className="text-lg font-semibold mb-3">Settings</h3>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ElevenLabs API Key
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="password"
-                        value={elevenLabsApiKey}
-                        onChange={(e) => setElevenLabsApiKey(e.target.value)}
-                        placeholder="Enter your ElevenLabs API key"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <Button
-                        onClick={() => saveElevenLabsApiKey(elevenLabsApiKey)}
-                        disabled={!elevenLabsApiKey.trim()}
-                      >
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Voice Selection
