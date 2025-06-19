@@ -3,8 +3,17 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, MessageSquare, FileText, Trash2, LogOut } from 'lucide-react';
+import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Chat {
   id: string;
@@ -31,9 +40,31 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
     fetchChats();
+    
+    // Set up real-time subscription for chat updates
+    const channel = supabase
+      .channel('chat-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chats'
+        },
+        () => {
+          fetchChats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchChats = async () => {
@@ -82,6 +113,32 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   };
 
+  const deleteAllChats = async () => {
+    setIsDeletingAll(true);
+    
+    try {
+      const { error } = await supabase
+        .from('chats')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all chats
+
+      if (error) {
+        toast.error('Failed to delete chat history');
+        console.error('Error deleting all chats:', error);
+      } else {
+        setChats([]);
+        toast.success('All chat history deleted successfully');
+        onNewChat();
+        setShowDeleteAllDialog(false);
+      }
+    } catch (error) {
+      console.error('Error deleting all chats:', error);
+      toast.error('Failed to delete chat history');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -119,7 +176,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
         
         {userEmail && (
-          <div className="flex items-center justify-between text-sm text-gray-600">
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span className="truncate">{userEmail}</span>
             <Button
               onClick={onSignOut}
@@ -130,6 +187,49 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
+        )}
+
+        {/* Delete All Chats Button */}
+        {chats.length > 0 && (
+          <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All History
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center">
+                  <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+                  Delete All Chat History
+                </DialogTitle>
+                <DialogDescription>
+                  This action cannot be undone. This will permanently delete all your chat history and messages.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteAllDialog(false)}
+                  disabled={isDeletingAll}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={deleteAllChats}
+                  disabled={isDeletingAll}
+                >
+                  {isDeletingAll ? 'Deleting...' : 'Delete All'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 
