@@ -8,8 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import MessageBubble from './MessageBubble';
 import ChatSidebar from './ChatSidebar';
 import SuggestedQuestions from './SuggestedQuestions';
+import DisclaimerModal from './DisclaimerModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserAgreement } from '@/hooks/useUserAgreement';
 
 interface Message {
   id: string;
@@ -27,6 +29,8 @@ interface Chat {
 const EnhancedChatBot = () => {
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
+  const { hasAccepted, isLoading: isAgreementLoading, saveUserAgreement } = useUserAgreement();
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +47,7 @@ const EnhancedChatBot = () => {
 
   // Voice IDs for ElevenLabs
   const voiceIds = {
-    Rachel: 'kqVT88a5QfII1HNAEPTJ', // Updated to use the provided voice ID
+    Rachel: 'kqVT88a5QfII1HNAEPTJ',
     Cassidy: '9BWtsMINqrJLrRacOk9x'
   };
 
@@ -297,7 +301,8 @@ const EnhancedChatBot = () => {
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: text,
-          voice: selectedVoice
+          voice: selectedVoice,
+          userId: user?.id
         }
       });
 
@@ -345,6 +350,45 @@ const EnhancedChatBot = () => {
     setQuestion(question);
     setSuggestedQuestions([]);
   };
+
+  const handleAcceptDisclaimer = async () => {
+    const success = await saveUserAgreement();
+    if (success) {
+      toast.success('Terms accepted successfully!');
+    } else {
+      toast.error('Failed to save agreement. Please try again.');
+    }
+  };
+
+  const handleDeclineDisclaimer = () => {
+    toast.info('You must accept the terms to use this application.');
+    signOut();
+  };
+
+  // Show loading while checking agreement
+  if (isAgreementLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show disclaimer modal if not accepted
+  if (hasAccepted === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+        <DisclaimerModal
+          isOpen={true}
+          onAccept={handleAcceptDisclaimer}
+          onDecline={handleDeclineDisclaimer}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex w-full">

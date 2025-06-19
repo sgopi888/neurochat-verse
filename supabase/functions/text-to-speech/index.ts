@@ -2,14 +2,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://obgbnrasiyozdnmoixxx.supabase.co',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 const voiceIds = {
-  Rachel: 'kqVT88a5QfII1HNAEPTJ', // Updated to use the provided voice ID
+  Rachel: 'kqVT88a5QfII1HNAEPTJ',
   Cassidy: '9BWtsMINqrJLrRacOk9x'
 };
+
+// Rate limiting store for TTS
+const ttsRateLimitStore = new Map<string, { count: number; resetTime: number }>()
+
+function checkTTSRateLimit(userId: string, maxRequests: number = 5): boolean {
+  const now = Date.now()
+  const windowMs = 60 * 1000 // 1 minute
+  const key = `tts_${userId}`
+  
+  const current = ttsRateLimitStore.get(key)
+  
+  if (!current || now > current.resetTime) {
+    ttsRateLimitStore.set(key, { count: 1, resetTime: now + windowMs })
+    return true
+  }
+  
+  if (current.count >= maxRequests) {
+    return false
+  }
+  
+  current.count++
+  return true
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -18,7 +42,19 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = 'Rachel' } = await req.json()
+    const { text, voice = 'Rachel', userId } = await req.json()
+    
+    // Rate limiting check
+    if (userId && !checkTTSRateLimit(userId, 5)) {
+      console.log(`TTS rate limit exceeded for user: ${userId}`)
+      return new Response(
+        JSON.stringify({ error: 'Too many TTS requests. Please try again later.' }),
+        { 
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
     
     if (!text) {
       return new Response(
@@ -30,13 +66,25 @@ serve(async (req) => {
       )
     }
 
+    // Validate text length for TTS
+    if (text.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: 'Text too long for TTS conversion' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
     const elevenLabsApiKey = Deno.env.get('ELEVENLABS_API_KEY')
     
     if (!elevenLabsApiKey) {
+      console.error('ElevenLabs API key not configured')
       return new Response(
-        JSON.stringify({ error: 'ElevenLabs API key not configured' }),
+        JSON.stringify({ error: 'TTS service temporarily unavailable' }),
         { 
-          status: 500,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -67,9 +115,9 @@ serve(async (req) => {
       const errorText = await response.text()
       console.error('ElevenLabs API error:', response.status, errorText)
       return new Response(
-        JSON.stringify({ error: `ElevenLabs API error: ${response.status}` }),
+        JSON.stringify({ error: 'TTS service temporarily unavailable' }),
         { 
-          status: response.status,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -91,7 +139,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in text-to-speech function:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'TTS service temporarily unavailable' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
