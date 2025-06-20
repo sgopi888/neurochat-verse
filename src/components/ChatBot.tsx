@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import MessageBubble from './MessageBubble';
 import { toast } from 'sonner';
@@ -25,13 +24,15 @@ interface ChatBotProps {
   handleKeyPress: (e: React.KeyboardEvent) => void;
   startVoiceInput: () => void;
   stopVoiceInput: () => void;
+  onSpeakText: (text: string) => Promise<void>;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({ 
   messages, 
   setMessages, 
   sessionId, 
-  setSessionId
+  setSessionId,
+  onSpeakText
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -79,10 +80,6 @@ const ChatBot: React.FC<ChatBotProps> = ({
     toast.success('Copied to clipboard!');
   };
 
-  const speakText = async (text: string) => {
-    toast.info('Text-to-speech feature available in sidebar settings');
-  };
-
   return (
     <div className="p-4">
       <div className="w-full max-w-full space-y-4">
@@ -101,7 +98,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
             key={message.id} 
             message={message} 
             onCopy={copyToClipboard}
-            onSpeak={speakText}
+            onSpeak={onSpeakText}
           />
         ))}
 
