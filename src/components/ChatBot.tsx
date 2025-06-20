@@ -207,33 +207,35 @@ const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, set
 
   return (
     <div className="flex-1 flex flex-col h-screen justify-between bg-gray-100 dark:bg-gray-900">
-      <style jsx>{`
-        .chat-scrollbar::-webkit-scrollbar {
-          width: 10px;
-        }
-        .chat-scrollbar::-webkit-scrollbar-track {
-          background: #f3f4f6;
-        }
-        .chat-scrollbar::-webkit-scrollbar-thumb {
-          background: #4b5563;
-          border-radius: 5px;
-        }
-        .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #374151;
-        }
-        .dark .chat-scrollbar::-webkit-scrollbar-track {
-          background: #1f2937;
-        }
-        .dark .chat-scrollbar::-webkit-scrollbar-thumb {
-          background: #6b7280;
-        }
-        .dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #9ca3af;
-        }
-        .chat-scrollbar {
-          scrollbar-width: thin;
-        }
-      `}</style>
+      <style>
+        {`
+          .chat-scrollbar::-webkit-scrollbar {
+            width: 10px;
+          }
+          .chat-scrollbar::-webkit-scrollbar-track {
+            background: #f3f4f6;
+          }
+          .chat-scrollbar::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 5px;
+          }
+          .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+          }
+          .dark .chat-scrollbar::-webkit-scrollbar-track {
+            background: #1f2937;
+          }
+          .dark .chat-scrollbar::-webkit-scrollbar-thumb {
+            background: #6b7280;
+          }
+          .dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+          }
+          .chat-scrollbar {
+            scrollbar-width: thin;
+          }
+        `}
+      </style>
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto chat-scrollbar p-4 min-h-0">

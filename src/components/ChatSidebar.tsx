@@ -26,9 +26,9 @@ interface Chat {
 
 interface Message {
   id: string;
-  content: string;
-  is_user: boolean;
-  created_at: Date;
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
 }
 
 interface ChatSidebarProps {
@@ -180,14 +180,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   };
 
   const getLatestAIResponse = () => {
-    const aiMessages = messages.filter(msg => !msg.is_user);
+    const aiMessages = messages.filter(msg => !msg.isUser);
     return aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
   };
 
   const handlePlayLatest = () => {
     const latestResponse = getLatestAIResponse();
     if (latestResponse) {
-      onPlayLatestResponse(latestResponse.content);
+      onPlayLatestResponse(latestResponse.text);
     } else {
       toast.error('No AI response to play');
     }
@@ -195,38 +195,40 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   return (
     <div className="w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen transition-colors duration-200 overflow-hidden">
-      <style jsx>{`
-        .sidebar-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .sidebar-scrollbar::-webkit-scrollbar-track {
-          background: #e5e7eb;
-        }
-        .sidebar-scrollbar::-webkit-scrollbar-thumb {
-          background: #6b7280;
-          border-radius: 4px;
-        }
-        .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #4b5563;
-        }
-        .dark .sidebar-scrollbar::-webkit-scrollbar-track {
-          background: #374151;
-        }
-        .dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
-          background: #9ca3af;
-        }
-        .dark .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #d1d5db;
-        }
-        .sidebar-scrollbar {
-          scrollbar-width: thin;
-        }
-      `}</style>
+      <style>
+        {`
+          .sidebar-scrollbar::-webkit-scrollbar {
+            width: 8px;
+          }
+          .sidebar-scrollbar::-webkit-scrollbar-track {
+            background: #e5e7eb;
+          }
+          .sidebar-scrollbar::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 4px;
+          }
+          .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+          }
+          .dark .sidebar-scrollbar::-webkit-scrollbar-track {
+            background: #374151;
+          }
+          .dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+          }
+          .dark .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #d1d5db;
+          }
+          .sidebar-scrollbar {
+            scrollbar-width: thin;
+          }
+        `}
+      </style>
 
       {/* Header - Fixed height */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">NeuroChat</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Conversations</h2>
           <div className="flex items-center gap-2">
             <UserSettings
               userEmail={userEmail}

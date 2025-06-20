@@ -11,6 +11,8 @@ import ChatSidebar from "@/components/ChatSidebar";
 import ChatBot from "@/components/ChatBot";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import { Brain } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -44,9 +46,36 @@ const ChatApp = () => {
     localStorage.removeItem('neuroheart-chat-history');
   };
 
-  const handleChatSelect = (chatId: string) => {
+  const handleChatSelect = async (chatId: string) => {
     setCurrentChatId(chatId);
-    // Placeholder for fetching messages for the selected chat
+    
+    try {
+      // Fetch messages for the selected chat
+      const { data: messagesData, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('chat_id', chatId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching messages:', error);
+        return;
+      }
+
+      if (messagesData) {
+        const formattedMessages: Message[] = messagesData.map(msg => ({
+          id: msg.id,
+          text: msg.content,
+          isUser: msg.is_user,
+          timestamp: new Date(msg.created_at)
+        }));
+        
+        setMessages(formattedMessages);
+        localStorage.setItem('neuroheart-chat-history', JSON.stringify(formattedMessages));
+      }
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+    }
   };
 
   const handleSignOut = async () => {
@@ -67,25 +96,48 @@ const ChatApp = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-100 dark:bg-gray-900 flex text-gray-900 dark:text-gray-100 overflow-hidden">
-      <ChatSidebar 
-        currentChatId={currentChatId}
-        onChatSelect={handleChatSelect}
-        onNewChat={handleNewChat}
-        onSignOut={handleSignOut}
-        userEmail={user?.email}
-        messages={messages}
-        onPlayLatestResponse={speakText}
-        selectedVoice="Rachel"
-        onVoiceChange={() => {}}
-        isPlaying={false}
-      />
-      <ChatBot 
-        messages={messages}
-        setMessages={setMessages}
-        sessionId={sessionId}
-        setSessionId={setSessionId}
-      />
+    <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col text-gray-900 dark:text-gray-100 overflow-hidden">
+      {/* Full-width Header Bar */}
+      <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+            <Brain className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">NeuroHeart.AI</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Mindfulness Assistant</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          {user?.email && (
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Welcome, {user.email.split('@')[0]}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        <ChatSidebar 
+          currentChatId={currentChatId}
+          onChatSelect={handleChatSelect}
+          onNewChat={handleNewChat}
+          onSignOut={handleSignOut}
+          userEmail={user?.email}
+          messages={messages}
+          onPlayLatestResponse={speakText}
+          selectedVoice="Rachel"
+          onVoiceChange={() => {}}
+          isPlaying={false}
+        />
+        <ChatBot 
+          messages={messages}
+          setMessages={setMessages}
+          sessionId={sessionId}
+          setSessionId={setSessionId}
+        />
+      </div>
     </div>
   );
 };
@@ -95,10 +147,10 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
