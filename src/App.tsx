@@ -78,6 +78,45 @@ const ChatApp = () => {
     }
   }, []);
 
+  // Helper function to create a new chat in the database
+  const createNewChat = async (firstMessage: string) => {
+    if (!user) {
+      console.log('No user logged in, skipping chat creation');
+      return null;
+    }
+
+    try {
+      // Generate chat title from first message (first 50 chars or first sentence)
+      const title = firstMessage.length > 50 
+        ? firstMessage.substring(0, 50) + '...'
+        : firstMessage.split('.')[0] || firstMessage;
+
+      const { data, error } = await supabase
+        .from('chats')
+        .insert({
+          title: title,
+          user_id: user.id,
+          is_article: false
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating chat:', error);
+        toast.error('Failed to create new chat');
+        return null;
+      }
+
+      console.log('Created new chat:', data);
+      setCurrentChatId(data.id);
+      return data.id;
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      toast.error('Failed to create new chat');
+      return null;
+    }
+  };
+
   const handleNewChat = () => {
     setMessages([]);
     setCurrentChatId(null);
@@ -234,6 +273,13 @@ const ChatApp = () => {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setQuestion('');
+
+    // Create new chat if this is the first message and user is logged in
+    let chatId = currentChatId;
+    if (!currentChatId && user && messages.length === 0) {
+      console.log('Creating new chat for first message');
+      chatId = await createNewChat(userMessage.text);
+    }
 
     console.log("Sending request to n8n webhook:", {
       question: userMessage.text,
