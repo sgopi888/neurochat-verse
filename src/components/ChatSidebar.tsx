@@ -221,7 +221,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Conversations</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat History</h2>
           <Button
             onClick={onNewChat}
             size="sm"
