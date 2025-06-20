@@ -64,43 +64,6 @@ serve(async (req) => {
 
     console.log(`TTS request for user: ${user.id}`)
 
-    // Check daily usage limits using the fixed function
-    const { data: usageData, error: usageError } = await supabase
-      .rpc('get_or_create_daily_usage', { p_user_id: user.id })
-
-    if (usageError) {
-      console.error('TTS Error: Usage check failed', usageError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to check usage limits' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    console.log('Usage data retrieved:', usageData)
-
-    const usage = usageData?.[0]
-    const dailyTTSLimit = 10
-
-    if (usage && usage.tts_requests_count >= dailyTTSLimit) {
-      console.log(`TTS limit reached for user ${user.id}: ${usage.tts_requests_count}/${dailyTTSLimit}`)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Daily TTS limit reached',
-          usage: {
-            daily_tts_used: usage.tts_requests_count,
-            daily_tts_limit: dailyTTSLimit
-          }
-        }),
-        { 
-          status: 429, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
     // Map voice names to ElevenLabs voice IDs
     const voiceMap = {
       'James': 'cgSgspJ2msm6clMCkdW9',
@@ -172,42 +135,13 @@ serve(async (req) => {
       )
     }
 
-    // Update usage count using UPSERT pattern
-    console.log('Updating usage count...')
-    const currentDate = new Date().toISOString().split('T')[0]
-    
-    const { error: updateError } = await supabase
-      .from('user_usage_limits')
-      .upsert({
-        user_id: user.id,
-        date: currentDate,
-        tts_requests_count: (usage?.tts_requests_count || 0) + 1,
-        monthly_tts_count: (usage?.monthly_tts_count || 0) + 1,
-        chat_queries_count: usage?.chat_queries_count || 0,
-        monthly_chat_count: usage?.monthly_chat_count || 0,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,date'
-      })
-
-    if (updateError) {
-      console.error('Failed to update usage:', updateError)
-      // Don't fail the request if usage update fails, just log it
-    } else {
-      console.log('Usage count updated successfully')
-    }
-
     // Convert ArrayBuffer to base64
     const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
     console.log('TTS generation completed successfully')
 
     return new Response(
       JSON.stringify({ 
-        audio: base64Audio,
-        usage: {
-          daily_tts_used: (usage?.tts_requests_count || 0) + 1,
-          daily_tts_limit: dailyTTSLimit
-        }
+        audio: base64Audio
       }),
       { 
         headers: { 

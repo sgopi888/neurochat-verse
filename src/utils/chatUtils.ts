@@ -41,32 +41,3 @@ export const deleteChatWithErrorHandling = async (chatId: string): Promise<boole
     return false;
   }
 };
-
-export const softDeleteChat = async (chatId: string): Promise<boolean> => {
-  try {
-    console.log(`Attempting to soft delete chat: ${chatId}`);
-    
-    const { error } = await supabase
-      .from('chats')
-      .update({ 
-        deleted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', chatId);
-
-    if (error) {
-      console.error('Error soft deleting chat:', error);
-      toast.error(`Failed to delete chat: ${error.message}`);
-      return false;
-    }
-
-    console.log('Chat soft deleted successfully:', chatId);
-    toast.success('Chat deleted successfully');
-    return true;
-
-  } catch (error) {
-    console.error('Unexpected error during soft chat deletion:', error);
-    toast.error('Failed to delete chat due to unexpected error');
-    return false;
-  }
-};

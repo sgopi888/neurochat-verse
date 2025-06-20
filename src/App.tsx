@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -186,12 +187,6 @@ const ChatApp = () => {
       
       const errorMessage = error.message || 'Failed to generate speech';
       toast.error(`TTS Error: ${errorMessage}`);
-      
-      if (errorMessage.includes('API key')) {
-        toast.error('ElevenLabs API key not configured. Please check your settings.');
-      } else if (errorMessage.includes('limit')) {
-        toast.error('Daily TTS limit reached. Try again tomorrow.');
-      }
     }
   };
 
