@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import MessageBubble from './MessageBubble';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -14,17 +15,23 @@ interface ChatBotProps {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   sessionId: string;
   setSessionId: React.Dispatch<React.SetStateAction<string>>;
-  speakText: (text: string) => Promise<void>;
-  copyToClipboard: (text: string) => void;
+  question: string;
+  setQuestion: React.Dispatch<React.SetStateAction<string>>;
+  isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  isListening: boolean;
+  setIsListening: React.Dispatch<React.SetStateAction<boolean>>;
+  handleSubmit: (e: React.FormEvent) => void;
+  handleKeyPress: (e: React.KeyboardEvent) => void;
+  startVoiceInput: () => void;
+  stopVoiceInput: () => void;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({ 
   messages, 
   setMessages, 
   sessionId, 
-  setSessionId, 
-  speakText,
-  copyToClipboard 
+  setSessionId
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +73,15 @@ const ChatBot: React.FC<ChatBotProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
+  };
+
+  const speakText = async (text: string) => {
+    toast.info('Text-to-speech feature available in sidebar settings');
+  };
 
   return (
     <div className="p-4">
