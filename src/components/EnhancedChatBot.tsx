@@ -11,7 +11,6 @@ import SuggestedQuestions from './SuggestedQuestions';
 import DisclaimerModal from './DisclaimerModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { CustomScrollArea } from '@/components/ui/custom-scroll-area';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
 interface Message {
@@ -434,9 +433,9 @@ const EnhancedChatBotContent = () => {
           </div>
         </div>
 
-        {/* Chat Messages Container */}
+        {/* Chat Messages Container with Main Scrollbar */}
         <div className="flex-1 overflow-hidden">
-          <CustomScrollArea className="h-full">
+          <div className="h-full overflow-y-auto overflow-x-hidden main-chat-scroll">
             <div className="max-w-4xl mx-auto px-6 py-6">
               {messages.length === 0 && (
                 <div className="text-center py-16">
@@ -495,7 +494,7 @@ const EnhancedChatBotContent = () => {
                 isVisible={!isLoading && messages.length > 0}
               />
             </div>
-          </CustomScrollArea>
+          </div>
         </div>
 
         {/* Input Form */}

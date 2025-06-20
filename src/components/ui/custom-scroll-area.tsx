@@ -19,18 +19,49 @@ export function CustomScrollArea({ children, className, maxHeight = "100%" }: Cu
     >
       <div className={cn(
         "h-full w-full overflow-y-auto overflow-x-hidden",
-        // Custom scrollbar styles
-        "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600",
-        "hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500",
-        // Webkit scrollbar styles for better browser support
-        "[&::-webkit-scrollbar]:w-2",
-        "[&::-webkit-scrollbar-track]:bg-transparent",
-        "[&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600",
-        "[&::-webkit-scrollbar-thumb]:rounded-full",
-        "[&::-webkit-scrollbar-thumb:hover]:bg-gray-400 dark:[&::-webkit-scrollbar-thumb:hover]:bg-gray-500"
+        // Custom scrollbar styles using CSS variables for better control
+        "scrollbar-custom"
       )}>
         {children}
       </div>
+      
+      <style jsx>{`
+        .scrollbar-custom::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+          background: rgba(156, 163, 175, 0.5);
+          border-radius: 3px;
+          transition: background-color 0.2s ease;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+          background: rgba(156, 163, 175, 0.8);
+        }
+        
+        .dark .scrollbar-custom::-webkit-scrollbar-thumb {
+          background: rgba(75, 85, 99, 0.5);
+        }
+        
+        .dark .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+          background: rgba(75, 85, 99, 0.8);
+        }
+        
+        /* Firefox scrollbar */
+        .scrollbar-custom {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+        
+        .dark .scrollbar-custom {
+          scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+        }
+      `}</style>
     </div>
   );
 }

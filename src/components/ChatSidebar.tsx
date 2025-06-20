@@ -194,7 +194,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   return (
     <div className="w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-full transition-colors duration-200">
-      {/* Header */}
+      {/* Header - Fixed height */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">NeuroChat</h2>
@@ -307,10 +307,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         )}
       </div>
 
-      {/* Chat List with Custom Scroll Area */}
-      <div className="flex-1 overflow-hidden">
-        <CustomScrollArea className="h-full" maxHeight="100%">
-          <div className="p-2">
+      {/* Chat List with Isolated Scrolling */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <CustomScrollArea className="h-full">
+          <div className="p-2 space-y-1">
             {isLoading ? (
               <div className="space-y-2">
                 {[...Array(5)].map((_, i) => (
