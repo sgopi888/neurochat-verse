@@ -79,54 +79,66 @@ const ChatApp = () => {
   }, []);
 
   // Helper function to create a new chat in the database
-  const createNewChat = async (firstMessage: string) => {
+  const createNewChat = async (title: string) => {
+    console.log('Creating new chat - User logged in:', !!user, 'User ID:', user?.id);
+    
     if (!user) {
-      console.log('No user logged in, skipping chat creation');
+      console.error('Cannot create chat: No user logged in');
+      toast.error('Please log in to create a new chat');
       return null;
     }
 
     try {
-      // Generate chat title from first message (first 50 chars or first sentence)
-      const title = firstMessage.length > 50 
-        ? firstMessage.substring(0, 50) + '...'
-        : firstMessage.split('.')[0] || firstMessage;
+      const chatData = {
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        title: title,
+        is_article: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Inserting chat data:', chatData);
 
       const { data, error } = await supabase
         .from('chats')
-        .insert({
-          title: title,
-          user_id: user.id,
-          is_article: false
-        })
+        .insert(chatData)
         .select()
         .single();
 
       if (error) {
-        console.error('Error creating chat:', error);
-        toast.error('Failed to create new chat');
+        console.error('Supabase error creating chat:', error);
+        toast.error(`Failed to create chat: ${error.message}`);
         return null;
       }
 
-      console.log('Created new chat:', data);
+      console.log('Successfully created chat:', data);
       setCurrentChatId(data.id);
+      toast.success('New chat created successfully!');
       return data.id;
     } catch (error) {
-      console.error('Error creating chat:', error);
+      console.error('Unexpected error creating chat:', error);
       toast.error('Failed to create new chat');
       return null;
     }
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
+    console.log('handleNewChat called - User:', user?.email);
+    
     setMessages([]);
     setCurrentChatId(null);
     const newSessionId = `user_${Math.random().toString(36).substr(2, 9)}`;
     setSessionId(newSessionId);
     localStorage.setItem('neuroheart-session-id', newSessionId);
     localStorage.removeItem('neuroheart-chat-history');
+    
+    // Create a new chat in the database immediately
+    await createNewChat('New Chat');
   };
 
   const handleChatSelect = async (chatId: string) => {
+    console.log('Selecting chat:', chatId);
     setCurrentChatId(chatId);
     
     try {
@@ -138,6 +150,7 @@ const ChatApp = () => {
 
       if (error) {
         console.error('Error fetching messages:', error);
+        toast.error(`Failed to load messages: ${error.message}`);
         return;
       }
 
@@ -151,13 +164,16 @@ const ChatApp = () => {
         
         setMessages(formattedMessages);
         localStorage.setItem('neuroheart-chat-history', JSON.stringify(formattedMessages));
+        console.log('Loaded messages for chat:', formattedMessages.length);
       }
     } catch (error) {
       console.error('Error loading chat messages:', error);
+      toast.error('Failed to load chat messages');
     }
   };
 
   const handleSignOut = async () => {
+    console.log('Signing out user');
     setMessages([]);
     setCurrentChatId(null);
     setSessionId('');
@@ -278,7 +294,7 @@ const ChatApp = () => {
     let chatId = currentChatId;
     if (!currentChatId && user && messages.length === 0) {
       console.log('Creating new chat for first message');
-      chatId = await createNewChat(userMessage.text);
+      chatId = await createNewChat(userMessage.text.substring(0, 50) + (userMessage.text.length > 50 ? '...' : ''));
     }
 
     console.log("Sending request to n8n webhook:", {

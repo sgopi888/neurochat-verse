@@ -5,6 +5,7 @@ import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pau
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import UserSettings from './UserSettings';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchChats();
@@ -76,6 +78,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           table: 'chats'
         },
         () => {
+          console.log('Chat changes detected, refetching chats');
           fetchChats();
         }
       )
@@ -87,6 +90,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   }, []);
 
   const fetchChats = async () => {
+    console.log('Fetching chats for user:', user?.id);
+    
     try {
       const { data, error } = await supabase
         .from('chats')
@@ -96,12 +101,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
       if (error) {
         console.error('Error fetching chats:', error);
-        toast.error('Failed to load chat history');
+        toast.error(`Failed to load chat history: ${error.message}`);
       } else {
+        console.log('Fetched chats:', data?.length || 0);
         setChats(data || []);
       }
     } catch (error) {
-      console.error('Error fetching chats:', error);
+      console.error('Unexpected error fetching chats:', error);
+      toast.error('Failed to load chat history');
     } finally {
       setIsLoading(false);
     }
@@ -110,50 +117,74 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const deleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
+    console.log('Deleting chat:', chatId, 'for user:', user?.id);
+    
+    if (!user) {
+      console.error('Cannot delete chat: No user logged in');
+      toast.error('Please log in to delete chats');
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from('chats')
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', chatId);
+        .eq('id', chatId)
+        .eq('user_id', user.id); // Ensure user can only delete their own chats
+
+      console.log('Delete chat result - Error:', error);
 
       if (error) {
-        toast.error('Failed to delete chat');
-        console.error('Error deleting chat:', error);
+        console.error('Supabase error deleting chat:', error);
+        toast.error(`Deletion failed: ${error.message}`);
       } else {
+        // Update UI immediately after successful deletion
         setChats(chats.filter(chat => chat.id !== chatId));
         toast.success('Chat deleted successfully');
         
+        // If the deleted chat was currently selected, start a new chat
         if (currentChatId === chatId) {
           onNewChat();
         }
       }
     } catch (error) {
-      console.error('Error deleting chat:', error);
+      console.error('Unexpected error deleting chat:', error);
       toast.error('Failed to delete chat');
     }
   };
 
   const deleteAllChats = async () => {
+    console.log('Deleting all chats for user:', user?.id);
+    
+    if (!user) {
+      console.error('Cannot delete chats: No user logged in');
+      toast.error('Please log in to clear chat history');
+      return;
+    }
+    
     setIsDeletingAll(true);
     
     try {
       const { error } = await supabase
         .from('chats')
         .update({ deleted_at: new Date().toISOString() })
-        .is('deleted_at', null)
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .eq('user_id', user.id) // Only target user's chats
+        .is('deleted_at', null);
+
+      console.log('Delete all chats result - Error:', error);
 
       if (error) {
-        toast.error('Failed to clear chat history');
-        console.error('Error clearing all chats:', error);
+        console.error('Supabase error clearing all chats:', error);
+        toast.error(`Failed to clear chat history: ${error.message}`);
       } else {
+        // Update UI immediately after successful deletion
         setChats([]);
         toast.success('Chat history cleared from view. Data will be securely retained for 90 days for security purposes, then automatically permanently deleted.');
         onNewChat();
         setShowDeleteAllDialog(false);
       }
     } catch (error) {
-      console.error('Error clearing all chats:', error);
+      console.error('Unexpected error clearing all chats:', error);
       toast.error('Failed to clear chat history');
     } finally {
       setIsDeletingAll(false);
