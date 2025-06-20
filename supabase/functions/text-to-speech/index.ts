@@ -13,9 +13,11 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = 'James' } = await req.json()
+    console.log('TTS function called - parsing request body')
+    const { text, voice = 'Drew' } = await req.json()
     
     if (!text) {
+      console.error('TTS Error: No text provided')
       return new Response(
         JSON.stringify({ error: 'Text is required' }),
         { 
@@ -25,9 +27,12 @@ serve(async (req) => {
       )
     }
 
+    console.log(`TTS request - Text length: ${text.length}, Voice: ${voice}`)
+
     // Get auth header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('TTS Error: No authorization header')
       return new Response(
         JSON.stringify({ error: 'Authorization header required' }),
         { 
@@ -47,6 +52,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token)
     
     if (userError || !user) {
+      console.error('TTS Error: Invalid auth token', userError)
       return new Response(
         JSON.stringify({ error: 'Invalid auth token' }),
         { 
@@ -56,12 +62,14 @@ serve(async (req) => {
       )
     }
 
-    // Check daily usage limits
+    console.log(`TTS request for user: ${user.id}`)
+
+    // Check daily usage limits using the fixed function
     const { data: usageData, error: usageError } = await supabase
       .rpc('get_or_create_daily_usage', { p_user_id: user.id })
 
     if (usageError) {
-      console.error('Usage check error:', usageError)
+      console.error('TTS Error: Usage check failed', usageError)
       return new Response(
         JSON.stringify({ error: 'Failed to check usage limits' }),
         { 
@@ -71,10 +79,13 @@ serve(async (req) => {
       )
     }
 
+    console.log('Usage data retrieved:', usageData)
+
     const usage = usageData?.[0]
     const dailyTTSLimit = 10
 
     if (usage && usage.tts_requests_count >= dailyTTSLimit) {
+      console.log(`TTS limit reached for user ${user.id}: ${usage.tts_requests_count}/${dailyTTSLimit}`)
       return new Response(
         JSON.stringify({ 
           error: 'Daily TTS limit reached',
@@ -98,11 +109,13 @@ serve(async (req) => {
       'Lavender': 'XrExE9yKIg1WjnnlVkGX'
     }
 
-    const voiceId = voiceMap[voice as keyof typeof voiceMap] || voiceMap.James
+    const voiceId = voiceMap[voice as keyof typeof voiceMap] || voiceMap.Drew
+    console.log(`Using voice ID: ${voiceId} for voice: ${voice}`)
 
     // Generate speech with ElevenLabs
     const elevenLabsApiKey = Deno.env.get('ELEVENLABS_API_KEY')
     if (!elevenLabsApiKey) {
+      console.error('TTS Error: ElevenLabs API key not configured')
       return new Response(
         JSON.stringify({ error: 'ElevenLabs API key not configured' }),
         { 
@@ -112,6 +125,7 @@ serve(async (req) => {
       )
     }
 
+    console.log('Calling ElevenLabs API...')
     const elevenLabsResponse = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
@@ -134,9 +148,9 @@ serve(async (req) => {
 
     if (!elevenLabsResponse.ok) {
       const errorText = await elevenLabsResponse.text()
-      console.error('ElevenLabs API error:', errorText)
+      console.error('ElevenLabs API error:', elevenLabsResponse.status, errorText)
       return new Response(
-        JSON.stringify({ error: 'Failed to generate speech' }),
+        JSON.stringify({ error: `ElevenLabs API error: ${elevenLabsResponse.status}` }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -145,8 +159,10 @@ serve(async (req) => {
     }
 
     const audioBuffer = await elevenLabsResponse.arrayBuffer()
+    console.log(`Audio generated, size: ${audioBuffer.byteLength} bytes`)
     
     if (!audioBuffer || audioBuffer.byteLength === 0) {
+      console.error('TTS Error: No audio data received from ElevenLabs')
       return new Response(
         JSON.stringify({ error: 'No audio data received' }),
         { 
@@ -156,24 +172,34 @@ serve(async (req) => {
       )
     }
 
-    // Update usage count using proper SQL syntax
+    // Update usage count using UPSERT pattern
+    console.log('Updating usage count...')
+    const currentDate = new Date().toISOString().split('T')[0]
+    
     const { error: updateError } = await supabase
       .from('user_usage_limits')
-      .update({ 
+      .upsert({
+        user_id: user.id,
+        date: currentDate,
         tts_requests_count: (usage?.tts_requests_count || 0) + 1,
         monthly_tts_count: (usage?.monthly_tts_count || 0) + 1,
+        chat_queries_count: usage?.chat_queries_count || 0,
+        monthly_chat_count: usage?.monthly_chat_count || 0,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,date'
       })
-      .eq('user_id', user.id)
-      .eq('date', new Date().toISOString().split('T')[0])
 
     if (updateError) {
       console.error('Failed to update usage:', updateError)
       // Don't fail the request if usage update fails, just log it
+    } else {
+      console.log('Usage count updated successfully')
     }
 
     // Convert ArrayBuffer to base64
     const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
+    console.log('TTS generation completed successfully')
 
     return new Response(
       JSON.stringify({ 
@@ -194,7 +220,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in text-to-speech function:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: `Internal server error: ${error.message}` }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

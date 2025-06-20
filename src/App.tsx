@@ -99,6 +99,7 @@ const ChatApp = () => {
 
       if (error) {
         console.error('Error fetching messages:', error);
+        toast.error('Failed to load chat messages');
         return;
       }
 
@@ -115,6 +116,7 @@ const ChatApp = () => {
       }
     } catch (error) {
       console.error('Error loading chat messages:', error);
+      toast.error('Failed to load chat messages');
     }
   };
 
@@ -187,6 +189,8 @@ const ChatApp = () => {
       
       if (errorMessage.includes('API key')) {
         toast.error('ElevenLabs API key not configured. Please check your settings.');
+      } else if (errorMessage.includes('limit')) {
+        toast.error('Daily TTS limit reached. Try again tomorrow.');
       }
     }
   };
