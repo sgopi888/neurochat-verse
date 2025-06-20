@@ -5,7 +5,6 @@ import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pau
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import UserSettings from './UserSettings';
-import { useAuth } from '@/hooks/useAuth';
 import {
   Dialog,
   DialogContent,
@@ -63,7 +62,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
 
   useEffect(() => {
     fetchChats();
@@ -78,7 +76,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           table: 'chats'
         },
         () => {
-          console.log('Chat changes detected, refetching chats');
           fetchChats();
         }
       )
@@ -87,36 +84,23 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, []);
 
   const fetchChats = async () => {
-    console.log('Fetching chats for user:', user?.id);
-    
-    if (!user) {
-      console.log('No user logged in, clearing chats');
-      setChats([]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from('chats')
         .select('*')
-        .eq('user_id', user.id) // Filter by user_id to prevent cross-account visibility
-        .is('deleted_at', null)
         .order('updated_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching chats:', error);
-        toast.error(`Failed to load chat history: ${error.message}`);
+        toast.error('Failed to load chat history');
       } else {
-        console.log('Fetched chats:', data?.length || 0, 'for user:', user.id);
         setChats(data || []);
       }
     } catch (error) {
-      console.error('Unexpected error fetching chats:', error);
-      toast.error('Failed to load chat history');
+      console.error('Error fetching chats:', error);
     } finally {
       setIsLoading(false);
     }
@@ -125,78 +109,50 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const deleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    console.log('Attempting to delete chat:', chatId, 'for user:', user?.id);
-    
-    if (!user) {
-      console.error('Cannot delete chat: No user logged in');
-      toast.error('Please log in to delete chats');
-      return;
-    }
-    
     try {
-      console.log('Sending delete request to Supabase...');
       const { error } = await supabase
         .from('chats')
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', chatId);
 
-      console.log('Delete chat result - Error:', error);
-
       if (error) {
-        console.error('Supabase error deleting chat:', error);
-        toast.error(`Deletion failed: ${error.message}`);
+        toast.error('Failed to delete chat');
+        console.error('Error deleting chat:', error);
       } else {
-        console.log('Chat deleted successfully, updating UI');
-        // Update UI immediately after successful deletion
         setChats(chats.filter(chat => chat.id !== chatId));
         toast.success('Chat deleted successfully');
         
-        // If the deleted chat was currently selected, start a new chat
         if (currentChatId === chatId) {
           onNewChat();
         }
       }
     } catch (error) {
-      console.error('Unexpected error deleting chat:', error);
+      console.error('Error deleting chat:', error);
       toast.error('Failed to delete chat');
     }
   };
 
   const deleteAllChats = async () => {
-    console.log('Attempting to delete all chats for user:', user?.id);
-    
-    if (!user) {
-      console.error('Cannot delete chats: No user logged in');
-      toast.error('Please log in to clear chat history');
-      return;
-    }
-    
     setIsDeletingAll(true);
     
     try {
-      console.log('Sending delete all request to Supabase...');
       const { error } = await supabase
         .from('chats')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('user_id', user.id) // Only target the current user's chats
-        .is('deleted_at', null);
-
-      console.log('Delete all chats result - Error:', error);
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
       if (error) {
-        console.error('Supabase error clearing all chats:', error);
-        toast.error(`Failed to clear chat history: ${error.message}`);
+        toast.error('Failed to delete chat history');
+        console.error('Error deleting all chats:', error);
       } else {
-        console.log('All chats deleted successfully, updating UI');
-        // Update UI immediately after successful deletion
         setChats([]);
-        toast.success('Chat history cleared from view. Data will be securely retained for 90 days for security purposes, then automatically permanently deleted.');
+        toast.success('All chat history deleted successfully');
         onNewChat();
         setShowDeleteAllDialog(false);
       }
     } catch (error) {
-      console.error('Unexpected error clearing all chats:', error);
-      toast.error('Failed to clear chat history');
+      console.error('Error deleting all chats:', error);
+      toast.error('Failed to delete chat history');
     } finally {
       setIsDeletingAll(false);
     }
@@ -263,7 +219,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat History</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Conversations</h2>
           <Button
             onClick={onNewChat}
             size="sm"
@@ -304,10 +260,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <DialogHeader>
                 <DialogTitle className="flex items-center dark:text-white">
                   <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-                  Clear Chat History
+                  Delete All Chat History
                 </DialogTitle>
                 <DialogDescription className="dark:text-gray-400">
-                  This will clear your chat history from view. Your data will be securely retained for 90 days for security purposes, then automatically permanently deleted.
+                  This action cannot be undone. This will permanently delete all your chat history and messages.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -323,7 +279,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   onClick={deleteAllChats}
                   disabled={isDeletingAll}
                 >
-                  {isDeletingAll ? 'Clearing...' : 'Clear History'}
+                  {isDeletingAll ? 'Deleting...' : 'Delete All'}
                 </Button>
               </DialogFooter>
             </DialogContent>
