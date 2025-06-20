@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -240,7 +239,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             className="w-full flex items-center justify-center gap-2"
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            <span>{isPlaying ? 'Pause' : 'Play Latest'}</span>
+            <span>{isPlaying ? 'Pause' : 'Play Script'}</span>
           </Button>
         </div>
 

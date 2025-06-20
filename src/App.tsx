@@ -338,11 +338,19 @@ const ChatApp = () => {
           .chat-scrollbar {
             scrollbar-width: thin;
           }
+          @media (max-width: 768px) {
+            .sidebar {
+              display: none;
+            }
+            .content-area {
+              width: 100%;
+            }
+          }
         `}
       </style>
 
       {/* Sidebar Container */}
-      <div className="w-80 flex-shrink-0 h-screen">
+      <div className="w-80 flex-shrink-0 h-screen sidebar">
         <ChatSidebar 
           currentChatId={currentChatId}
           onChatSelect={handleChatSelect}
@@ -359,9 +367,9 @@ const ChatApp = () => {
       </div>
 
       {/* Content Area Container */}
-      <div className="flex-1 flex flex-col h-screen">
+      <div className="flex-1 flex flex-col h-screen max-w-full content-area">
         {/* Header in Content Area */}
-        <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 w-full">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
               <Brain className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -374,20 +382,28 @@ const ChatApp = () => {
         </div>
 
         {/* Main Content in Content Area */}
-        <div className="flex-1 overflow-y-auto chat-scrollbar min-h-0">
+        <div className="flex-1 overflow-y-auto chat-scrollbar min-h-0 w-full">
           <ChatBot 
             messages={messages}
             setMessages={setMessages}
             sessionId={sessionId}
             setSessionId={setSessionId}
-            speakText={speakTextWithElevenLabs}
-            copyToClipboard={copyToClipboard}
+            question={question}
+            setQuestion={setQuestion}
+            isLoading={isLoading}
+            setIsLoading={setIsLoading}
+            isListening={isListening}
+            setIsListening={setIsListening}
+            handleSubmit={handleSubmit}
+            handleKeyPress={handleKeyPress}
+            startVoiceInput={startVoiceInput}
+            stopVoiceInput={stopVoiceInput}
           />
         </div>
 
         {/* Bottom Bar in Content Area */}
-        <div className="p-4 bg-gray-200 dark:bg-gray-800 flex-shrink-0">
-          <Card className="border-blue-200 dark:border-gray-600 shadow-lg bg-white dark:bg-gray-700">
+        <div className="p-4 bg-gray-200 dark:bg-gray-800 flex-shrink-0 w-full">
+          <Card className="w-full border-blue-200 dark:border-gray-600 shadow-lg bg-white dark:bg-gray-700">
             <form onSubmit={handleSubmit} className="p-4">
               <div className="flex space-x-3">
                 <div className="flex-1">

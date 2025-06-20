@@ -69,7 +69,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
 
   return (
     <div className="p-4">
-      <div className="max-w-4xl mx-auto w-full space-y-4">
+      <div className="w-full max-w-full space-y-4">
         {messages.length === 0 && (
           <div className="text-center py-12">
             <div className="bg-blue-100 dark:bg-blue-900/20 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
