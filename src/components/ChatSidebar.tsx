@@ -87,15 +87,23 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   const fetchChats = async () => {
     console.log('Fetching chats for user:', user?.id);
     
+    if (!user) {
+      console.log('No user logged in, clearing chats');
+      setChats([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('chats')
         .select('*')
+        .eq('user_id', user.id) // Filter by user_id to prevent cross-account visibility
         .is('deleted_at', null)
         .order('updated_at', { ascending: false });
 
@@ -103,7 +111,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         console.error('Error fetching chats:', error);
         toast.error(`Failed to load chat history: ${error.message}`);
       } else {
-        console.log('Fetched chats:', data?.length || 0);
+        console.log('Fetched chats:', data?.length || 0, 'for user:', user.id);
         setChats(data || []);
       }
     } catch (error) {
@@ -170,6 +178,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       const { error } = await supabase
         .from('chats')
         .update({ deleted_at: new Date().toISOString() })
+        .eq('user_id', user.id) // Only target the current user's chats
         .is('deleted_at', null);
 
       console.log('Delete all chats result - Error:', error);
