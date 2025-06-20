@@ -1,8 +1,8 @@
 
-import ChatBot from '@/components/ChatBot';
+import EnhancedChatBot from '@/components/EnhancedChatBot';
 
 const Index = () => {
-  return <ChatBot />;
+  return <EnhancedChatBot />;
 };
 
 export default Index;
