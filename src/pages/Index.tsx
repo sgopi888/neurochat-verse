@@ -1,8 +1,13 @@
 
-import EnhancedChatBot from '@/components/EnhancedChatBot';
+import { useEffect } from 'react';
+import App from '@/App';
 
 const Index = () => {
-  return <EnhancedChatBot />;
+  useEffect(() => {
+    // Any initialization logic can go here
+  }, []);
+
+  return <App />;
 };
 
 export default Index;

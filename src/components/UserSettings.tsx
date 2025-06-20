@@ -18,8 +18,8 @@ import { Separator } from '@/components/ui/separator';
 
 interface UserSettingsProps {
   userEmail?: string;
-  selectedVoice: 'Rachel' | 'Cassidy';
-  onVoiceChange: (voice: 'Rachel' | 'Cassidy') => void;
+  selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
+  onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   onThemeToggle: () => void;
   currentTheme: 'light' | 'dark';
 }
@@ -82,16 +82,22 @@ const UserSettings = ({
               <Volume2 className="h-4 w-4 inline mr-1" />
               Voice Selection
             </Label>
-            <Select value={selectedVoice} onValueChange={(value: 'Rachel' | 'Cassidy') => onVoiceChange(value)}>
+            <Select value={selectedVoice} onValueChange={(value: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => onVoiceChange(value)}>
               <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                <SelectItem value="Rachel" className="hover:bg-gray-100 dark:hover:bg-gray-700">
-                  Rachel (Professional)
+                <SelectItem value="James" className="hover:bg-gray-100 dark:hover:bg-gray-700">
+                  James (Professional)
                 </SelectItem>
                 <SelectItem value="Cassidy" className="hover:bg-gray-100 dark:hover:bg-gray-700">
-                  Cassidy (Casual)
+                  Cassidy (Friendly)
+                </SelectItem>
+                <SelectItem value="Drew" className="hover:bg-gray-100 dark:hover:bg-gray-700">
+                  Drew (Confident)
+                </SelectItem>
+                <SelectItem value="Lavender" className="hover:bg-gray-100 dark:hover:bg-gray-700">
+                  Lavender (Soothing)
                 </SelectItem>
               </SelectContent>
             </Select>

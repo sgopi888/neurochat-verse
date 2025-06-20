@@ -40,8 +40,8 @@ interface ChatSidebarProps {
   messages: Message[];
   onPlayLatestResponse: () => void;
   onPauseAudio: () => void;
-  selectedVoice: 'Rachel' | 'Cassidy';
-  onVoiceChange: (voice: 'Rachel' | 'Cassidy') => void;
+  selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
+  onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   isPlaying: boolean;
 }
 
