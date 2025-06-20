@@ -12,6 +12,7 @@ export type Database = {
       chats: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           is_article: boolean
           title: string
@@ -20,6 +21,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_article?: boolean
           title: string
@@ -28,6 +30,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_article?: boolean
           title?: string
@@ -189,7 +192,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_chats: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

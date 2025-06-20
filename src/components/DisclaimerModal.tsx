@@ -23,6 +23,8 @@ const DISCLAIMER_TEXT = `The mindfulness-based processes, meditative techniques,
 
 We do not provide any form of medical service, therapy, crisis intervention, or emergency care. These practices are not intended to replace professional medical or mental health support, and should not be used as a substitute for care from a licensed healthcare provider, particularly in cases involving trauma, chronic illness, terminal diagnosis, sexually transmitted disease, or issues surrounding death and dying.
 
+DATA RETENTION AND PRIVACY: Your chat history is automatically retained for 90 days in our secure database for security and safety purposes, after which it is permanently deleted. When you clear your chat history, the data is hidden from your view but remains securely stored for this 90-day period before automatic permanent deletion. This retention policy helps ensure platform security and user safety.
+
 Participation is voluntary, and any insights or outcomes experienced are the sole responsibility of the individual. If you are experiencing a health crisis, psychological distress, or suicidal thoughts, we strongly urge you to contact a qualified professional or emergency services in your area.
 
 By engaging with our content, you agree to assume full responsibility for your well-being and understand that the facilitators and platform creators are not liable for any outcomes associated with the use or interpretation of these mindfulness practices.`;

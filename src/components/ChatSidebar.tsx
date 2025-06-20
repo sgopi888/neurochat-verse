@@ -91,6 +91,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       const { data, error } = await supabase
         .from('chats')
         .select('*')
+        .is('deleted_at', null)
         .order('updated_at', { ascending: false });
 
       if (error) {
@@ -112,7 +113,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     try {
       const { error } = await supabase
         .from('chats')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', chatId);
 
       if (error) {
@@ -138,21 +139,22 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     try {
       const { error } = await supabase
         .from('chats')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
+        .is('deleted_at', null)
         .neq('id', '00000000-0000-0000-0000-000000000000');
 
       if (error) {
-        toast.error('Failed to delete chat history');
-        console.error('Error deleting all chats:', error);
+        toast.error('Failed to clear chat history');
+        console.error('Error clearing all chats:', error);
       } else {
         setChats([]);
-        toast.success('All chat history deleted successfully');
+        toast.success('Chat history cleared from view. Data will be securely retained for 90 days for security purposes, then automatically permanently deleted.');
         onNewChat();
         setShowDeleteAllDialog(false);
       }
     } catch (error) {
-      console.error('Error deleting all chats:', error);
-      toast.error('Failed to delete chat history');
+      console.error('Error clearing all chats:', error);
+      toast.error('Failed to clear chat history');
     } finally {
       setIsDeletingAll(false);
     }
@@ -260,10 +262,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <DialogHeader>
                 <DialogTitle className="flex items-center dark:text-white">
                   <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-                  Delete All Chat History
+                  Clear Chat History
                 </DialogTitle>
                 <DialogDescription className="dark:text-gray-400">
-                  This action cannot be undone. This will permanently delete all your chat history and messages.
+                  This will clear your chat history from view. Your data will be securely retained for 90 days for security purposes, then automatically permanently deleted.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -279,7 +281,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   onClick={deleteAllChats}
                   disabled={isDeletingAll}
                 >
-                  {isDeletingAll ? 'Deleting...' : 'Delete All'}
+                  {isDeletingAll ? 'Clearing...' : 'Clear History'}
                 </Button>
               </DialogFooter>
             </DialogContent>
