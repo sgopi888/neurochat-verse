@@ -1,164 +1,186 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+const voiceIds = {
+  James: 'EkK5I93UQWFDigLMpZcX',
+  Cassidy: '56AoDkrOh6qfVPDXZ7Pt',
+  Drew: 'wgHvco1wiREKN0BdyVx5',
+  Lavender: 'QwvsCFsQcnpWxmP1z7V9'
+};
+
+// Rate limiting store for TTS
+const ttsRateLimitStore = new Map<string, { count: number; resetTime: number }>()
+
+function checkTTSRateLimit(userId: string, maxRequests: number = 5): boolean {
+  const now = Date.now()
+  const windowMs = 60 * 1000 // 1 minute
+  const key = `tts_${userId}`
+  
+  const current = ttsRateLimitStore.get(key)
+  
+  if (!current || now > current.resetTime) {
+    ttsRateLimitStore.set(key, { count: 1, resetTime: now + windowMs })
+    return true
+  }
+  
+  if (current.count >= maxRequests) {
+    return false
+  }
+  
+  current.count++
+  return true
+}
+
+// Efficient base64 encoding for large files
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000 // 32KB chunks
+  let result = ''
+  
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize)
+    result += String.fromCharCode(...chunk)
+  }
+  
+  return btoa(result)
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('TTS function called - parsing request body')
-    const { text, voice = 'Drew' } = await req.json()
+    const { text, voice = 'Drew', userId } = await req.json()
+    
+    console.log(`TTS request received - Voice: ${voice}, Text length: ${text?.length || 0}, User: ${userId}`)
+    
+    // Rate limiting check
+    if (userId && !checkTTSRateLimit(userId, 5)) {
+      console.log(`TTS rate limit exceeded for user: ${userId}`)
+      return new Response(
+        JSON.stringify({ error: 'Too many TTS requests. Please try again later.' }),
+        { 
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
     
     if (!text) {
-      console.error('TTS Error: No text provided')
+      console.error('No text provided for TTS')
       return new Response(
         JSON.stringify({ error: 'Text is required' }),
         { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
-    console.log(`TTS request - Text length: ${text.length}, Voice: ${voice}`)
-
-    // Get auth header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      console.error('TTS Error: No authorization header')
+    // Validate text length for TTS
+    if (text.length > 2000) {
+      console.error(`Text too long for TTS: ${text.length} characters`)
       return new Response(
-        JSON.stringify({ error: 'Authorization header required' }),
+        JSON.stringify({ error: 'Text too long for TTS conversion' }),
         { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // Get user from auth header
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
-    
-    if (userError || !user) {
-      console.error('TTS Error: Invalid auth token', userError)
-      return new Response(
-        JSON.stringify({ error: 'Invalid auth token' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    console.log(`TTS request for user: ${user.id}`)
-
-    // Map voice names to ElevenLabs voice IDs
-    const voiceMap = {
-      'James': 'cgSgspJ2msm6clMCkdW9',
-      'Cassidy': 'XB0fDUnXU5powFXDhCwa', 
-      'Drew': 'LcfcDJNUP1GQjkzn1xUU',
-      'Lavender': 'XrExE9yKIg1WjnnlVkGX'
-    }
-
-    const voiceId = voiceMap[voice as keyof typeof voiceMap] || voiceMap.Drew
-    console.log(`Using voice ID: ${voiceId} for voice: ${voice}`)
-
-    // Generate speech with ElevenLabs
     const elevenLabsApiKey = Deno.env.get('ELEVENLABS_API_KEY')
-    if (!elevenLabsApiKey) {
-      console.error('TTS Error: ElevenLabs API key not configured')
-      return new Response(
-        JSON.stringify({ error: 'ElevenLabs API key not configured' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    console.log('Calling ElevenLabs API...')
-    const elevenLabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': elevenLabsApiKey,
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: 'eleven_monolingual_v1',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
-          },
-        }),
-      }
-    )
-
-    if (!elevenLabsResponse.ok) {
-      const errorText = await elevenLabsResponse.text()
-      console.error('ElevenLabs API error:', elevenLabsResponse.status, errorText)
-      return new Response(
-        JSON.stringify({ error: `ElevenLabs API error: ${elevenLabsResponse.status}` }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    const audioBuffer = await elevenLabsResponse.arrayBuffer()
-    console.log(`Audio generated, size: ${audioBuffer.byteLength} bytes`)
     
-    if (!audioBuffer || audioBuffer.byteLength === 0) {
-      console.error('TTS Error: No audio data received from ElevenLabs')
+    if (!elevenLabsApiKey) {
+      console.error('ElevenLabs API key not found in environment')
       return new Response(
-        JSON.stringify({ error: 'No audio data received' }),
+        JSON.stringify({ error: 'TTS service not configured - missing API key' }),
         { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
-    // Convert ArrayBuffer to base64
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
-    console.log('TTS generation completed successfully')
+    const voiceId = voiceIds[voice as keyof typeof voiceIds] || voiceIds.Drew
+
+    console.log(`Generating TTS with ElevenLabs - Voice: ${voice} (${voiceId})`)
+
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': elevenLabsApiKey
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5,
+          style: 0.0,
+          use_speaker_boost: true
+        }
+      })
+    })
+
+    console.log(`ElevenLabs API response status: ${response.status}`)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('ElevenLabs API error:', response.status, errorText)
+      
+      // Parse error for more specific messages
+      let errorMessage = 'TTS service temporarily unavailable'
+      try {
+        const errorJson = JSON.parse(errorText)
+        if (errorJson.detail && errorJson.detail.message) {
+          errorMessage = errorJson.detail.message
+        }
+      } catch (e) {
+        // Keep default error message
+      }
+      
+      return new Response(
+        JSON.stringify({ error: errorMessage }),
+        { 
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const audioBuffer = await response.arrayBuffer()
+    console.log(`Audio generated successfully - Size: ${audioBuffer.byteLength} bytes`)
+    
+    // Use the efficient base64 encoding function
+    const audioBase64 = arrayBufferToBase64(audioBuffer)
 
     return new Response(
-      JSON.stringify({ 
-        audio: base64Audio
-      }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
+      JSON.stringify({ audio: audioBase64 }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      },
     )
 
   } catch (error) {
     console.error('Error in text-to-speech function:', error)
     return new Response(
-      JSON.stringify({ error: `Internal server error: ${error.message}` }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: `TTS service error: ${error.message}` }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      },
     )
   }
 })

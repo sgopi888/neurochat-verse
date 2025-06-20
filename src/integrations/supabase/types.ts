@@ -187,42 +187,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_usage_limits: {
-        Row: {
-          chat_queries_count: number
-          created_at: string
-          date: string
-          id: string
-          monthly_chat_count: number
-          monthly_tts_count: number
-          tts_requests_count: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          chat_queries_count?: number
-          created_at?: string
-          date?: string
-          id?: string
-          monthly_chat_count?: number
-          monthly_tts_count?: number
-          tts_requests_count?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          chat_queries_count?: number
-          created_at?: string
-          date?: string
-          id?: string
-          monthly_chat_count?: number
-          monthly_tts_count?: number
-          tts_requests_count?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -231,18 +195,6 @@ export type Database = {
       cleanup_old_chats: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      get_or_create_daily_usage: {
-        Args: { p_user_id: string }
-        Returns: {
-          id: string
-          user_id: string
-          date: string
-          chat_queries_count: number
-          tts_requests_count: number
-          monthly_chat_count: number
-          monthly_tts_count: number
-        }[]
       }
     }
     Enums: {

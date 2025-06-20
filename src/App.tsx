@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -100,7 +99,6 @@ const ChatApp = () => {
 
       if (error) {
         console.error('Error fetching messages:', error);
-        toast.error('Failed to load chat messages');
         return;
       }
 
@@ -117,7 +115,6 @@ const ChatApp = () => {
       }
     } catch (error) {
       console.error('Error loading chat messages:', error);
-      toast.error('Failed to load chat messages');
     }
   };
 
@@ -187,6 +184,10 @@ const ChatApp = () => {
       
       const errorMessage = error.message || 'Failed to generate speech';
       toast.error(`TTS Error: ${errorMessage}`);
+      
+      if (errorMessage.includes('API key')) {
+        toast.error('ElevenLabs API key not configured. Please check your settings.');
+      }
     }
   };
 
