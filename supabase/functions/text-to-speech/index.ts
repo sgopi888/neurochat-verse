@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
@@ -32,6 +33,20 @@ function checkTTSRateLimit(userId: string, maxRequests: number = 5): boolean {
   
   current.count++
   return true
+}
+
+// Efficient base64 encoding for large files
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000 // 32KB chunks
+  let result = ''
+  
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize)
+    result += String.fromCharCode(...chunk)
+  }
+  
+  return btoa(result)
 }
 
 serve(async (req) => {
@@ -145,7 +160,8 @@ serve(async (req) => {
     const audioBuffer = await response.arrayBuffer()
     console.log(`Audio generated successfully - Size: ${audioBuffer.byteLength} bytes`)
     
-    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
+    // Use the efficient base64 encoding function
+    const audioBase64 = arrayBufferToBase64(audioBuffer)
 
     return new Response(
       JSON.stringify({ audio: audioBase64 }),
