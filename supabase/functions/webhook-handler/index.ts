@@ -1,16 +1,26 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Rate limiting constants
+const RATE_LIMIT_REQUESTS = 10 // requests per window
+const RATE_LIMIT_WINDOW_MINUTES = 5 // 5 minute window
+const MAX_REQUEST_SIZE = 10240 // 10KB
+
 // Input validation constants
 const QUESTION_MIN_LENGTH = 1
 const QUESTION_MAX_LENGTH = 2000
-const MAX_REQUEST_SIZE = 10240 // 10KB
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Input validation functions
 function isValidUUID(uuid: string): boolean {
@@ -84,6 +94,82 @@ function validateRequestBody(body: any): { isValid: boolean; error?: string; dat
   }
 }
 
+// Rate limiting functions
+async function checkRateLimit(userId: string, endpoint: string = 'webhook-handler'): Promise<{ allowed: boolean; error?: string }> {
+  try {
+    const windowStart = new Date()
+    windowStart.setMinutes(windowStart.getMinutes() - RATE_LIMIT_WINDOW_MINUTES)
+    
+    console.log('Checking rate limit for user:', userId, 'since:', windowStart.toISOString())
+    
+    // Get existing rate limit record within the current window
+    const { data: rateLimitData, error: fetchError } = await supabase
+      .from('rate_limits')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('endpoint', endpoint)
+      .gte('window_start', windowStart.toISOString())
+      .order('window_start', { ascending: false })
+      .limit(1)
+      .single()
+    
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('Error fetching rate limit:', fetchError)
+      return { allowed: true } // Allow on error to prevent blocking users
+    }
+    
+    if (!rateLimitData) {
+      // No existing record, create new one
+      const { error: insertError } = await supabase
+        .from('rate_limits')
+        .insert({
+          user_id: userId,
+          endpoint,
+          request_count: 1,
+          window_start: new Date().toISOString()
+        })
+      
+      if (insertError) {
+        console.error('Error creating rate limit record:', insertError)
+        return { allowed: true } // Allow on error
+      }
+      
+      console.log('Created new rate limit record for user:', userId)
+      return { allowed: true }
+    }
+    
+    // Check if we're still within the rate limit
+    if (rateLimitData.request_count >= RATE_LIMIT_REQUESTS) {
+      console.log('Rate limit exceeded for user:', userId, 'count:', rateLimitData.request_count)
+      return { 
+        allowed: false, 
+        error: `Rate limit exceeded. Maximum ${RATE_LIMIT_REQUESTS} requests per ${RATE_LIMIT_WINDOW_MINUTES} minutes. Please try again later.` 
+      }
+    }
+    
+    // Increment the counter
+    const { error: updateError } = await supabase
+      .from('rate_limits')
+      .update({ 
+        request_count: rateLimitData.request_count + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', rateLimitData.id)
+    
+    if (updateError) {
+      console.error('Error updating rate limit:', updateError)
+      return { allowed: true } // Allow on error
+    }
+    
+    console.log('Updated rate limit for user:', userId, 'new count:', rateLimitData.request_count + 1)
+    return { allowed: true }
+    
+  } catch (error) {
+    console.error('Rate limit check failed:', error)
+    return { allowed: true } // Allow on error to prevent blocking users
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -135,6 +221,19 @@ serve(async (req) => {
       sessionId,
       questionLength: question.length
     })
+
+    // Check rate limit
+    const rateLimitResult = await checkRateLimit(userId)
+    if (!rateLimitResult.allowed) {
+      console.log('Rate limit check failed for user:', userId)
+      return new Response(
+        JSON.stringify({ error: rateLimitResult.error }),
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
     // Get webhook URL from secrets
     const webhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
