@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Settings, User, Download, Eye, EyeOff } from 'lucide-react';
+import { Settings, User, Eye, EyeOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -27,51 +27,8 @@ const UserSettings: React.FC<UserSettingsProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const [memoryEnabled, setMemoryEnabled] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  const handleExportData = async () => {
-    setIsExporting(true);
-    try {
-      const { data: chats, error } = await supabase
-        .from('chats')
-        .select(`
-          *,
-          messages (*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const exportData = {
-        exported_at: new Date().toISOString(),
-        user_email: userEmail,
-        total_chats: chats?.length || 0,
-        chats: chats || []
-      };
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: 'application/json'
-      });
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `neurochat-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Data exported successfully!');
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Failed to export data');
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const handlePasswordUpdate = async () => {
     if (!newPassword.trim()) {
@@ -202,17 +159,6 @@ const UserSettings: React.FC<UserSettingsProps> = ({
                   Update
                 </Button>
               </div>
-              
-              <Button
-                onClick={handleExportData}
-                disabled={isExporting}
-                variant="outline"
-                size="sm"
-                className="w-full flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                {isExporting ? 'Exporting...' : 'Export Chat Data'}
-              </Button>
             </div>
           </div>
         </div>

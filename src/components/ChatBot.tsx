@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Send, Bot, User, Copy, Volume2, Mic, MicOff, RotateCcw, Trash2 } from 'lucide-react';
+import { Send, Mic, MicOff } from 'lucide-react';
 import { toast } from 'sonner';
 import MessageBubble from './MessageBubble';
 
@@ -14,12 +14,17 @@ interface Message {
   timestamp: Date;
 }
 
-const ChatBot = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+interface ChatBotProps {
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  sessionId: string;
+  setSessionId: React.Dispatch<React.SetStateAction<string>>;
+}
+
+const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, setSessionId }) => {
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [sessionId, setSessionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -29,15 +34,15 @@ const ChatBot = () => {
     const storedSessionId = localStorage.getItem('neuroheart-session-id');
     const storedMessages = localStorage.getItem('neuroheart-chat-history');
     
-    if (storedSessionId) {
+    if (storedSessionId && !sessionId) {
       setSessionId(storedSessionId);
-    } else {
+    } else if (!sessionId) {
       const newSessionId = `user_${Math.random().toString(36).substr(2, 9)}`;
       setSessionId(newSessionId);
       localStorage.setItem('neuroheart-session-id', newSessionId);
     }
 
-    if (storedMessages) {
+    if (storedMessages && messages.length === 0) {
       try {
         const parsedMessages = JSON.parse(storedMessages);
         setMessages(parsedMessages.map((msg: any) => ({
@@ -74,7 +79,7 @@ const ChatBot = () => {
         setIsListening(false);
       };
     }
-  }, []);
+  }, [sessionId, messages.length, setSessionId, setMessages]);
 
   // Save messages to localStorage whenever messages change
   useEffect(() => {
@@ -183,21 +188,6 @@ const ChatBot = () => {
     }
   };
 
-  const handleNewChat = () => {
-    setMessages([]);
-    const newSessionId = `user_${Math.random().toString(36).substr(2, 9)}`;
-    setSessionId(newSessionId);
-    localStorage.setItem('neuroheart-session-id', newSessionId);
-    localStorage.removeItem('neuroheart-chat-history');
-    toast.success('New chat started!');
-  };
-
-  const handleClearChat = () => {
-    setMessages([]);
-    localStorage.removeItem('neuroheart-chat-history');
-    toast.success('Chat history cleared!');
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
@@ -216,54 +206,45 @@ const ChatBot = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-blue-100 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <Bot className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">NeuroChat</h1>
-                <p className="text-gray-600">Powered by NeuroHeart.AI</p>
-              </div>
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                onClick={handleNewChat}
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-1"
-              >
-                <RotateCcw className="h-4 w-4" />
-                <span>New Chat</span>
-              </Button>
-              <Button
-                onClick={handleClearChat}
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-1"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>Clear</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col h-screen justify-between bg-gray-100 dark:bg-gray-900">
+      <style jsx>{`
+        .chat-scrollbar::-webkit-scrollbar {
+          width: 10px;
+        }
+        .chat-scrollbar::-webkit-scrollbar-track {
+          background: #f3f4f6;
+        }
+        .chat-scrollbar::-webkit-scrollbar-thumb {
+          background: #4b5563;
+          border-radius: 5px;
+        }
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #374151;
+        }
+        .dark .chat-scrollbar::-webkit-scrollbar-track {
+          background: #1f2937;
+        }
+        .dark .chat-scrollbar::-webkit-scrollbar-thumb {
+          background: #6b7280;
+        }
+        .dark .chat-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+        .chat-scrollbar {
+          scrollbar-width: thin;
+        }
+      `}</style>
 
       {/* Chat Messages */}
-      <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
-        <div className="space-y-4 mb-6">
+      <div className="flex-1 overflow-y-auto chat-scrollbar p-4 min-h-0">
+        <div className="max-w-4xl mx-auto w-full space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-12">
-              <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Bot className="h-8 w-8 text-blue-600" />
+              <div className="bg-blue-100 dark:bg-blue-900/20 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <span className="text-2xl">🤖</span>
               </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Welcome to NeuroChat</h3>
-              <p className="text-gray-500">Ask me anything and I'll help you find the answer!</p>
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Welcome to NeuroChat</h3>
+              <p className="text-gray-500 dark:text-gray-400">Ask me anything and I'll help you find the answer!</p>
             </div>
           )}
 
@@ -278,9 +259,9 @@ const ChatBot = () => {
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 border border-gray-200 rounded-2xl px-4 py-3 max-w-xs">
+              <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 max-w-xs">
                 <div className="flex items-center space-x-2">
-                  <Bot className="h-5 w-5 text-gray-600" />
+                  <span className="text-xl">🤖</span>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
                     <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -293,9 +274,11 @@ const ChatBot = () => {
 
           <div ref={messagesEndRef} />
         </div>
+      </div>
 
-        {/* Input Form */}
-        <Card className="border-blue-200 shadow-lg">
+      {/* Input Form */}
+      <div className="p-4 bg-gray-200 dark:bg-gray-800 flex-shrink-0">
+        <Card className="border-blue-200 dark:border-gray-600 shadow-lg bg-white dark:bg-gray-700">
           <form onSubmit={handleSubmit} className="p-4">
             <div className="flex space-x-3">
               <div className="flex-1">
@@ -305,7 +288,7 @@ const ChatBot = () => {
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask me anything..."
-                  className="min-h-[60px] resize-none border-blue-200 focus:border-blue-400 focus:ring-blue-400"
+                  className="min-h-[60px] resize-none border-blue-200 dark:border-gray-600 focus:border-blue-400 focus:ring-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   disabled={isLoading}
                 />
               </div>
@@ -330,15 +313,6 @@ const ChatBot = () => {
             </div>
           </form>
         </Card>
-      </div>
-
-      {/* Footer */}
-      <div className="bg-white border-t border-blue-100 py-4">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-sm text-gray-500">
-            Session ID: <span className="font-mono text-blue-600">{sessionId}</span>
-          </p>
-        </div>
       </div>
     </div>
   );
