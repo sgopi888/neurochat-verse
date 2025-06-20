@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Moon, Sun, Settings } from 'lucide-react';
+import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Moon, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
-import { CustomScrollArea } from '@/components/ui/custom-scroll-area';
+import UserSettings from './UserSettings';
 import {
   Dialog,
   DialogContent,
@@ -199,6 +199,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">NeuroChat</h2>
           <div className="flex items-center gap-2">
+            <UserSettings
+              userEmail={userEmail}
+              selectedVoice={selectedVoice}
+              onVoiceChange={onVoiceChange}
+            />
             <Button
               onClick={toggleTheme}
               variant="ghost"
@@ -248,19 +253,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             <Play className="h-4 w-4" />
             <span>{isPlaying ? 'Playing...' : 'Play Latest'}</span>
           </Button>
-          
-          <div className="flex items-center justify-between">
-            <label className="text-sm text-gray-600 dark:text-gray-400 font-medium">Voice:</label>
-            <select
-              value={selectedVoice}
-              onChange={(e) => onVoiceChange(e.target.value as 'Rachel' | 'Cassidy')}
-              className="text-sm px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isPlaying}
-            >
-              <option value="Rachel">Rachel</option>
-              <option value="Cassidy">Cassidy</option>
-            </select>
-          </div>
         </div>
 
         {/* Delete All Button */}
@@ -307,9 +299,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         )}
       </div>
 
-      {/* Chat List with Isolated Scrolling */}
+      {/* Chat List with Sidebar Scrollbar */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <CustomScrollArea className="h-full">
+        <div className="h-full overflow-y-auto sidebar-scrollbar">
           <div className="p-2 space-y-1">
             {isLoading ? (
               <div className="space-y-2">
@@ -369,7 +361,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               </div>
             )}
           </div>
-        </CustomScrollArea>
+        </div>
       </div>
     </div>
   );
