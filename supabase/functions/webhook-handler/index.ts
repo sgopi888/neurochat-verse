@@ -136,8 +136,35 @@ serve(async (req) => {
       questionLength: question.length
     })
 
-    // Call the n8n webhook with validated data
-    const webhookUrl = 'https://sreen8n.app.n8n.cloud/webhook/ask-ai'
+    // Get webhook URL from secrets
+    const webhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
+    
+    if (!webhookUrl) {
+      console.error('N8N_WEBHOOK_URL secret not configured')
+      return new Response(
+        JSON.stringify({ error: 'Webhook configuration missing' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // Validate webhook URL format
+    try {
+      new URL(webhookUrl)
+    } catch {
+      console.error('Invalid N8N_WEBHOOK_URL format:', webhookUrl)
+      return new Response(
+        JSON.stringify({ error: 'Invalid webhook configuration' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('Calling webhook:', webhookUrl.substring(0, 50) + '...')
     
     const webhookResponse = await fetch(webhookUrl, {
       method: 'POST',
