@@ -17,6 +17,9 @@ const QUESTION_MIN_LENGTH = 1
 const QUESTION_MAX_LENGTH = 2000
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+// Webhook timeout (increased for large responses)
+const WEBHOOK_TIMEOUT_MS = 120000 // 2 minutes
+
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -170,6 +173,54 @@ async function checkRateLimit(userId: string, endpoint: string = 'webhook-handle
   }
 }
 
+// Enhanced webhook call with timeout and better error handling
+async function callWebhookWithTimeout(webhookUrl: string, payload: any): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS)
+  
+  try {
+    console.log('Calling webhook with timeout:', WEBHOOK_TIMEOUT_MS + 'ms')
+    
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    })
+    
+    clearTimeout(timeoutId)
+    return response
+    
+  } catch (error) {
+    clearTimeout(timeoutId)
+    
+    if (error.name === 'AbortError') {
+      console.error('Webhook request timed out after', WEBHOOK_TIMEOUT_MS + 'ms')
+      throw new Error('Request timeout - the AI service took too long to respond. Please try a shorter request.')
+    }
+    
+    throw error
+  }
+}
+
+// Safe JSON parsing with better error messages
+async function safeParseJson(response: Response): Promise<any> {
+  const text = await response.text()
+  
+  if (!text || text.trim() === '') {
+    throw new Error('Empty response from AI service')
+  }
+  
+  try {
+    return JSON.parse(text)
+  } catch (parseError) {
+    console.error('JSON parse error. Response text:', text.substring(0, 500))
+    throw new Error('Invalid response format from AI service')
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -263,25 +314,34 @@ serve(async (req) => {
       )
     }
 
-    console.log('Calling webhook:', webhookUrl.substring(0, 50) + '...')
+    console.log('Calling webhook:', webhookUrl.substring(0, 50) + '...', 'for question length:', question.length)
     
-    const webhookResponse = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        question,
-        userId,
-        chatId,
-        sessionId
-      })
+    const webhookResponse = await callWebhookWithTimeout(webhookUrl, {
+      question,
+      userId,
+      chatId,
+      sessionId
     })
 
     if (!webhookResponse.ok) {
       console.error('Webhook request failed:', webhookResponse.status, webhookResponse.statusText)
+      
+      // Try to get error details from response
+      let errorDetails = 'Unknown error'
+      try {
+        const errorText = await webhookResponse.text()
+        if (errorText) {
+          errorDetails = errorText.substring(0, 200)
+        }
+      } catch (e) {
+        console.error('Could not read error response:', e)
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to get response from AI service' }),
+        JSON.stringify({ 
+          error: 'Failed to get response from AI service',
+          details: `Status: ${webhookResponse.status}, ${errorDetails}`
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -289,8 +349,8 @@ serve(async (req) => {
       )
     }
 
-    const responseData = await webhookResponse.json()
-    console.log('Successfully received response from n8n webhook')
+    const responseData = await safeParseJson(webhookResponse)
+    console.log('Successfully received response from n8n webhook, response length:', JSON.stringify(responseData).length)
 
     return new Response(
       JSON.stringify(responseData),
@@ -302,12 +362,34 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in webhook handler:', error)
     
-    // Handle JSON parsing errors specifically
+    // Handle specific error types
     if (error instanceof SyntaxError) {
       return new Response(
         JSON.stringify({ error: 'Invalid JSON in request body' }),
         { 
           status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    // Handle timeout errors
+    if (error.message && error.message.includes('timeout')) {
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { 
+          status: 504, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    // Handle JSON parsing errors
+    if (error.message && error.message.includes('response format')) {
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { 
+          status: 502, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
