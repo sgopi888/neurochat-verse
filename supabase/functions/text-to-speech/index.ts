@@ -8,8 +8,10 @@ const corsHeaders = {
 }
 
 const voiceIds = {
-  Rachel: 'kqVT88a5QfII1HNAEPTJ',
-  Cassidy: '9BWtsMINqrJLrRacOk9x'
+  James: 'EkK5I93UQWFDigLMpZcX',
+  Cassidy: '56AoDkrOh6qfVPDXZ7Pt',
+  Drew: 'wgHvco1wiREKN0BdyVx5',
+  Lavender: 'QwvsCFsQcnpWxmP1z7V9'
 };
 
 // Rate limiting store for TTS
@@ -56,7 +58,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = 'Rachel', userId } = await req.json()
+    const { text, voice = 'Drew', userId } = await req.json()
     
     console.log(`TTS request received - Voice: ${voice}, Text length: ${text?.length || 0}, User: ${userId}`)
     
@@ -108,7 +110,7 @@ serve(async (req) => {
       )
     }
 
-    const voiceId = voiceIds[voice as keyof typeof voiceIds] || voiceIds.Rachel
+    const voiceId = voiceIds[voice as keyof typeof voiceIds] || voiceIds.Drew
 
     console.log(`Generating TTS with ElevenLabs - Voice: ${voice} (${voiceId})`)
 
