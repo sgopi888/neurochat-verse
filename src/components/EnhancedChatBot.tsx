@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -296,6 +297,8 @@ const EnhancedChatBot = () => {
 
   const speakTextWithElevenLabs = async (text: string) => {
     try {
+      console.log(`Attempting TTS with ElevenLabs - Voice: ${selectedVoice}, Text length: ${text.length}`);
+      
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: text,
@@ -305,7 +308,13 @@ const EnhancedChatBot = () => {
       });
 
       if (error) {
-        throw error;
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'TTS service error');
+      }
+
+      if (!data || !data.audio) {
+        console.error('No audio data received from TTS service');
+        throw new Error('No audio data received');
       }
 
       // Convert base64 to blob and play
@@ -313,24 +322,25 @@ const EnhancedChatBot = () => {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       
-      audio.play();
-      toast.success('Playing audio...');
+      console.log('Playing ElevenLabs generated audio');
+      await audio.play();
+      toast.success(`Playing with ${selectedVoice} voice...`);
       
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
+        console.log('Audio playback completed');
       };
 
     } catch (error) {
       console.error('TTS error:', error);
-      toast.error('Failed to generate speech');
       
-      // Fallback to browser TTS
-      if ('speechSynthesis' in window) {
-        speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        speechSynthesis.speak(utterance);
-        toast.success('Playing audio (fallback)...');
+      // Show specific error message
+      const errorMessage = error.message || 'Failed to generate speech';
+      toast.error(`TTS Error: ${errorMessage}`);
+      
+      // Don't fall back to browser TTS - let user know what went wrong
+      if (errorMessage.includes('API key')) {
+        toast.error('ElevenLabs API key not configured. Please check your settings.');
       }
     }
   };
