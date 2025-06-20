@@ -6,6 +6,84 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Input validation constants
+const QUESTION_MIN_LENGTH = 1
+const QUESTION_MAX_LENGTH = 2000
+const MAX_REQUEST_SIZE = 10240 // 10KB
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+// Input validation functions
+function isValidUUID(uuid: string): boolean {
+  return UUID_REGEX.test(uuid)
+}
+
+function sanitizeInput(input: string): string {
+  // Remove potential XSS/injection attempts
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .trim()
+}
+
+function validateQuestion(question: string): { isValid: boolean; error?: string } {
+  if (!question || typeof question !== 'string') {
+    return { isValid: false, error: 'Question is required and must be a string' }
+  }
+  
+  if (question.length < QUESTION_MIN_LENGTH) {
+    return { isValid: false, error: 'Question is too short' }
+  }
+  
+  if (question.length > QUESTION_MAX_LENGTH) {
+    return { isValid: false, error: `Question is too long (max ${QUESTION_MAX_LENGTH} characters)` }
+  }
+  
+  return { isValid: true }
+}
+
+function validateRequestBody(body: any): { isValid: boolean; error?: string; data?: any } {
+  const { question, userId, chatId, sessionId } = body
+  
+  // Validate required fields
+  if (!question || !userId) {
+    return { isValid: false, error: 'Missing required fields: question and userId are required' }
+  }
+  
+  // Validate question
+  const questionValidation = validateQuestion(question)
+  if (!questionValidation.isValid) {
+    return { isValid: false, error: questionValidation.error }
+  }
+  
+  // Validate UUIDs
+  if (!isValidUUID(userId)) {
+    return { isValid: false, error: 'Invalid userId format' }
+  }
+  
+  if (chatId && !isValidUUID(chatId)) {
+    return { isValid: false, error: 'Invalid chatId format' }
+  }
+  
+  if (sessionId && !isValidUUID(sessionId)) {
+    return { isValid: false, error: 'Invalid sessionId format' }
+  }
+  
+  // Sanitize inputs
+  const sanitizedQuestion = sanitizeInput(question)
+  
+  return {
+    isValid: true,
+    data: {
+      question: sanitizedQuestion,
+      userId,
+      chatId,
+      sessionId
+    }
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -13,14 +91,34 @@ serve(async (req) => {
   }
 
   try {
-    const { question, userId, chatId, sessionId } = await req.json()
-    
-    console.log('Received request:', { question: question?.substring(0, 100), userId, chatId, sessionId })
-
-    // Basic validation
-    if (!question || !userId) {
+    // Check request size
+    const contentLength = req.headers.get('content-length')
+    if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
+      console.log('Request too large:', contentLength)
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Request body too large' }),
+        { 
+          status: 413, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    const requestBody = await req.json()
+    
+    console.log('Raw request received:', { 
+      question: requestBody.question?.substring(0, 100), 
+      userId: requestBody.userId, 
+      chatId: requestBody.chatId, 
+      sessionId: requestBody.sessionId 
+    })
+
+    // Validate request body
+    const validation = validateRequestBody(requestBody)
+    if (!validation.isValid) {
+      console.log('Validation failed:', validation.error)
+      return new Response(
+        JSON.stringify({ error: validation.error }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -28,7 +126,17 @@ serve(async (req) => {
       )
     }
 
-    // Call the n8n webhook with the original URL that was working
+    const { question, userId, chatId, sessionId } = validation.data!
+    
+    console.log('Validated request:', { 
+      question: question.substring(0, 100), 
+      userId, 
+      chatId, 
+      sessionId,
+      questionLength: question.length
+    })
+
+    // Call the n8n webhook with validated data
     const webhookUrl = 'https://sreen8n.app.n8n.cloud/webhook/ask-ai'
     
     const webhookResponse = await fetch(webhookUrl, {
@@ -37,7 +145,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        question: question,
+        question,
         userId,
         chatId,
         sessionId
@@ -56,7 +164,7 @@ serve(async (req) => {
     }
 
     const responseData = await webhookResponse.json()
-    console.log('Received response from n8n webhook')
+    console.log('Successfully received response from n8n webhook')
 
     return new Response(
       JSON.stringify(responseData),
@@ -67,6 +175,17 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in webhook handler:', error)
+    
+    // Handle JSON parsing errors specifically
+    if (error instanceof SyntaxError) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
     
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
