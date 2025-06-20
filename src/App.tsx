@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Brain } from "lucide-react";
+import { toast } from 'sonner';
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,9 @@ const ChatApp = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [selectedVoice, setSelectedVoice] = useState<'Rachel' | 'Cassidy'>('Rachel');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
 
   const handleNewChat = () => {
     setMessages([]);
@@ -50,7 +54,6 @@ const ChatApp = () => {
     setCurrentChatId(chatId);
     
     try {
-      // Fetch messages for the selected chat
       const { data: messagesData, error } = await supabase
         .from('messages')
         .select('*')
@@ -86,19 +89,95 @@ const ChatApp = () => {
     localStorage.removeItem('neuroheart-chat-history');
   };
 
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      speechSynthesis.speak(utterance);
+  const speakTextWithElevenLabs = async (text: string) => {
+    try {
+      // Stop any currently playing audio
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        setCurrentAudio(null);
+      }
+
+      setIsPlaying(true);
+      console.log(`Attempting TTS with ElevenLabs - Voice: ${selectedVoice}, Text length: ${text.length}`);
+      
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
+          text: text,
+          voice: selectedVoice,
+          userId: user?.id
+        }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'TTS service error');
+      }
+
+      if (!data || !data.audio) {
+        console.error('No audio data received from TTS service');
+        throw new Error('No audio data received');
+      }
+
+      const audioBlob = new Blob([Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      setCurrentAudio(audio);
+      
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setIsPlaying(false);
+        setCurrentAudio(null);
+      };
+
+      audio.onerror = () => {
+        setIsPlaying(false);
+        setCurrentAudio(null);
+        toast.error('Audio playback failed');
+      };
+
+      await audio.play();
+      toast.success(`Playing with ${selectedVoice} voice...`);
+
+    } catch (error) {
+      console.error('TTS error:', error);
+      setIsPlaying(false);
+      setCurrentAudio(null);
+      
+      const errorMessage = error.message || 'Failed to generate speech';
+      toast.error(`TTS Error: ${errorMessage}`);
+      
+      if (errorMessage.includes('API key')) {
+        toast.error('ElevenLabs API key not configured. Please check your settings.');
+      }
+    }
+  };
+
+  const handlePlayLatestResponse = async () => {
+    const aiMessages = messages.filter(msg => !msg.isUser);
+    const latestResponse = aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
+    
+    if (latestResponse) {
+      await speakTextWithElevenLabs(latestResponse.text);
+    } else {
+      toast.error('No AI response to play');
+    }
+  };
+
+  const handlePauseAudio = () => {
+    if (currentAudio && isPlaying) {
+      currentAudio.pause();
+      setIsPlaying(false);
+      setCurrentAudio(null);
+      toast.info('Audio paused');
     }
   };
 
   return (
     <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col text-gray-900 dark:text-gray-100 overflow-hidden">
       {/* Full-width Header Bar */}
-      <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-center flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
             <Brain className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -107,13 +186,6 @@ const ChatApp = () => {
             <h1 className="text-xl font-semibold text-gray-900 dark:text-white">NeuroHeart.AI</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">Mindfulness Assistant</p>
           </div>
-        </div>
-        <div className="flex items-center space-x-4">
-          {user?.email && (
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Welcome, {user.email.split('@')[0]}
-            </span>
-          )}
         </div>
       </div>
 
@@ -126,16 +198,18 @@ const ChatApp = () => {
           onSignOut={handleSignOut}
           userEmail={user?.email}
           messages={messages}
-          onPlayLatestResponse={speakText}
-          selectedVoice="Rachel"
-          onVoiceChange={() => {}}
-          isPlaying={false}
+          onPlayLatestResponse={handlePlayLatestResponse}
+          onPauseAudio={handlePauseAudio}
+          selectedVoice={selectedVoice}
+          onVoiceChange={setSelectedVoice}
+          isPlaying={isPlaying}
         />
         <ChatBot 
           messages={messages}
           setMessages={setMessages}
           sessionId={sessionId}
           setSessionId={setSessionId}
+          speakText={speakTextWithElevenLabs}
         />
       </div>
     </div>

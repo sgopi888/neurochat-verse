@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Moon, Sun } from 'lucide-react';
+import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pause, Settings, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import UserSettings from './UserSettings';
@@ -38,7 +38,8 @@ interface ChatSidebarProps {
   onSignOut: () => void;
   userEmail?: string;
   messages: Message[];
-  onPlayLatestResponse: (text: string) => void;
+  onPlayLatestResponse: () => void;
+  onPauseAudio: () => void;
   selectedVoice: 'Rachel' | 'Cassidy';
   onVoiceChange: (voice: 'Rachel' | 'Cassidy') => void;
   isPlaying: boolean;
@@ -52,6 +53,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   userEmail,
   messages,
   onPlayLatestResponse,
+  onPauseAudio,
   selectedVoice,
   onVoiceChange,
   isPlaying
@@ -65,7 +67,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   useEffect(() => {
     fetchChats();
     
-    // Set up real-time subscription for chat updates
     const channel = supabase
       .channel('chat-changes')
       .on(
@@ -184,15 +185,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     return aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
   };
 
-  const handlePlayLatest = () => {
-    const latestResponse = getLatestAIResponse();
-    if (latestResponse) {
-      onPlayLatestResponse(latestResponse.text);
-    } else {
-      toast.error('No AI response to play');
-    }
-  };
-
   return (
     <div className="w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen transition-colors duration-200 overflow-hidden">
       <style>
@@ -203,15 +195,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           .sidebar-scrollbar::-webkit-scrollbar-track {
             background: #e5e7eb;
           }
+          .dark .sidebar-scrollbar::-webkit-scrollbar-track {
+            background: #374151;
+          }
           .sidebar-scrollbar::-webkit-scrollbar-thumb {
             background: #6b7280;
             border-radius: 4px;
           }
           .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #4b5563;
-          }
-          .dark .sidebar-scrollbar::-webkit-scrollbar-track {
-            background: #374151;
           }
           .dark .sidebar-scrollbar::-webkit-scrollbar-thumb {
             background: #9ca3af;
@@ -225,64 +217,30 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         `}
       </style>
 
-      {/* Header - Fixed height */}
+      {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Conversations</h2>
-          <div className="flex items-center gap-2">
-            <UserSettings
-              userEmail={userEmail}
-              selectedVoice={selectedVoice}
-              onVoiceChange={onVoiceChange}
-            />
-            <Button
-              onClick={toggleTheme}
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              onClick={onNewChat}
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            onClick={onNewChat}
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
         
-        {/* User Info */}
-        {userEmail && (
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <span className="truncate font-medium">{userEmail}</span>
-            <Button
-              onClick={onSignOut}
-              variant="ghost"
-              size="sm"
-              className="ml-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
         {/* Voice Controls */}
         <div className="space-y-3 mb-4">
           <Button
-            onClick={handlePlayLatest}
-            disabled={isPlaying || !getLatestAIResponse()}
+            onClick={isPlaying ? onPauseAudio : onPlayLatestResponse}
+            disabled={!getLatestAIResponse()}
             size="sm"
             variant="outline"
             className="w-full flex items-center justify-center gap-2"
           >
-            <Play className="h-4 w-4" />
-            <span>{isPlaying ? 'Playing...' : 'Play Latest'}</span>
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            <span>{isPlaying ? 'Pause' : 'Play Latest'}</span>
           </Button>
         </div>
 
@@ -330,7 +288,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         )}
       </div>
 
-      {/* Chat List with Sidebar Scrollbar */}
+      {/* Chat List */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <div className="h-full overflow-y-auto sidebar-scrollbar p-2 space-y-1">
           {isLoading ? (
@@ -390,6 +348,39 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Bottom Bar */}
+      <div className="border-t border-gray-200 dark:border-gray-800 p-4 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 flex-1 min-w-0">
+            <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
+              <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                {userEmail ? userEmail.split('@')[0] : 'User'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <UserSettings
+              userEmail={userEmail}
+              selectedVoice={selectedVoice}
+              onVoiceChange={onVoiceChange}
+              onThemeToggle={toggleTheme}
+              currentTheme={theme}
+            />
+            <Button
+              onClick={onSignOut}
+              variant="ghost"
+              size="sm"
+              className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 h-8 w-8 p-0"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

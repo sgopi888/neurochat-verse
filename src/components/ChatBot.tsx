@@ -19,9 +19,10 @@ interface ChatBotProps {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   sessionId: string;
   setSessionId: React.Dispatch<React.SetStateAction<string>>;
+  speakText: (text: string) => Promise<void>;
 }
 
-const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, setSessionId }) => {
+const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, setSessionId, speakText }) => {
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -29,7 +30,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, set
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Initialize session and load chat history
   useEffect(() => {
     const storedSessionId = localStorage.getItem('neuroheart-session-id');
     const storedMessages = localStorage.getItem('neuroheart-chat-history');
@@ -54,7 +54,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, set
       }
     }
 
-    // Initialize Speech Recognition
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
@@ -81,7 +80,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, set
     }
   }, [sessionId, messages.length, setSessionId, setMessages]);
 
-  // Save messages to localStorage whenever messages change
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem('neuroheart-chat-history', JSON.stringify(messages));
@@ -193,18 +191,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, set
     toast.success('Copied to clipboard!');
   };
 
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      speechSynthesis.speak(utterance);
-      toast.success('Playing audio...');
-    } else {
-      toast.error('Text-to-speech not supported in this browser');
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col h-screen justify-between bg-gray-100 dark:bg-gray-900">
       <style>
@@ -215,15 +201,15 @@ const ChatBot: React.FC<ChatBotProps> = ({ messages, setMessages, sessionId, set
           .chat-scrollbar::-webkit-scrollbar-track {
             background: #f3f4f6;
           }
+          .dark .chat-scrollbar::-webkit-scrollbar-track {
+            background: #1f2937;
+          }
           .chat-scrollbar::-webkit-scrollbar-thumb {
             background: #4b5563;
             border-radius: 5px;
           }
           .chat-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #374151;
-          }
-          .dark .chat-scrollbar::-webkit-scrollbar-track {
-            background: #1f2937;
           }
           .dark .chat-scrollbar::-webkit-scrollbar-thumb {
             background: #6b7280;
