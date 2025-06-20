@@ -117,7 +117,19 @@ serve(async (req) => {
     
     console.log('Processing sanitized question:', sanitizedQuestion.substring(0, 100))
 
-    // Make request to external webhook
+    // Mock AI response for testing - replace with actual webhook when available
+    const mockResponse = {
+      answer: `Thank you for your question about "${sanitizedQuestion.substring(0, 50)}...". This is a mindfulness-focused response. In mindfulness practice, we often explore questions through the lens of present-moment awareness and inner observation. Consider taking a few deep breaths and noticing what arises within you as you contemplate this topic. Remember, true insight often comes from patient, compassionate self-inquiry rather than quick answers.`,
+      suggestedQuestions: [
+        "How can I practice mindfulness in daily life?",
+        "What are some breathing techniques for anxiety?",
+        "How do I develop self-compassion?",
+        "What is meditation and how do I start?"
+      ]
+    };
+
+    // For now, use mock response. Uncomment below when webhook is available:
+    /*
     const webhookUrl = 'https://eotool.app.n8n.cloud/webhook/ask-ai-chat'
     
     const webhookResponse = await fetch(webhookUrl, {
@@ -145,10 +157,12 @@ serve(async (req) => {
     }
 
     const responseData = await webhookResponse.json()
-    console.log('Received response from webhook')
+    */
+
+    console.log('Sending mock response')
 
     return new Response(
-      JSON.stringify(responseData),
+      JSON.stringify(mockResponse),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
