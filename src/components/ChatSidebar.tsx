@@ -201,7 +201,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       } else {
         console.log('All chats deleted successfully');
         setChats([]);
-        toast.success('All chat history deleted successfully');
+        toast.success('Chat history deleted. Data will be permanently removed after 90 days for security purposes.');
         onNewChat();
         setShowDeleteAllDialog(false);
       }
@@ -323,8 +323,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
                   Delete All Chat History
                 </DialogTitle>
-                <DialogDescription className="dark:text-gray-400">
-                  This action cannot be undone. This will permanently delete all your chat history and messages.
+                <DialogDescription className="dark:text-gray-400 space-y-2">
+                  <p>This will remove all your chat history from your account.</p>
+                  <p className="text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-200 dark:border-blue-800">
+                    <strong>Security Notice:</strong> For security and compliance purposes, your chat data will be retained in our secure systems for 90 days before permanent deletion. This allows for account recovery and security investigations if needed.
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    During the 90-day period, the data is not accessible through your account but remains stored for security purposes only.
+                  </p>
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -340,7 +346,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   onClick={deleteAllChats}
                   disabled={isDeletingAll}
                 >
-                  {isDeletingAll ? 'Deleting...' : 'Delete All'}
+                  {isDeletingAll ? 'Deleting...' : 'Delete All History'}
                 </Button>
               </DialogFooter>
             </DialogContent>
