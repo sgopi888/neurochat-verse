@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,6 +6,7 @@ import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pau
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import UserSettings from './UserSettings';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Dialog,
   DialogContent,
@@ -62,35 +64,46 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchChats();
-    
-    const channel = supabase
-      .channel('chat-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chats'
-        },
-        () => {
-          fetchChats();
-        }
-      )
-      .subscribe();
+    if (user) {
+      fetchChats();
+      
+      const channel = supabase
+        .channel('chat-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chat_sessions'
+          },
+          () => {
+            fetchChats();
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
 
   const fetchChats = async () => {
+    if (!user) {
+      setChats([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
-        .from('chats')
+        .from('chat_sessions')
         .select('*')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
         .order('updated_at', { ascending: false });
 
       if (error) {
@@ -111,8 +124,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     
     try {
       const { error } = await supabase
-        .from('chats')
-        .delete()
+        .from('chat_sessions')
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', chatId);
 
       if (error) {
@@ -133,13 +146,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   };
 
   const deleteAllChats = async () => {
+    if (!user) return;
+    
     setIsDeletingAll(true);
     
     try {
       const { error } = await supabase
-        .from('chats')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .from('chat_sessions')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .is('deleted_at', null);
 
       if (error) {
         toast.error('Failed to delete chat history');
@@ -219,7 +235,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Conversations</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat History</h2>
           <Button
             onClick={onNewChat}
             size="sm"

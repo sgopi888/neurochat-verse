@@ -9,36 +9,9 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      chats: {
+      chat_messages: {
         Row: {
-          created_at: string
-          id: string
-          is_article: boolean
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_article?: boolean
-          title: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_article?: boolean
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      messages: {
-        Row: {
-          chat_id: string
+          chat_session_id: string
           content: string
           created_at: string
           id: string
@@ -46,7 +19,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          chat_id: string
+          chat_session_id: string
           content: string
           created_at?: string
           id?: string
@@ -54,7 +27,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          chat_id?: string
+          chat_session_id?: string
           content?: string
           created_at?: string
           id?: string
@@ -63,13 +36,43 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "messages_chat_id_fkey"
-            columns: ["chat_id"]
+            foreignKeyName: "chat_messages_chat_session_id_fkey"
+            columns: ["chat_session_id"]
             isOneToOne: false
-            referencedRelation: "chats"
+            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
         ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_article: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_article?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_article?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -127,29 +130,29 @@ export type Database = {
       }
       suggested_questions: {
         Row: {
-          chat_id: string
+          chat_session_id: string
           created_at: string
           id: string
           question: string
         }
         Insert: {
-          chat_id: string
+          chat_session_id: string
           created_at?: string
           id?: string
           question: string
         }
         Update: {
-          chat_id?: string
+          chat_session_id?: string
           created_at?: string
           id?: string
           question?: string
         }
         Relationships: [
           {
-            foreignKeyName: "suggested_questions_chat_id_fkey"
-            columns: ["chat_id"]
+            foreignKeyName: "suggested_questions_chat_session_id_fkey"
+            columns: ["chat_session_id"]
             isOneToOne: false
-            referencedRelation: "chats"
+            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -184,12 +187,63 @@ export type Database = {
         }
         Relationships: []
       }
+      user_usage_limits: {
+        Row: {
+          chat_queries_count: number
+          created_at: string
+          date: string
+          id: string
+          monthly_chat_count: number
+          monthly_tts_count: number
+          tts_requests_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_queries_count?: number
+          created_at?: string
+          date?: string
+          id?: string
+          monthly_chat_count?: number
+          monthly_tts_count?: number
+          tts_requests_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_queries_count?: number
+          created_at?: string
+          date?: string
+          id?: string
+          monthly_chat_count?: number
+          monthly_tts_count?: number
+          tts_requests_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_chats: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      get_or_create_daily_usage: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          date: string
+          chat_queries_count: number
+          tts_requests_count: number
+          monthly_chat_count: number
+          monthly_tts_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
