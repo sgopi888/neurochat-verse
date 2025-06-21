@@ -47,6 +47,7 @@ function AppContent() {
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isAudioProcessing, setIsAudioProcessing] = useState(false);
 
   // Set the document title
   useEffect(() => {
@@ -93,6 +94,7 @@ function AppContent() {
       setCurrentAudio(null);
       setIsPlaying(false);
     }
+    setIsAudioProcessing(false);
   };
 
   const loadChatMessages = async (chatId: string) => {
@@ -302,6 +304,12 @@ function AppContent() {
 
   // Enhanced audio management with proper overlap prevention
   const handlePlayLatestResponse = async () => {
+    // If already processing audio, ignore the new request
+    if (isAudioProcessing) {
+      console.log('Audio processing already in progress, ignoring request');
+      return;
+    }
+
     const aiMessages = messages.filter(msg => !msg.isUser);
     const latestResponse = aiMessages[aiMessages.length - 1];
     
@@ -309,6 +317,8 @@ function AppContent() {
       toast.error('No AI response to play');
       return;
     }
+
+    setIsAudioProcessing(true);
 
     // Always stop current audio first - this prevents overlaps
     console.log('Play button pressed - stopping any existing audio');
@@ -352,6 +362,7 @@ function AppContent() {
         console.log('Audio finished playing');
         setIsPlaying(false);
         setCurrentAudio(null);
+        setIsAudioProcessing(false);
         URL.revokeObjectURL(audioUrl);
       };
       
@@ -359,6 +370,7 @@ function AppContent() {
         console.error('Audio playback error:', e);
         setIsPlaying(false);
         setCurrentAudio(null);
+        setIsAudioProcessing(false);
         URL.revokeObjectURL(audioUrl);
         toast.error('Failed to play audio');
       };
@@ -378,6 +390,7 @@ function AppContent() {
       toast.error('Failed to play audio');
       setIsPlaying(false);
       setCurrentAudio(null);
+      setIsAudioProcessing(false);
     }
   };
 
