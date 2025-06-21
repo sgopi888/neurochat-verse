@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
@@ -49,6 +48,13 @@ function AppContent() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAudioProcessing, setIsAudioProcessing] = useState(false);
 
+  // Synchronous audio management refs
+  const audioLock = useRef(false);
+  const audioAbort = useRef<AbortController | null>(null);
+  const playListener = useRef<(e: Event) => void>();
+  const endListener = useRef<(e: Event) => void>();
+  const errListener = useRef<(e: Event) => void>();
+
   // Set the document title
   useEffect(() => {
     document.title = 'Neuroheart.AI Mindfulness Coach';
@@ -74,26 +80,20 @@ function AppContent() {
     }
   }, [currentChatId]);
 
-  // Comprehensive audio cleanup function
-  const stopCurrentAudio = () => {
+  // Comprehensive audio cleanup function with proper async handling
+  const stopCurrentAudio = async () => {
+    if (audioAbort.current) audioAbort.current.abort();
     if (currentAudio) {
-      console.log('Stopping current audio');
       currentAudio.pause();
       currentAudio.currentTime = 0;
-      
-      // Remove all event listeners
-      currentAudio.removeEventListener('play', () => {});
-      currentAudio.removeEventListener('ended', () => {});
-      currentAudio.removeEventListener('error', () => {});
-      
-      // Revoke the object URL to free memory
-      if (currentAudio.src.startsWith('blob:')) {
-        URL.revokeObjectURL(currentAudio.src);
-      }
-      
-      setCurrentAudio(null);
-      setIsPlaying(false);
+      if (playListener.current) currentAudio.removeEventListener('play', playListener.current);
+      if (endListener.current) currentAudio.removeEventListener('ended', endListener.current);
+      if (errListener.current) currentAudio.removeEventListener('error', errListener.current);
+      if (currentAudio.src.startsWith('blob:')) URL.revokeObjectURL(currentAudio.src);
     }
+    setCurrentAudio(null);
+    setIsPlaying(false);
+    audioLock.current = false;
     setIsAudioProcessing(false);
   };
 
@@ -287,7 +287,7 @@ function AppContent() {
   const handleSignOut = async () => {
     try {
       // Stop any playing audio before signing out
-      stopCurrentAudio();
+      await stopCurrentAudio();
       
       await supabase.auth.signOut();
       setMessages([]);
@@ -302,46 +302,34 @@ function AppContent() {
     }
   };
 
-  // Enhanced audio management with proper overlap prevention
+  // Enhanced audio management with synchronous locking
   const handlePlayLatestResponse = async () => {
-    // If already processing audio, ignore the new request
-    if (isAudioProcessing) {
-      console.log('Audio processing already in progress, ignoring request');
-      return;
-    }
+    if (audioLock.current) return; // Hard block re-entry
+    const last = messages.filter(m => !m.isUser).pop();
+    if (!last) return toast.error('No AI response to play');
 
-    const aiMessages = messages.filter(msg => !msg.isUser);
-    const latestResponse = aiMessages[aiMessages.length - 1];
-    
-    if (!latestResponse) {
-      toast.error('No AI response to play');
-      return;
-    }
-
+    audioLock.current = true; // Lock immediately
     setIsAudioProcessing(true);
-
-    // Always stop current audio first - this prevents overlaps
-    console.log('Play button pressed - stopping any existing audio');
-    stopCurrentAudio();
+    await stopCurrentAudio(); // Be sure previous sound is gone
 
     try {
-      console.log('Calling TTS with voice:', selectedVoice, 'and text length:', latestResponse.text.length);
+      // Prepare abortable request
+      audioAbort.current = new AbortController();
+      
+      console.log('Calling TTS with voice:', selectedVoice, 'and text length:', last.text.length);
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
-          text: latestResponse.text,
+          text: last.text,
           voice: selectedVoice,
           userId: user?.id
         }
       });
 
-      if (error) {
-        console.error('TTS error:', error);
-        throw new Error(error.message || 'Failed to generate speech');
-      }
-
-      if (!data.audio) {
-        throw new Error('No audio data received');
+      if (error || !data?.audio) {
+        audioLock.current = false;
+        setIsAudioProcessing(false);
+        return toast.error(error?.message ?? 'TTS failed');
       }
 
       // Convert base64 to audio blob
@@ -352,44 +340,26 @@ function AppContent() {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       
-      // Set up comprehensive event listeners
-      const handlePlay = () => {
-        console.log('Audio started playing');
-        setIsPlaying(true);
-      };
-      
-      const handleEnded = () => {
-        console.log('Audio finished playing');
-        setIsPlaying(false);
-        setCurrentAudio(null);
-        setIsAudioProcessing(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      
-      const handleError = (e: Event) => {
-        console.error('Audio playback error:', e);
-        setIsPlaying(false);
-        setCurrentAudio(null);
-        setIsAudioProcessing(false);
-        URL.revokeObjectURL(audioUrl);
-        toast.error('Failed to play audio');
+      // Set up event listeners with refs for proper cleanup
+      playListener.current = () => setIsPlaying(true);
+      endListener.current = () => stopCurrentAudio();
+      errListener.current = () => {
+        console.error('Audio playback error');
+        toast.error('Playback error');
+        stopCurrentAudio();
       };
 
-      audio.addEventListener('play', handlePlay);
-      audio.addEventListener('ended', handleEnded);
-      audio.addEventListener('error', handleError);
+      audio.addEventListener('play', playListener.current);
+      audio.addEventListener('ended', endListener.current);
+      audio.addEventListener('error', errListener.current);
 
-      // Store the audio reference BEFORE playing
       setCurrentAudio(audio);
-      
-      console.log('Starting audio playback');
       await audio.play();
       
     } catch (error) {
       console.error('Error playing audio:', error);
       toast.error('Failed to play audio');
-      setIsPlaying(false);
-      setCurrentAudio(null);
+      audioLock.current = false;
       setIsAudioProcessing(false);
     }
   };
