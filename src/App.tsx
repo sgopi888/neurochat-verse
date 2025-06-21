@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -174,9 +175,9 @@ function AppContent() {
         toast.error('Failed to save message');
       }
 
-      // Get Supabase URL and anon key for the edge function call
-      const supabaseUrl = supabase.supabaseUrl;
-      const supabaseKey = supabase.supabaseKey;
+      // Use the constants directly instead of accessing protected properties
+      const supabaseUrl = "https://obgbnrasiyozdnmoixxx.supabase.co";
+      const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9iZ2JucmFzaXlvemRubW9peHh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzNDQ0MDUsImV4cCI6MjA2NTkyMDQwNX0.xuGHwvempCiWZNCnYM-1IdbBDp68yoEL_Upopn3X1EU";
 
       console.log('Calling webhook handler with:', {
         question: text,
