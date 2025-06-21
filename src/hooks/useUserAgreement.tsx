@@ -72,10 +72,20 @@ export const useUserAgreement = () => {
     }
   };
 
+  const handleAgree = async () => {
+    const success = await saveUserAgreement();
+    if (!success) {
+      console.error('Failed to save user agreement');
+    }
+  };
+
   return {
+    hasAgreed: hasAccepted,
     hasAccepted,
     isLoading,
+    showModal: hasAccepted === false,
     saveUserAgreement,
-    checkUserAgreement
+    checkUserAgreement,
+    handleAgree
   };
 };

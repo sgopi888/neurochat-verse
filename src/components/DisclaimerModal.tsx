@@ -15,8 +15,9 @@ import { AlertTriangle } from 'lucide-react';
 
 interface DisclaimerModalProps {
   isOpen: boolean;
-  onAccept: () => void;
-  onDecline: () => void;
+  onAccept?: () => void;
+  onDecline?: () => void;
+  onAgree?: () => void;
 }
 
 const DISCLAIMER_TEXT = `The mindfulness-based processes, meditative techniques, and spiritual practices shared through this platform are intended solely for purposes of inner reflection, personal insight, emotional balance, and general well-being. These offerings are not medical, clinical, or psychotherapeutic in nature, and they do not constitute treatment, diagnosis, or advice for any mental or physical health condition.
@@ -30,15 +31,21 @@ By engaging with our content, you agree to assume full responsibility for your w
 const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
   isOpen,
   onAccept,
-  onDecline
+  onDecline,
+  onAgree
 }) => {
   const [hasRead, setHasRead] = useState(false);
   const [hasAgreed, setHasAgreed] = useState(false);
 
   const handleAccept = () => {
     if (hasRead && hasAgreed) {
-      onAccept();
+      if (onAccept) onAccept();
+      if (onAgree) onAgree();
     }
+  };
+
+  const handleDecline = () => {
+    if (onDecline) onDecline();
   };
 
   const canAccept = hasRead && hasAgreed;
@@ -99,7 +106,7 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
         <DialogFooter className="flex space-x-2">
           <Button
             variant="outline"
-            onClick={onDecline}
+            onClick={handleDecline}
             className="hover:bg-red-50 hover:text-red-600"
           >
             Decline
