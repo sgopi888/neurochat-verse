@@ -148,7 +148,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Mindfulness Coach
+                  NeuroHeart.AI Mindfulness Coach
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Your personal wellness companion
