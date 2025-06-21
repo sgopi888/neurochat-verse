@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -39,7 +38,7 @@ function AppContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<'James' | 'Cassidy' | 'Drew' | 'Lavender'>('James');
+  const [selectedVoice, setSelectedVoice] = useState<'James' | 'Cassidy' | 'Drew' | 'Lavender'>('Drew');
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
@@ -175,39 +174,26 @@ function AppContent() {
         toast.error('Failed to save message');
       }
 
-      // Use the constants directly instead of accessing protected properties
-      const supabaseUrl = "https://obgbnrasiyozdnmoixxx.supabase.co";
-      const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9iZ2JucmFzaXlvemRubW9peHh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzNDQ0MDUsImV4cCI6MjA2NTkyMDQwNX0.xuGHwvempCiWZNCnYM-1IdbBDp68yoEL_Upopn3X1EU";
-
       console.log('Calling webhook handler with:', {
         question: text,
         chatId: chatId,
         userId: user.id
       });
 
-      // Call webhook for AI response with correct endpoint and payload
-      const response = await fetch(`${supabaseUrl}/functions/v1/webhook-handler`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
+      // Call webhook for AI response using supabase functions invoke
+      const { data, error } = await supabase.functions.invoke('webhook-handler', {
+        body: {
           question: text,
           chatId: chatId,
           userId: user.id
-        }),
+        }
       });
 
-      console.log('Webhook response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Webhook error response:', errorText);
-        throw new Error(`Failed to get AI response: ${response.status} - ${errorText}`);
+      if (error) {
+        console.error('Webhook error:', error);
+        throw new Error(`Failed to get AI response: ${error.message}`);
       }
 
-      const data = await response.json();
       console.log('Webhook response data:', data);
       
       const aiMessage: Message = {
@@ -291,22 +277,31 @@ function AppContent() {
     }
 
     try {
-      const response = await fetch('/api/text-to-speech', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      console.log('Calling TTS with voice:', selectedVoice, 'and text length:', latestResponse.text.length);
+      
+      // Call the Supabase edge function for text-to-speech
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
           text: latestResponse.text,
-          voice: selectedVoice
-        }),
+          voice: selectedVoice,
+          userId: user?.id
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate speech');
+      if (error) {
+        console.error('TTS error:', error);
+        throw new Error(error.message || 'Failed to generate speech');
       }
 
-      const audioBlob = await response.blob();
+      if (!data.audio) {
+        throw new Error('No audio data received');
+      }
+
+      // Convert base64 to audio blob
+      const audioBlob = new Blob([
+        Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))
+      ], { type: 'audio/mpeg' });
+      
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       
