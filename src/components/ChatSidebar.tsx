@@ -68,6 +68,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   useEffect(() => {
     if (user) {
+      console.log('Fetching chats for user:', user.id);
       fetchChats();
       
       const channel = supabase
@@ -79,7 +80,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             schema: 'public',
             table: 'chat_sessions'
           },
-          () => {
+          (payload) => {
+            console.log('Real-time chat update:', payload);
             fetchChats();
           }
         )
@@ -93,12 +95,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   const fetchChats = async () => {
     if (!user) {
+      console.log('No user found, clearing chats');
       setChats([]);
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log('Fetching chat sessions for user:', user.id);
+      
       const { data, error } = await supabase
         .from('chat_sessions')
         .select('*')
@@ -107,13 +112,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         .order('updated_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching chats:', error);
+        console.error('Error fetching chat sessions:', error);
         toast.error('Failed to load chat history');
       } else {
+        console.log('Fetched chat sessions:', data);
         setChats(data || []);
       }
     } catch (error) {
-      console.error('Error fetching chats:', error);
+      console.error('Error in fetchChats:', error);
+      toast.error('Failed to load chat history');
     } finally {
       setIsLoading(false);
     }
@@ -123,15 +130,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     e.stopPropagation();
     
     try {
+      console.log('Deleting chat:', chatId);
+      
       const { error } = await supabase
         .from('chat_sessions')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', chatId);
 
       if (error) {
-        toast.error('Failed to delete chat');
         console.error('Error deleting chat:', error);
+        toast.error('Failed to delete chat');
       } else {
+        console.log('Chat deleted successfully');
         setChats(chats.filter(chat => chat.id !== chatId));
         toast.success('Chat deleted successfully');
         
@@ -140,7 +150,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error deleting chat:', error);
+      console.error('Error in deleteChat:', error);
       toast.error('Failed to delete chat');
     }
   };
@@ -151,6 +161,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     setIsDeletingAll(true);
     
     try {
+      console.log('Deleting all chats for user:', user.id);
+      
       const { error } = await supabase
         .from('chat_sessions')
         .update({ deleted_at: new Date().toISOString() })
@@ -158,16 +170,17 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         .is('deleted_at', null);
 
       if (error) {
-        toast.error('Failed to delete chat history');
         console.error('Error deleting all chats:', error);
+        toast.error('Failed to delete chat history');
       } else {
+        console.log('All chats deleted successfully');
         setChats([]);
         toast.success('All chat history deleted successfully');
         onNewChat();
         setShowDeleteAllDialog(false);
       }
     } catch (error) {
-      console.error('Error deleting all chats:', error);
+      console.error('Error in deleteAllChats:', error);
       toast.error('Failed to delete chat history');
     } finally {
       setIsDeletingAll(false);
@@ -239,7 +252,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <Button
             onClick={onNewChat}
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -252,7 +265,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             disabled={!getLatestAIResponse()}
             size="sm"
             variant="outline"
-            className="w-full flex items-center justify-center gap-2"
+            className="w-full flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105"
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             <span>{isPlaying ? 'Pause' : 'Play Script'}</span>
@@ -266,7 +279,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 transition-all duration-200"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Clear History
@@ -324,14 +337,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 <div
                   key={chat.id}
                   onClick={() => onChatSelect(chat.id)}
-                  className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                  className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                     currentChatId === chat.id
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 shadow-md'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-sm'
                   }`}
                 >
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    <div className={`p-1.5 rounded-md ${
+                    <div className={`p-1.5 rounded-md transition-colors duration-200 ${
                       chat.is_article 
                         ? 'bg-green-100 dark:bg-green-900/20' 
                         : 'bg-blue-100 dark:bg-blue-900/20'
@@ -355,7 +368,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     onClick={(e) => deleteChat(chat.id, e)}
                     variant="ghost"
                     size="sm"
-                    className="opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 h-8 w-8 p-0 transition-opacity duration-200"
+                    className="opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 h-8 w-8 p-0 transition-all duration-200 hover:scale-110"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -391,7 +404,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               onClick={onSignOut}
               variant="ghost"
               size="sm"
-              className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 h-8 w-8 p-0"
+              className="hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 h-8 w-8 p-0 transition-all duration-200 hover:scale-110"
             >
               <LogOut className="h-4 w-4" />
             </Button>

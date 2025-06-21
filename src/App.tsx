@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,14 +26,6 @@ interface Message {
   timestamp: Date;
 }
 
-interface Chat {
-  id: string;
-  title: string;
-  is_article: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
 const ChatApp = () => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,7 +35,7 @@ const ChatApp = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   
-  // Form state moved from ChatBot
+  // Form state
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -79,13 +70,24 @@ const ChatApp = () => {
     }
   }, []);
 
+  // Initialize session
+  useEffect(() => {
+    if (!sessionId) {
+      const newSessionId = `user_${Math.random().toString(36).substr(2, 9)}`;
+      setSessionId(newSessionId);
+      localStorage.setItem('neuroheart-session-id', newSessionId);
+    }
+  }, [sessionId]);
+
   const createNewChat = async (title: string) => {
     if (!user) {
+      console.error('No user found for creating chat');
       toast.error('Please log in to create a chat');
       return null;
     }
 
     try {
+      console.log('Creating new chat with title:', title);
       const { data, error } = await supabase
         .from('chat_sessions')
         .insert({
@@ -97,24 +99,29 @@ const ChatApp = () => {
         .single();
 
       if (error) {
-        console.error('Error creating chat:', error);
+        console.error('Error creating chat session:', error);
         toast.error('Failed to create new chat');
         return null;
       }
 
+      console.log('Chat session created:', data);
       return data.id;
     } catch (error) {
-      console.error('Error creating chat:', error);
+      console.error('Error in createNewChat:', error);
       toast.error('Failed to create new chat');
       return null;
     }
   };
 
   const saveMessageToDb = async (message: Message, chatId: string) => {
-    if (!user || !chatId) return;
+    if (!user || !chatId) {
+      console.error('Missing user or chatId for saving message');
+      return;
+    }
 
     try {
-      await supabase
+      console.log('Saving message to DB:', { chatId, content: message.text, isUser: message.isUser });
+      const { error } = await supabase
         .from('chat_messages')
         .insert({
           chat_session_id: chatId,
@@ -122,12 +129,19 @@ const ChatApp = () => {
           content: message.text,
           is_user: message.isUser
         });
+
+      if (error) {
+        console.error('Error saving message:', error);
+      } else {
+        console.log('Message saved successfully');
+      }
     } catch (error) {
-      console.error('Error saving message:', error);
+      console.error('Error in saveMessageToDb:', error);
     }
   };
 
   const handleNewChat = () => {
+    console.log('Starting new chat');
     setMessages([]);
     setCurrentChatId(null);
     const newSessionId = `user_${Math.random().toString(36).substr(2, 9)}`;
@@ -137,6 +151,7 @@ const ChatApp = () => {
   };
 
   const handleChatSelect = async (chatId: string) => {
+    console.log('Selecting chat:', chatId);
     setCurrentChatId(chatId);
     
     try {
@@ -147,9 +162,12 @@ const ChatApp = () => {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error fetching messages:', error);
+        console.error('Error fetching chat messages:', error);
+        toast.error('Failed to load chat messages');
         return;
       }
+
+      console.log('Loaded messages:', messagesData);
 
       if (messagesData) {
         const formattedMessages: Message[] = messagesData.map(msg => ({
@@ -159,15 +177,17 @@ const ChatApp = () => {
           timestamp: new Date(msg.created_at)
         }));
         
+        console.log('Formatted messages:', formattedMessages);
         setMessages(formattedMessages);
-        localStorage.setItem('neuroheart-chat-history', JSON.stringify(formattedMessages));
       }
     } catch (error) {
-      console.error('Error loading chat messages:', error);
+      console.error('Error in handleChatSelect:', error);
+      toast.error('Failed to load chat');
     }
   };
 
   const handleSignOut = async () => {
+    console.log('Signing out');
     setMessages([]);
     setCurrentChatId(null);
     setSessionId('');
@@ -177,7 +197,6 @@ const ChatApp = () => {
 
   const speakTextWithElevenLabs = async (text: string) => {
     try {
-      // Stop any currently playing audio
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
@@ -233,10 +252,6 @@ const ChatApp = () => {
       
       const errorMessage = error.message || 'Failed to generate speech';
       toast.error(`TTS Error: ${errorMessage}`);
-      
-      if (errorMessage.includes('API key')) {
-        toast.error('ElevenLabs API key not configured. Please check your settings.');
-      }
     }
   };
 
@@ -273,6 +288,8 @@ const ChatApp = () => {
       return;
     }
 
+    console.log('Submitting question:', question.trim());
+
     const userMessage: Message = {
       id: `user_${Date.now()}`,
       text: question.trim(),
@@ -293,6 +310,7 @@ const ChatApp = () => {
       chatId = await createNewChat(title);
       if (chatId) {
         setCurrentChatId(chatId);
+        console.log('New chat created with ID:', chatId);
       }
     }
 
@@ -301,12 +319,12 @@ const ChatApp = () => {
       await saveMessageToDb(userMessage, chatId);
     }
 
-    console.log("Sending request to n8n webhook:", {
-      question: userMessage.text,
-      sessionId
-    });
-
     try {
+      console.log("Sending request to n8n webhook:", {
+        question: userMessage.text,
+        sessionId
+      });
+
       const response = await fetch('https://sreen8n.app.n8n.cloud/webhook/ask-ai', {
         method: 'POST',
         headers: {
