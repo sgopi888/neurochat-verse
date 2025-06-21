@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,11 +54,12 @@ const ChatBot: React.FC<ChatBotProps> = ({
   };
 
   const handleSuggestionClick = (question: string) => {
-    setInput(question);
+    console.log('ChatBot: Suggestion clicked:', question);
+    setInput(''); // Clear any existing input
     if (onSuggestionClick) {
       onSuggestionClick(question);
     }
-    // Focus the textarea after setting the question
+    // Focus the textarea after the suggestion is processed
     setTimeout(() => {
       textareaRef.current?.focus();
     }, 100);

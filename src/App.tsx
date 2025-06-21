@@ -117,6 +117,7 @@ function AppContent() {
   const handleSendMessage = async (text: string) => {
     if (!user || !hasAgreed) return;
 
+    console.log('Sending message:', text);
     setIsLoading(true);
     setShowSuggestions(false);
 
@@ -173,32 +174,44 @@ function AppContent() {
         toast.error('Failed to save message');
       }
 
-      // Call webhook for AI response
-      const response = await fetch('/api/webhook-handler', {
+      // Get Supabase URL and anon key for the edge function call
+      const supabaseUrl = supabase.supabaseUrl;
+      const supabaseKey = supabase.supabaseKey;
+
+      console.log('Calling webhook handler with:', {
+        question: text,
+        chatId: chatId,
+        userId: user.id
+      });
+
+      // Call webhook for AI response with correct endpoint and payload
+      const response = await fetch(`${supabaseUrl}/functions/v1/webhook-handler`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({
-          message: text,
-          chat_session_id: chatId,
-          user_id: user.id,
-          conversation_history: messages.map(msg => ({
-            role: msg.isUser ? 'user' : 'assistant',
-            content: msg.text
-          }))
+          question: text,
+          chatId: chatId,
+          userId: user.id
         }),
       });
 
+      console.log('Webhook response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        const errorText = await response.text();
+        console.error('Webhook error response:', errorText);
+        throw new Error(`Failed to get AI response: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Webhook response data:', data);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.response,
+        text: data.response || data.answer || 'Sorry, I could not generate a response.',
         isUser: false,
         timestamp: new Date()
       };
@@ -206,7 +219,7 @@ function AppContent() {
       setMessages(prev => [...prev, aiMessage]);
 
       // Generate and show suggested questions
-      const questions = generateSuggestedQuestions(data.response);
+      const questions = generateSuggestedQuestions(aiMessage.text);
       setSuggestedQuestions(questions);
       setShowSuggestions(true);
 
@@ -218,15 +231,17 @@ function AppContent() {
 
     } catch (error) {
       console.error('Error handling message:', error);
-      toast.error('Failed to send message. Please try again.');
+      toast.error(`Failed to send message: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSuggestionClick = (question: string) => {
+    console.log('Suggestion clicked:', question);
     setShowSuggestions(false);
-    // The question will be handled by the ChatBot component
+    // Auto-send the question immediately
+    handleSendMessage(question);
   };
 
   const handleNewChat = () => {
