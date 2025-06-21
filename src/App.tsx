@@ -15,6 +15,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { generateSuggestedQuestions } from '@/utils/questionGenerator';
 import { toast } from 'sonner';
+import { debounce } from 'lodash';
 
 const queryClient = new QueryClient();
 
@@ -48,9 +49,10 @@ function AppContent() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAudioProcessing, setIsAudioProcessing] = useState(false);
 
-  // Synchronous audio management refs
+  // Enhanced audio management refs
   const audioLock = useRef(false);
   const audioAbort = useRef<AbortController | null>(null);
+  const audioQueue = useRef<Promise<void>>(Promise.resolve()); // Queue for sequential audio processing
   const playListener = useRef<(e: Event) => void>();
   const endListener = useRef<(e: Event) => void>();
   const errListener = useRef<(e: Event) => void>();
@@ -80,9 +82,12 @@ function AppContent() {
     }
   }, [currentChatId]);
 
-  // Comprehensive audio cleanup function with proper async handling
+  // Enhanced audio cleanup function
   const stopCurrentAudio = async () => {
-    if (audioAbort.current) audioAbort.current.abort();
+    if (audioAbort.current) {
+      audioAbort.current.abort();
+      audioAbort.current = null;
+    }
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
@@ -302,66 +307,83 @@ function AppContent() {
     }
   };
 
-  // Enhanced audio management with synchronous locking
-  const handlePlayLatestResponse = async () => {
-    if (audioLock.current) return; // Hard block re-entry
-    const last = messages.filter(m => !m.isUser).pop();
-    if (!last) return toast.error('No AI response to play');
-
-    audioLock.current = true; // Lock immediately
+  // Debounced play function with enhanced synchronization
+  const debouncedPlayLatestResponse = debounce(async () => {
+    if (audioLock.current) return; // Synchronous lock check
+    audioLock.current = true;
     setIsAudioProcessing(true);
-    await stopCurrentAudio(); // Be sure previous sound is gone
 
-    try {
-      // Prepare abortable request
-      audioAbort.current = new AbortController();
-      
-      console.log('Calling TTS with voice:', selectedVoice, 'and text length:', last.text.length);
-      
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: {
-          text: last.text,
-          voice: selectedVoice,
-          userId: user?.id
-        }
-      });
+    // Queue audio processing to ensure sequential execution
+    await audioQueue.current;
+    audioQueue.current = audioQueue.current.then(async () => {
+      await stopCurrentAudio(); // Ensure cleanup
 
-      if (error || !data?.audio) {
+      const last = messages.filter(m => !m.isUser).pop();
+      if (!last) {
+        toast.error('No AI response to play');
         audioLock.current = false;
         setIsAudioProcessing(false);
-        return toast.error(error?.message ?? 'TTS failed');
+        return;
       }
 
-      // Convert base64 to audio blob
-      const audioBlob = new Blob([
-        Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))
-      ], { type: 'audio/mpeg' });
-      
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      
-      // Set up event listeners with refs for proper cleanup
-      playListener.current = () => setIsPlaying(true);
-      endListener.current = () => stopCurrentAudio();
-      errListener.current = () => {
-        console.error('Audio playback error');
-        toast.error('Playback error');
-        stopCurrentAudio();
-      };
+      try {
+        audioAbort.current = new AbortController();
+        console.log('Calling TTS with voice:', selectedVoice, 'and text length:', last.text.length);
+        
+        const { data, error } = await supabase.functions.invoke('text-to-speech', {
+          body: {
+            text: last.text,
+            voice: selectedVoice,
+            userId: user?.id
+          },
+          signal: audioAbort.current.signal,
+        });
 
-      audio.addEventListener('play', playListener.current);
-      audio.addEventListener('ended', endListener.current);
-      audio.addEventListener('error', errListener.current);
+        if (error || !data?.audio) {
+          throw new Error(error?.message ?? 'TTS failed');
+        }
 
-      setCurrentAudio(audio);
-      await audio.play();
-      
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      toast.error('Failed to play audio');
-      audioLock.current = false;
-      setIsAudioProcessing(false);
-    }
+        // Convert base64 to audio blob
+        const audioBlob = new Blob([
+          Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))
+        ], { type: 'audio/mpeg' });
+        
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        // Set up event listeners with refs for proper cleanup
+        playListener.current = () => setIsPlaying(true);
+        endListener.current = () => stopCurrentAudio();
+        errListener.current = () => {
+          console.error('Audio playback error');
+          toast.error('Playback error');
+          stopCurrentAudio();
+        };
+
+        audio.addEventListener('play', playListener.current);
+        audio.addEventListener('ended', endListener.current);
+        audio.addEventListener('error', errListener.current);
+
+        setCurrentAudio(audio);
+        await audio.play();
+        
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error playing audio:', error);
+          toast.error('Failed to play audio');
+        }
+      } finally {
+        if (!audioAbort.current?.signal.aborted) {
+          audioLock.current = false;
+          setIsAudioProcessing(false);
+        }
+      }
+    });
+  }, 300); // 300ms debounce
+
+  // Update handler call
+  const handlePlayLatestResponse = () => {
+    debouncedPlayLatestResponse();
   };
 
   const handlePauseAudio = () => {
