@@ -335,9 +335,13 @@ function AppContent() {
             text: last.text,
             voice: selectedVoice,
             userId: user?.id
-          },
-          signal: audioAbort.current.signal,
+          }
         });
+
+        // Check if request was aborted
+        if (audioAbort.current?.signal.aborted) {
+          return;
+        }
 
         if (error || !data?.audio) {
           throw new Error(error?.message ?? 'TTS failed');
