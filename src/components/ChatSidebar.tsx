@@ -1,12 +1,12 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pause, Settings, User } from 'lucide-react';
+import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pause, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import UserSettings from './UserSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -63,6 +63,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
 
@@ -70,6 +71,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     if (user) {
       console.log('Fetching chats for user:', user.id);
       fetchChats();
+      fetchUserProfile();
       
       const channel = supabase
         .channel('chat-changes')
@@ -92,6 +94,30 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       };
     }
   }, [user]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching user profile:', error);
+      } else if (data) {
+        setAvatarUrl(data.avatar_url);
+      }
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+    }
+  };
+
+  const handleAvatarUpdate = (newAvatarUrl: string | null) => {
+    setAvatarUrl(newAvatarUrl);
+  };
 
   const fetchChats = async () => {
     if (!user) {
@@ -211,6 +237,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const getLatestAIResponse = () => {
     const aiMessages = messages.filter(msg => !msg.isUser);
     return aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
+  };
+
+  const getInitials = () => {
+    if (!userEmail) return 'U';
+    const name = userEmail.split('@')[0];
+    return name.charAt(0).toUpperCase();
   };
 
   return (
@@ -383,9 +415,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <div className="border-t border-gray-200 dark:border-gray-800 p-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 flex-1 min-w-0">
-            <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
-              <User className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            </div>
+            <Avatar className="h-8 w-8 border border-gray-200 dark:border-gray-700">
+              <AvatarImage src={avatarUrl || undefined} alt="Profile picture" />
+              <AvatarFallback className="text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                 {userEmail ? userEmail.split('@')[0] : 'User'}
@@ -399,6 +434,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               onVoiceChange={onVoiceChange}
               onThemeToggle={toggleTheme}
               currentTheme={theme}
+              avatarUrl={avatarUrl}
+              onAvatarUpdate={handleAvatarUpdate}
             />
             <Button
               onClick={onSignOut}

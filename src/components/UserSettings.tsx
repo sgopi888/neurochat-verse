@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import ProfilePicture from './ProfilePicture';
 
 interface UserSettingsProps {
   userEmail?: string;
@@ -22,6 +23,8 @@ interface UserSettingsProps {
   onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   onThemeToggle: () => void;
   currentTheme: 'light' | 'dark';
+  avatarUrl?: string;
+  onAvatarUpdate: (newAvatarUrl: string | null) => void;
 }
 
 const UserSettings = ({ 
@@ -29,7 +32,9 @@ const UserSettings = ({
   selectedVoice, 
   onVoiceChange,
   onThemeToggle,
-  currentTheme
+  currentTheme,
+  avatarUrl,
+  onAvatarUpdate
 }: UserSettingsProps) => {
   return (
     <Popover>
@@ -47,6 +52,20 @@ const UserSettings = ({
             </p>
           </div>
           
+          <Separator />
+          
+          {/* Profile Picture Section */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium text-gray-900 dark:text-white">
+              Profile Picture
+            </Label>
+            <ProfilePicture
+              userEmail={userEmail}
+              avatarUrl={avatarUrl}
+              onAvatarUpdate={onAvatarUpdate}
+            />
+          </div>
+
           <Separator />
           
           {/* Theme Toggle */}
