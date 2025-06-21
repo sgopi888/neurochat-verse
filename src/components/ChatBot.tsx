@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Mic, MicOff } from 'lucide-react';
+import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 
 interface Message {
@@ -20,6 +21,9 @@ interface ChatBotProps {
   loadingIndicator?: React.ReactNode;
   suggestedQuestions?: React.ReactNode;
   onSuggestionClick?: (question: string) => void;
+  isMobile?: boolean;
+  onToggleMobileSidebar?: () => void;
+  isMobileSidebarOpen?: boolean;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -30,7 +34,10 @@ const ChatBot: React.FC<ChatBotProps> = ({
   isLoading = false,
   loadingIndicator,
   suggestedQuestions,
-  onSuggestionClick
+  onSuggestionClick,
+  isMobile = false,
+  onToggleMobileSidebar,
+  isMobileSidebarOpen = false
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -123,18 +130,44 @@ const ChatBot: React.FC<ChatBotProps> = ({
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
         <div className="p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">AI</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {/* Mobile hamburger menu */}
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onToggleMobileSidebar}
+                  className="p-2 h-8 w-8"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              )}
+              
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-lg">AI</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Mindfulness Coach
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Your personal wellness companion
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Mindfulness Coach
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Your personal wellness companion
-              </p>
-            </div>
+            
+            {/* Mobile settings button - Only shown when sidebar is closed */}
+            {isMobile && !isMobileSidebarOpen && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleMobileSidebar}
+                className="p-2 h-8 w-8"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -11,9 +11,12 @@ import SuggestedQuestions from '@/components/SuggestedQuestions';
 import DisclaimerModal from '@/components/DisclaimerModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
+import { useMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { generateSuggestedQuestions } from '@/utils/questionGenerator';
 import { toast } from 'sonner';
+import { Menu, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const queryClient = new QueryClient();
 
@@ -35,6 +38,7 @@ interface Chat {
 function AppContent() {
   const { user, loading } = useAuth();
   const { hasAgreed, showModal, handleAgree } = useUserAgreement();
+  const isMobile = useMobile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -43,6 +47,7 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -120,6 +125,11 @@ function AppContent() {
     console.log('Sending message:', text);
     setIsLoading(true);
     setShowSuggestions(false);
+    
+    // Close mobile sidebar when sending a message to prevent it from showing during AI processing
+    if (isMobile) {
+      setIsMobileSidebarOpen(false);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -236,6 +246,10 @@ function AppContent() {
     setMessages([]);
     setSuggestedQuestions([]);
     setShowSuggestions(false);
+    // Close mobile sidebar when starting new chat
+    if (isMobile) {
+      setIsMobileSidebarOpen(false);
+    }
     console.log('Started new chat');
   };
 
@@ -243,6 +257,10 @@ function AppContent() {
     if (chatId !== currentChatId) {
       setCurrentChatId(chatId);
       setShowSuggestions(false);
+      // Close mobile sidebar when selecting a chat
+      if (isMobile) {
+        setIsMobileSidebarOpen(false);
+      }
       console.log('Selected chat:', chatId);
     }
   };
@@ -254,6 +272,7 @@ function AppContent() {
       setCurrentChatId(null);
       setSuggestedQuestions([]);
       setShowSuggestions(false);
+      setIsMobileSidebarOpen(false);
       toast.success('Signed out successfully');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -261,6 +280,7 @@ function AppContent() {
     }
   };
 
+  // Fixed audio overlap issue - properly stop existing audio before starting new playback
   const handlePlayLatestResponse = async () => {
     const aiMessages = messages.filter(msg => !msg.isUser);
     const latestResponse = aiMessages[aiMessages.length - 1];
@@ -270,8 +290,13 @@ function AppContent() {
       return;
     }
 
+    // Stop and cleanup any existing audio first
     if (currentAudio) {
       currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio.removeEventListener('play', () => {});
+      currentAudio.removeEventListener('ended', () => {});
+      currentAudio.removeEventListener('error', () => {});
       setCurrentAudio(null);
       setIsPlaying(false);
     }
@@ -305,18 +330,23 @@ function AppContent() {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       
-      audio.onplay = () => setIsPlaying(true);
-      audio.onended = () => {
+      // Set up event listeners before playing
+      const handlePlay = () => setIsPlaying(true);
+      const handleEnded = () => {
         setIsPlaying(false);
         setCurrentAudio(null);
         URL.revokeObjectURL(audioUrl);
       };
-      audio.onerror = () => {
+      const handleError = () => {
         setIsPlaying(false);
         setCurrentAudio(null);
         URL.revokeObjectURL(audioUrl);
         toast.error('Failed to play audio');
       };
+
+      audio.addEventListener('play', handlePlay);
+      audio.addEventListener('ended', handleEnded);
+      audio.addEventListener('error', handleError);
 
       setCurrentAudio(audio);
       await audio.play();
@@ -325,12 +355,14 @@ function AppContent() {
       console.error('Error playing audio:', error);
       toast.error('Failed to play audio');
       setIsPlaying(false);
+      setCurrentAudio(null);
     }
   };
 
   const handlePauseAudio = () => {
     if (currentAudio) {
       currentAudio.pause();
+      currentAudio.currentTime = 0;
       setCurrentAudio(null);
       setIsPlaying(false);
     }
@@ -343,6 +375,10 @@ function AppContent() {
 
   const handleSpeak = (text: string) => {
     handlePlayLatestResponse();
+  };
+
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
   if (loading) {
@@ -363,19 +399,49 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <ChatSidebar
-        currentChatId={currentChatId}
-        onChatSelect={handleChatSelect}
-        onNewChat={handleNewChat}
-        onSignOut={handleSignOut}
-        userEmail={user?.email}
-        messages={messages}
-        onPlayLatestResponse={handlePlayLatestResponse}
-        onPauseAudio={handlePauseAudio}
-        selectedVoice={selectedVoice}
-        onVoiceChange={setSelectedVoice}
-        isPlaying={isPlaying}
-      />
+      {/* Desktop/Tablet Sidebar - Hidden on mobile */}
+      <div className={`${isMobile ? 'hidden' : 'block'}`}>
+        <ChatSidebar
+          currentChatId={currentChatId}
+          onChatSelect={handleChatSelect}
+          onNewChat={handleNewChat}
+          onSignOut={handleSignOut}
+          userEmail={user?.email}
+          messages={messages}
+          onPlayLatestResponse={handlePlayLatestResponse}
+          onPauseAudio={handlePauseAudio}
+          selectedVoice={selectedVoice}
+          onVoiceChange={setSelectedVoice}
+          isPlaying={isPlaying}
+        />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobile && isMobileSidebarOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          {/* Sidebar */}
+          <div className="fixed left-0 top-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out">
+            <ChatSidebar
+              currentChatId={currentChatId}
+              onChatSelect={handleChatSelect}
+              onNewChat={handleNewChat}
+              onSignOut={handleSignOut}
+              userEmail={user?.email}
+              messages={messages}
+              onPlayLatestResponse={handlePlayLatestResponse}
+              onPauseAudio={handlePauseAudio}
+              selectedVoice={selectedVoice}
+              onVoiceChange={setSelectedVoice}
+              isPlaying={isPlaying}
+            />
+          </div>
+        </>
+      )}
       
       <div className="flex-1 flex flex-col">
         <ChatBot
@@ -393,6 +459,9 @@ function AppContent() {
             />
           }
           onSuggestionClick={handleSuggestionClick}
+          isMobile={isMobile}
+          onToggleMobileSidebar={toggleMobileSidebar}
+          isMobileSidebarOpen={isMobileSidebarOpen}
         />
       </div>
     </div>
@@ -400,6 +469,11 @@ function AppContent() {
 }
 
 function App() {
+  // Set the document title
+  useEffect(() => {
+    document.title = 'Neuroheart.AI Mindfulness Coach';
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
