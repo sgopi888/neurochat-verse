@@ -62,11 +62,10 @@ const ChatBot: React.FC<ChatBotProps> = ({
 
   const handleSuggestionClick = (question: string) => {
     console.log('ChatBot: Suggestion clicked:', question);
-    setInput(''); // Clear any existing input
+    setInput('');
     if (onSuggestionClick) {
       onSuggestionClick(question);
     }
-    // Focus the textarea after the suggestion is processed
     setTimeout(() => {
       textareaRef.current?.focus();
     }, 100);
@@ -118,7 +117,6 @@ const ChatBot: React.FC<ChatBotProps> = ({
     recognition.start();
   };
 
-  // Clone the suggested questions element and pass the click handler
   const clonedSuggestedQuestions = suggestedQuestions && React.isValidElement(suggestedQuestions)
     ? React.cloneElement(suggestedQuestions as React.ReactElement<any>, {
         onQuestionClick: handleSuggestionClick
@@ -132,13 +130,14 @@ const ChatBot: React.FC<ChatBotProps> = ({
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              {/* Mobile hamburger menu */}
+              {/* Mobile hamburger menu - Only visible on mobile and when sidebar is closed */}
               {isMobile && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={onToggleMobileSidebar}
                   className="p-2 h-8 w-8"
+                  disabled={isLoading}
                 >
                   <Menu className="h-4 w-4" />
                 </Button>
@@ -156,18 +155,6 @@ const ChatBot: React.FC<ChatBotProps> = ({
                 </p>
               </div>
             </div>
-            
-            {/* Mobile settings button - Only shown when sidebar is closed */}
-            {isMobile && !isMobileSidebarOpen && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleMobileSidebar}
-                className="p-2 h-8 w-8"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            )}
           </div>
         </div>
       </div>
@@ -199,6 +186,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
                   size="sm"
                   onClick={() => handleSuggestionClick(suggestion)}
                   className="bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  disabled={isLoading}
                 >
                   {suggestion}
                 </Button>
@@ -218,7 +206,8 @@ const ChatBot: React.FC<ChatBotProps> = ({
 
         {isLoading && loadingIndicator}
 
-        {clonedSuggestedQuestions}
+        {/* Only show suggestions when not loading and not on mobile with sidebar open */}
+        {!isLoading && (!isMobile || !isMobileSidebarOpen) && clonedSuggestedQuestions}
 
         <div ref={messagesEndRef} />
       </div>

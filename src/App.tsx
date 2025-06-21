@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -11,12 +12,10 @@ import SuggestedQuestions from '@/components/SuggestedQuestions';
 import DisclaimerModal from '@/components/DisclaimerModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { generateSuggestedQuestions } from '@/utils/questionGenerator';
 import { toast } from 'sonner';
-import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const queryClient = new QueryClient();
 
@@ -38,7 +37,7 @@ interface Chat {
 function AppContent() {
   const { user, loading } = useAuth();
   const { hasAgreed, showModal, handleAgree } = useUserAgreement();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -49,17 +48,20 @@ function AppContent() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  // Set the document title
+  useEffect(() => {
+    document.title = 'Neuroheart.AI Mindfulness Coach';
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
-        // You can implement a search or command palette here
         alert('Command palette not implemented yet!');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -70,6 +72,28 @@ function AppContent() {
       loadChatMessages(currentChatId);
     }
   }, [currentChatId]);
+
+  // Comprehensive audio cleanup function
+  const stopCurrentAudio = () => {
+    if (currentAudio) {
+      console.log('Stopping current audio');
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      
+      // Remove all event listeners
+      currentAudio.removeEventListener('play', () => {});
+      currentAudio.removeEventListener('ended', () => {});
+      currentAudio.removeEventListener('error', () => {});
+      
+      // Revoke the object URL to free memory
+      if (currentAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(currentAudio.src);
+      }
+      
+      setCurrentAudio(null);
+      setIsPlaying(false);
+    }
+  };
 
   const loadChatMessages = async (chatId: string) => {
     if (!user) return;
@@ -100,7 +124,6 @@ function AppContent() {
       console.log('Loaded messages:', loadedMessages);
       setMessages(loadedMessages);
 
-      // Generate suggestions based on the last AI response if messages exist
       if (loadedMessages.length > 0) {
         const lastAiMessage = loadedMessages
           .filter(msg => !msg.isUser)
@@ -126,7 +149,7 @@ function AppContent() {
     setIsLoading(true);
     setShowSuggestions(false);
     
-    // Close mobile sidebar when sending a message to prevent it from showing during AI processing
+    // Close mobile sidebar when sending a message
     if (isMobile) {
       setIsMobileSidebarOpen(false);
     }
@@ -143,7 +166,6 @@ function AppContent() {
     try {
       let chatId = currentChatId;
 
-      // Create new chat if none exists
       if (!chatId) {
         const chatTitle = text.length > 50 ? text.substring(0, 50) + '...' : text;
         
@@ -169,7 +191,6 @@ function AppContent() {
         console.log('Created new chat session:', chatId);
       }
 
-      // Save user message
       const { error: userMsgError } = await supabase
         .from('chat_messages')
         .insert({
@@ -190,7 +211,6 @@ function AppContent() {
         userId: user.id
       });
 
-      // Call webhook for AI response using supabase functions invoke
       const { data, error } = await supabase.functions.invoke('webhook-handler', {
         body: {
           question: text,
@@ -215,12 +235,10 @@ function AppContent() {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      // Generate and show suggested questions
       const questions = generateSuggestedQuestions(aiMessage.text);
       setSuggestedQuestions(questions);
       setShowSuggestions(true);
 
-      // Update chat session timestamp
       await supabase
         .from('chat_sessions')
         .update({ updated_at: new Date().toISOString() })
@@ -237,7 +255,6 @@ function AppContent() {
   const handleSuggestionClick = (question: string) => {
     console.log('Suggestion clicked:', question);
     setShowSuggestions(false);
-    // Auto-send the question immediately
     handleSendMessage(question);
   };
 
@@ -267,6 +284,9 @@ function AppContent() {
 
   const handleSignOut = async () => {
     try {
+      // Stop any playing audio before signing out
+      stopCurrentAudio();
+      
       await supabase.auth.signOut();
       setMessages([]);
       setCurrentChatId(null);
@@ -280,7 +300,7 @@ function AppContent() {
     }
   };
 
-  // Fixed audio overlap issue - properly stop existing audio before starting new playback
+  // Enhanced audio management with proper overlap prevention
   const handlePlayLatestResponse = async () => {
     const aiMessages = messages.filter(msg => !msg.isUser);
     const latestResponse = aiMessages[aiMessages.length - 1];
@@ -290,21 +310,13 @@ function AppContent() {
       return;
     }
 
-    // Stop and cleanup any existing audio first
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-      currentAudio.removeEventListener('play', () => {});
-      currentAudio.removeEventListener('ended', () => {});
-      currentAudio.removeEventListener('error', () => {});
-      setCurrentAudio(null);
-      setIsPlaying(false);
-    }
+    // Always stop current audio first - this prevents overlaps
+    console.log('Play button pressed - stopping any existing audio');
+    stopCurrentAudio();
 
     try {
       console.log('Calling TTS with voice:', selectedVoice, 'and text length:', latestResponse.text.length);
       
-      // Call the Supabase edge function for text-to-speech
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: latestResponse.text,
@@ -330,14 +342,21 @@ function AppContent() {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       
-      // Set up event listeners before playing
-      const handlePlay = () => setIsPlaying(true);
+      // Set up comprehensive event listeners
+      const handlePlay = () => {
+        console.log('Audio started playing');
+        setIsPlaying(true);
+      };
+      
       const handleEnded = () => {
+        console.log('Audio finished playing');
         setIsPlaying(false);
         setCurrentAudio(null);
         URL.revokeObjectURL(audioUrl);
       };
-      const handleError = () => {
+      
+      const handleError = (e: Event) => {
+        console.error('Audio playback error:', e);
         setIsPlaying(false);
         setCurrentAudio(null);
         URL.revokeObjectURL(audioUrl);
@@ -348,7 +367,10 @@ function AppContent() {
       audio.addEventListener('ended', handleEnded);
       audio.addEventListener('error', handleError);
 
+      // Store the audio reference BEFORE playing
       setCurrentAudio(audio);
+      
+      console.log('Starting audio playback');
       await audio.play();
       
     } catch (error) {
@@ -360,12 +382,8 @@ function AppContent() {
   };
 
   const handlePauseAudio = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-      setCurrentAudio(null);
-      setIsPlaying(false);
-    }
+    console.log('Pause button pressed');
+    stopCurrentAudio();
   };
 
   const handleCopy = (text: string) => {
@@ -378,6 +396,7 @@ function AppContent() {
   };
 
   const toggleMobileSidebar = () => {
+    console.log('Toggling mobile sidebar. Current state:', isMobileSidebarOpen);
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
@@ -416,7 +435,7 @@ function AppContent() {
         />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar Overlay - Only visible when open on mobile */}
       {isMobile && isMobileSidebarOpen && (
         <>
           {/* Backdrop */}
@@ -469,11 +488,6 @@ function AppContent() {
 }
 
 function App() {
-  // Set the document title
-  useEffect(() => {
-    document.title = 'Neuroheart.AI Mindfulness Coach';
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
