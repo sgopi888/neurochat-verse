@@ -1,143 +1,138 @@
 
-import { Settings, Moon, Sun, Volume2 } from 'lucide-react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import ProfilePicture from './ProfilePicture';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Trash2 } from 'lucide-react';
 
 interface UserSettingsProps {
-  userEmail?: string;
-  selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
-  onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
-  onThemeToggle: () => void;
-  currentTheme: 'light' | 'dark';
-  avatarUrl?: string;
-  onAvatarUpdate: (newAvatarUrl: string | null) => void;
+  selectedVoice: string;
+  onVoiceChange: (voice: string) => void;
+  onRefreshChats?: () => void;
 }
 
-const UserSettings = ({ 
-  userEmail, 
+const UserSettings: React.FC<UserSettingsProps> = ({ 
   selectedVoice, 
   onVoiceChange,
-  onThemeToggle,
-  currentTheme,
-  avatarUrl,
-  onAvatarUpdate
-}: UserSettingsProps) => {
+  onRefreshChats 
+}) => {
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearHistory = async () => {
+    setIsClearing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error('You must be logged in to clear chat history');
+        return;
+      }
+
+      // Delete all chats for the current user
+      const { error } = await supabase
+        .from('chats')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Chat history cleared successfully');
+      
+      // Refresh the chat list if callback provided
+      if (onRefreshChats) {
+        onRefreshChats();
+      }
+
+    } catch (error) {
+      console.error('Error clearing chat history:', error);
+      toast.error('Failed to clear chat history');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" align="end">
-        <div className="space-y-4">
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Settings</h4>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Customize your experience
-            </p>
-          </div>
-          
-          <Separator />
-          
-          {/* Profile Picture Section */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium text-gray-900 dark:text-white">
-              Profile Picture
-            </Label>
-            <ProfilePicture
-              userEmail={userEmail}
-              avatarUrl={avatarUrl}
-              onAvatarUpdate={onAvatarUpdate}
-            />
-          </div>
-
-          <Separator />
-          
-          {/* Theme Toggle */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-900 dark:text-white">
-              Theme
-            </Label>
-            <Button
-              onClick={onThemeToggle}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600"
-            >
-              {currentTheme === 'dark' ? (
-                <>
-                  <Sun className="h-4 w-4 mr-2" />
-                  Switch to Light Mode
-                </>
-              ) : (
-                <>
-                  <Moon className="h-4 w-4 mr-2" />
-                  Switch to Dark Mode
-                </>
-              )}
-            </Button>
-          </div>
-
-          <Separator />
-
-          {/* Voice Selection */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-900 dark:text-white">
-              <Volume2 className="h-4 w-4 inline mr-1" />
-              Voice Selection
-            </Label>
-            <Select value={selectedVoice} onValueChange={(value: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => onVoiceChange(value)}>
-              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                <SelectItem value="James" className="hover:bg-gray-100 dark:hover:bg-gray-700">
-                  James (Professional)
-                </SelectItem>
-                <SelectItem value="Cassidy" className="hover:bg-gray-100 dark:hover:bg-gray-700">
-                  Cassidy (Friendly)
-                </SelectItem>
-                <SelectItem value="Drew" className="hover:bg-gray-100 dark:hover:bg-gray-700">
-                  Drew (Confident)
-                </SelectItem>
-                <SelectItem value="Lavender" className="hover:bg-gray-100 dark:hover:bg-gray-700">
-                  Lavender (Soothing)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {userEmail && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-900 dark:text-white">
-                  Account
-                </Label>
-                <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-2 rounded">
-                  {userEmail}
-                </p>
-              </div>
-            </>
-          )}
+    <div className="space-y-6">
+      {/* Voice Settings */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Voice Settings</h3>
+        
+        <div className="space-y-2">
+          <Label htmlFor="voice-select">Select Voice</Label>
+          <Select value={selectedVoice} onValueChange={onVoiceChange}>
+            <SelectTrigger id="voice-select">
+              <SelectValue placeholder="Choose a voice" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alloy">Alloy (Neutral)</SelectItem>
+              <SelectItem value="echo">Echo (Male)</SelectItem>
+              <SelectItem value="fable">Fable (British Male)</SelectItem>
+              <SelectItem value="onyx">Onyx (Deep Male)</SelectItem>
+              <SelectItem value="nova">Nova (Female)</SelectItem>
+              <SelectItem value="shimmer">Shimmer (Soft Female)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      </PopoverContent>
-    </Popover>
+      </div>
+
+      <Separator />
+
+      {/* Data Management */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-red-700">Data Management</h3>
+        
+        <div className="space-y-3">
+          <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+            <div className="flex items-start space-x-3">
+              <Trash2 className="h-5 w-5 text-red-600 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-medium text-red-900">Clear Chat History</h4>
+                <p className="text-sm text-red-700 mt-1">
+                  This will permanently delete all your chat conversations. This action cannot be undone.
+                </p>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="mt-3"
+                      disabled={isClearing}
+                    >
+                      {isClearing ? 'Clearing...' : 'Clear All Chats'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete all your chat history and remove all conversations from our servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleClearHistory}
+                        className="bg-red-600 hover:bg-red-700"
+                        disabled={isClearing}
+                      >
+                        {isClearing ? 'Clearing...' : 'Yes, clear all chats'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
