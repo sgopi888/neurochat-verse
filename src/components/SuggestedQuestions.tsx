@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Lightbulb } from 'lucide-react';
+import { MessageCircle, Lightbulb, Sparkles } from 'lucide-react';
 
 interface SuggestedQuestionsProps {
   questions: string[];
@@ -21,7 +21,10 @@ const SuggestedQuestions: React.FC<SuggestedQuestionsProps> = ({
   return (
     <div className="mb-6 animate-fade-in">
       <div className="flex items-center gap-2 mb-3">
-        <Lightbulb className="h-4 w-4 text-yellow-500" />
+        <div className="flex items-center">
+          <Sparkles className="h-4 w-4 text-purple-500 mr-1" />
+          <Lightbulb className="h-4 w-4 text-yellow-500" />
+        </div>
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Suggested follow-up questions:
         </span>

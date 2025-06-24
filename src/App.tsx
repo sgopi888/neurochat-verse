@@ -48,6 +48,7 @@ function AppContent() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAudioProcessing, setIsAudioProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState<string>('');
 
   // Enhanced audio management refs
   const audioLock = useRef(false);
@@ -155,12 +156,14 @@ function AppContent() {
     console.log('Sending message:', text);
     setIsLoading(true);
     setShowSuggestions(false);
+    setProcessingStep('Analyzing your question...');
     
     // Close mobile sidebar when sending a message
     if (isMobile) {
       setIsMobileSidebarOpen(false);
     }
 
+    // Create and immediately save user message to prevent disappearing
     const userMessage: Message = {
       id: Date.now().toString(),
       text,
@@ -168,6 +171,7 @@ function AppContent() {
       timestamp: new Date()
     };
 
+    // CRITICAL FIX: Add user message to state immediately
     setMessages(prev => [...prev, userMessage]);
 
     try {
@@ -212,6 +216,8 @@ function AppContent() {
         toast.error('Failed to save message');
       }
 
+      setProcessingStep('Generating thoughtful response...');
+
       console.log('Calling webhook handler with:', {
         question: text,
         chatId: chatId,
@@ -242,9 +248,24 @@ function AppContent() {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      const questions = generateSuggestedQuestions(aiMessage.text);
-      setSuggestedQuestions(questions);
-      setShowSuggestions(true);
+      setProcessingStep('Preparing follow-up questions...');
+
+      // Generate contextual questions using the new system
+      try {
+        const { generateContextualQuestions } = await import('@/utils/contextualQuestions');
+        const questions = await generateContextualQuestions(aiMessage.text, messages);
+        setSuggestedQuestions(questions);
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error('Error generating contextual questions:', error);
+        // Fallback to basic questions
+        setSuggestedQuestions([
+          "Can you tell me more about this topic?",
+          "How can I apply this in my daily life?",
+          "What other techniques might be helpful?"
+        ]);
+        setShowSuggestions(true);
+      }
 
       await supabase
         .from('chat_sessions')
@@ -256,6 +277,7 @@ function AppContent() {
       toast.error(`Failed to send message: ${error.message}`);
     } finally {
       setIsLoading(false);
+      setProcessingStep('');
     }
   };
 
@@ -478,7 +500,12 @@ function AppContent() {
           onCopy={handleCopy}
           onSpeak={handleSpeak}
           isLoading={isLoading}
-          loadingIndicator={<LoadingIndicator message="Processing with AI model..." />}
+          loadingIndicator={
+            <ProcessingSteps 
+              isVisible={isLoading} 
+              currentStep={processingStep}
+            />
+          }
           suggestedQuestions={
             <SuggestedQuestions
               questions={suggestedQuestions}

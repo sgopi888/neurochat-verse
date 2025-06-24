@@ -61,8 +61,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
-  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
@@ -113,10 +111,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
     }
-  };
-
-  const handleAvatarUpdate = (newAvatarUrl: string | null) => {
-    setAvatarUrl(newAvatarUrl);
   };
 
   const fetchChats = async () => {
@@ -181,38 +175,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   };
 
-  const deleteAllChats = async () => {
-    if (!user) return;
-    
-    setIsDeletingAll(true);
-    
-    try {
-      console.log('Deleting all chats for user:', user.id);
-      
-      const { error } = await supabase
-        .from('chat_sessions')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .is('deleted_at', null);
-
-      if (error) {
-        console.error('Error deleting all chats:', error);
-        toast.error('Failed to delete chat history');
-      } else {
-        console.log('All chats deleted successfully');
-        setChats([]);
-        toast.success('Chat history deleted. Data will be permanently removed after 90 days for security purposes.');
-        onNewChat();
-        setShowDeleteAllDialog(false);
-      }
-    } catch (error) {
-      console.error('Error in deleteAllChats:', error);
-      toast.error('Failed to delete chat history');
-    } finally {
-      setIsDeletingAll(false);
-    }
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -243,6 +205,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     if (!userEmail) return 'U';
     const name = userEmail.split('@')[0];
     return name.charAt(0).toUpperCase();
+  };
+
+  const handleAvatarUpdate = (newAvatarUrl: string | null) => {
+    setAvatarUrl(newAvatarUrl);
   };
 
   return (
@@ -284,14 +250,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <Button
             onClick={onNewChat}
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
+            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 px-4 py-2 rounded-md flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
+            <span className="font-medium">New Chat</span>
           </Button>
         </div>
         
         {/* Voice Controls */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-3">
           <Button
             onClick={isPlaying ? onPauseAudio : onPlayLatestResponse}
             disabled={!getLatestAIResponse()}
@@ -303,55 +270,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             <span>{isPlaying ? 'Pause' : 'Play Script'}</span>
           </Button>
         </div>
-
-        {/* Delete All Button */}
-        {chats.length > 0 && (
-          <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 transition-all duration-200"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear History
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
-              <DialogHeader>
-                <DialogTitle className="flex items-center dark:text-white">
-                  <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-                  Delete All Chat History
-                </DialogTitle>
-                <DialogDescription className="dark:text-gray-400 space-y-2">
-                  <p>This will remove all your chat history from your account.</p>
-                  <p className="text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-200 dark:border-blue-800">
-                    <strong>Security Notice:</strong> For security and compliance purposes, your chat data will be retained in our secure systems for 90 days before permanent deletion. This allows for account recovery and security investigations if needed.
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    During the 90-day period, the data is not accessible through your account but remains stored for security purposes only.
-                  </p>
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowDeleteAllDialog(false)}
-                  disabled={isDeletingAll}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={deleteAllChats}
-                  disabled={isDeletingAll}
-                >
-                  {isDeletingAll ? 'Deleting...' : 'Delete All History'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
       </div>
 
       {/* Chat List */}
@@ -442,6 +360,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               currentTheme={theme}
               avatarUrl={avatarUrl}
               onAvatarUpdate={handleAvatarUpdate}
+              chats={chats}
+              currentChatId={currentChatId}
+              onNewChat={onNewChat}
+              onChatRefresh={fetchChats}
             />
             <Button
               onClick={onSignOut}
