@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,7 +8,6 @@ import ChatBot from '@/components/ChatBot';
 import ChatSidebar from '@/components/ChatSidebar';
 import LoadingIndicator from '@/components/LoadingIndicator';
 import SuggestedQuestions from '@/components/SuggestedQuestions';
-import ProcessingSteps from '@/components/ProcessingSteps';
 import DisclaimerModal from '@/components/DisclaimerModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
@@ -50,7 +48,6 @@ function AppContent() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAudioProcessing, setIsAudioProcessing] = useState(false);
-  const [processingStep, setProcessingStep] = useState<string>('');
 
   // Enhanced audio management refs
   const audioLock = useRef(false);
@@ -158,7 +155,6 @@ function AppContent() {
     console.log('Sending message:', text);
     setIsLoading(true);
     setShowSuggestions(false);
-    setProcessingStep('Analyzing your question...');
     
     // Close mobile sidebar when sending a message
     if (isMobile) {
@@ -218,8 +214,6 @@ function AppContent() {
         toast.error('Failed to save message');
       }
 
-      setProcessingStep('Generating thoughtful response...');
-
       console.log('Calling webhook handler with:', {
         question: text,
         chatId: chatId,
@@ -250,9 +244,7 @@ function AppContent() {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      setProcessingStep('Preparing follow-up questions...');
-
-      // Generate contextual questions using the new system
+      // Generate contextual questions using the new system (no loading indicator for this)
       try {
         const { generateContextualQuestions } = await import('@/utils/contextualQuestions');
         const questions = await generateContextualQuestions(aiMessage.text, messages);
@@ -279,7 +271,6 @@ function AppContent() {
       toast.error(`Failed to send message: ${error.message}`);
     } finally {
       setIsLoading(false);
-      setProcessingStep('');
     }
   };
 
@@ -503,10 +494,7 @@ function AppContent() {
           onSpeak={handleSpeak}
           isLoading={isLoading}
           loadingIndicator={
-            <ProcessingSteps 
-              isVisible={isLoading} 
-              currentStep={processingStep}
-            />
+            <LoadingIndicator message="Processing with AI model..." />
           }
           suggestedQuestions={
             <SuggestedQuestions
