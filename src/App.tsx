@@ -244,27 +244,33 @@ function AppContent() {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      // Generate contextual questions using the new system (no loading indicator for this)
-      try {
-        const { generateContextualQuestions } = await import('@/utils/contextualQuestions');
-        const questions = await generateContextualQuestions(aiMessage.text, messages);
-        setSuggestedQuestions(questions);
-        setShowSuggestions(true);
-      } catch (error) {
-        console.error('Error generating contextual questions:', error);
-        // Fallback to basic questions
-        setSuggestedQuestions([
-          "Can you tell me more about this topic?",
-          "How can I apply this in my daily life?",
-          "What other techniques might be helpful?"
-        ]);
-        setShowSuggestions(true);
-      }
+      // Generate contextual questions in parallel (don't await)
+      const contextualQuestionsPromise = (async () => {
+        try {
+          const { generateContextualQuestions } = await import('@/utils/contextualQuestions');
+          const questions = await generateContextualQuestions(aiMessage.text, messages);
+          setSuggestedQuestions(questions);
+          setShowSuggestions(true);
+        } catch (error) {
+          console.error('Error generating contextual questions:', error);
+          // Fallback to basic questions
+          setSuggestedQuestions([
+            "Can you tell me more about this topic?",
+            "How can I apply this in my daily life?",
+            "What other techniques might be helpful?"
+          ]);
+          setShowSuggestions(true);
+        }
+      })();
 
-      await supabase
+      // Update chat session timestamp in parallel (don't await)
+      const updateChatPromise = supabase
         .from('chat_sessions')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', chatId);
+
+      // Don't wait for these parallel operations to complete
+      // They will finish in the background
 
     } catch (error) {
       console.error('Error handling message:', error);
