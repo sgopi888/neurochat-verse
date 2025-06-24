@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -243,6 +244,28 @@ function AppContent() {
       };
 
       setMessages(prev => [...prev, aiMessage]);
+
+      // CRITICAL FIX: Save AI message to database
+      try {
+        const { error: aiMsgError } = await supabase
+          .from('chat_messages')
+          .insert({
+            chat_session_id: chatId,
+            user_id: user.id,
+            content: aiMessage.text,
+            is_user: false
+          });
+
+        if (aiMsgError) {
+          console.error('Error saving AI message:', aiMsgError);
+          toast.error('Failed to save AI response');
+        } else {
+          console.log('AI message saved successfully');
+        }
+      } catch (saveError) {
+        console.error('Error in AI message save:', saveError);
+        toast.error('Failed to save AI response to history');
+      }
 
       // Generate contextual questions using the new system (no loading indicator for this)
       try {
