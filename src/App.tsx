@@ -1,359 +1,515 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
-import { Textarea } from "@/components/ui/textarea"
-import { Mic, Send, Loader2 } from 'lucide-react';
-import { useSpeechToText } from 'react-speech-kit';
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/sonner';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import Auth from '@/components/Auth';
+import ChatBot from '@/components/ChatBot';
 import ChatSidebar from '@/components/ChatSidebar';
-import UserSettings from '@/components/UserSettings';
-import MessageBubble from '@/components/MessageBubble';
+import LoadingIndicator from '@/components/LoadingIndicator';
 import SuggestedQuestions from '@/components/SuggestedQuestions';
-import { generateContextualQuestions } from '@/utils/contextualQuestions';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { Settings } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { supabase } from './integrations/supabase/client';
-import ProcessingSteps from '@/components/ProcessingSteps';
+import DisclaimerModal from '@/components/DisclaimerModal';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserAgreement } from '@/hooks/useUserAgreement';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
+import { generateSuggestedQuestions } from '@/utils/questionGenerator';
+import { toast } from 'sonner';
+import { debounce } from 'lodash';
 
-const App = () => {
-  const [currentMessage, setCurrentMessage] = useState('');
-  const [messages, setMessages] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [chats, setChats] = useState<any[]>([]);
+const queryClient = new QueryClient();
+
+interface Message {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
+interface Chat {
+  id: string;
+  title: string;
+  is_article: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+function AppContent() {
+  const { user, loading } = useAuth();
+  const { hasAgreed, showModal, handleAgree } = useUserAgreement();
+  const isMobile = useIsMobile();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [isScriptPlaying, setIsScriptPlaying] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('alloy');
-  const [audioLoadingStates, setAudioLoadingStates] = useState<{ [key: string]: boolean }>({});
-  const { toast } = useToast();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState<'James' | 'Cassidy' | 'Drew' | 'Lavender'>('Drew');
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isAudioProcessing, setIsAudioProcessing] = useState(false);
 
-  const { listen, listening, stop } = useSpeechToText({
-    onResult: (result) => {
-      setCurrentMessage(result);
-    }
-  });
+  // Enhanced audio management refs
+  const audioLock = useRef(false);
+  const audioAbort = useRef<AbortController | null>(null);
+  const audioQueue = useRef<Promise<void>>(Promise.resolve()); // Queue for sequential audio processing
+  const playListener = useRef<(e: Event) => void>();
+  const endListener = useRef<(e: Event) => void>();
+  const errListener = useRef<(e: Event) => void>();
 
+  // Set the document title
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    getUser();
+    document.title = 'Neuroheart.AI Mindfulness Coach';
   }, []);
 
   useEffect(() => {
-    if (user) {
-      loadUserChats();
-    }
-  }, [user]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        alert('Command palette not implemented yet!');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     if (currentChatId) {
       loadChatMessages(currentChatId);
-    } else {
-      setMessages([]);
     }
   }, [currentChatId]);
 
-  const loadUserChats = async () => {
-    if (!user) return;
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('chats')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+  // Enhanced audio cleanup function
+  const stopCurrentAudio = async () => {
+    if (audioAbort.current) {
+      audioAbort.current.abort();
+      audioAbort.current = null;
+    }
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      if (playListener.current) currentAudio.removeEventListener('play', playListener.current);
+      if (endListener.current) currentAudio.removeEventListener('ended', endListener.current);
+      if (errListener.current) currentAudio.removeEventListener('error', errListener.current);
+      if (currentAudio.src.startsWith('blob:')) URL.revokeObjectURL(currentAudio.src);
+    }
+    setCurrentAudio(null);
+    setIsPlaying(false);
+    audioLock.current = false;
+    setIsAudioProcessing(false);
+  };
 
-      if (error) throw error;
-      setChats(data);
-    } catch (error: any) {
-      toast({
-        title: "Error loading chats",
-        description: error.message,
-        variant: "destructive",
-      })
+  const loadChatMessages = async (chatId: string) => {
+    if (!user) return;
+
+    try {
+      console.log('Loading messages for chat:', chatId);
+      
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('chat_session_id', chatId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading chat messages:', error);
+        toast.error('Failed to load chat messages');
+        return;
+      }
+
+      const loadedMessages: Message[] = data.map(msg => ({
+        id: msg.id,
+        text: msg.content,
+        isUser: msg.is_user,
+        timestamp: new Date(msg.created_at)
+      }));
+
+      console.log('Loaded messages:', loadedMessages);
+      setMessages(loadedMessages);
+
+      if (loadedMessages.length > 0) {
+        const lastAiMessage = loadedMessages
+          .filter(msg => !msg.isUser)
+          .pop();
+        
+        if (lastAiMessage) {
+          const questions = generateSuggestedQuestions(lastAiMessage.text);
+          setSuggestedQuestions(questions);
+          setShowSuggestions(true);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in loadChatMessages:', error);
+      toast.error('Failed to load chat messages');
+    }
+  };
+
+  const handleSendMessage = async (text: string) => {
+    if (!user || !hasAgreed) return;
+
+    console.log('Sending message:', text);
+    setIsLoading(true);
+    setShowSuggestions(false);
+    
+    // Close mobile sidebar when sending a message
+    if (isMobile) {
+      setIsMobileSidebarOpen(false);
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text,
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      let chatId = currentChatId;
+
+      if (!chatId) {
+        const chatTitle = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        
+        const { data: newChat, error: chatError } = await supabase
+          .from('chat_sessions')
+          .insert({
+            user_id: user.id,
+            title: chatTitle,
+            is_article: false
+          })
+          .select()
+          .single();
+
+        if (chatError) {
+          console.error('Error creating chat session:', chatError);
+          toast.error('Failed to create chat session');
+          setIsLoading(false);
+          return;
+        }
+
+        chatId = newChat.id;
+        setCurrentChatId(chatId);
+        console.log('Created new chat session:', chatId);
+      }
+
+      const { error: userMsgError } = await supabase
+        .from('chat_messages')
+        .insert({
+          chat_session_id: chatId,
+          user_id: user.id,
+          content: text,
+          is_user: true
+        });
+
+      if (userMsgError) {
+        console.error('Error saving user message:', userMsgError);
+        toast.error('Failed to save message');
+      }
+
+      console.log('Calling webhook handler with:', {
+        question: text,
+        chatId: chatId,
+        userId: user.id
+      });
+
+      const { data, error } = await supabase.functions.invoke('webhook-handler', {
+        body: {
+          question: text,
+          chatId: chatId,
+          userId: user.id
+        }
+      });
+
+      if (error) {
+        console.error('Webhook error:', error);
+        throw new Error(`Failed to get AI response: ${error.message}`);
+      }
+
+      console.log('Webhook response data:', data);
+      
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.response || data.answer || 'Sorry, I could not generate a response.',
+        isUser: false,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+
+      const questions = generateSuggestedQuestions(aiMessage.text);
+      setSuggestedQuestions(questions);
+      setShowSuggestions(true);
+
+      await supabase
+        .from('chat_sessions')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', chatId);
+
+    } catch (error) {
+      console.error('Error handling message:', error);
+      toast.error(`Failed to send message: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadChatMessages = async (chatId: string) => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setMessages(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error loading messages",
-        description: error.message,
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSuggestionClick = (question: string) => {
+    console.log('Suggestion clicked:', question);
+    setShowSuggestions(false);
+    handleSendMessage(question);
   };
 
   const handleNewChat = () => {
     setCurrentChatId(null);
     setMessages([]);
+    setSuggestedQuestions([]);
+    setShowSuggestions(false);
+    // Close mobile sidebar when starting new chat
+    if (isMobile) {
+      setIsMobileSidebarOpen(false);
+    }
+    console.log('Started new chat');
   };
 
   const handleChatSelect = (chatId: string) => {
-    setCurrentChatId(chatId);
-  };
-
-  const playAudio = async (audioUrl: string) => {
-    try {
-      const audio = new Audio(audioUrl);
-      await audio.play();
-    } catch (error) {
-      console.error("Error playing audio:", error);
-      toast({
-        title: "Error playing audio",
-        description: "Failed to play the audio message.",
-        variant: "destructive",
-      });
+    if (chatId !== currentChatId) {
+      setCurrentChatId(chatId);
+      setShowSuggestions(false);
+      // Close mobile sidebar when selecting a chat
+      if (isMobile) {
+        setIsMobileSidebarOpen(false);
+      }
+      console.log('Selected chat:', chatId);
     }
   };
 
-  const handlePlayScript = async () => {
-    setIsScriptPlaying(true);
-    for (const message of messages) {
-      if (message.audio_url) {
-        setAudioLoadingStates(prev => ({ ...prev, [message.id]: true }));
-        try {
-          await playAudio(message.audio_url);
-          // Delay between audio messages (adjust as needed)
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } catch (error) {
-          console.error("Error playing script:", error);
-          toast({
-            title: "Error playing script",
-            description: "Failed to play one or more audio messages.",
-            variant: "destructive",
-          });
-          break;
-        } finally {
-          setAudioLoadingStates(prev => ({ ...prev, [message.id]: false }));
-        }
-      }
-    }
-    setIsScriptPlaying(false);
-  };
-
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !user) return;
-
-    setIsProcessing(true);
-    
-    // Create user message object immediately
-    const userMessage = {
-      id: `temp-${Date.now()}`,
-      content: content.trim(),
-      is_user: true,
-      created_at: new Date().toISOString(),
-      chat_id: currentChatId || '',
-      user_id: user.id
-    };
-
-    // Add user message to current messages immediately
-    setMessages(prev => [...prev, userMessage]);
-    setCurrentMessage('');
-
+  const handleSignOut = async () => {
     try {
-      let chatIdToUse = currentChatId;
-
-      // Create new chat if needed
-      if (!chatIdToUse) {
-        const { data: newChat, error: chatError } = await supabase
-          .from('chats')
-          .insert([{
-            user_id: user.id,
-            title: content.substring(0, 50)
-          }])
-          .select()
-          .single();
-
-        if (chatError) throw chatError;
-        
-        chatIdToUse = newChat.id;
-        setCurrentChatId(chatIdToUse);
-      }
-
-      // Save user message to database
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert([{
-          chat_id: chatIdToUse,
-          user_id: user.id,
-          content: content.trim(),
-          is_user: true
-        }]);
-
-      if (messageError) throw messageError;
-
-      // Call webhook for AI response
-      const { data, error } = await supabase.functions.invoke('webhook-handler', {
-        body: {
-          chatId: chatIdToUse,
-          message: content.trim(),
-          voice: selectedVoice
-        }
-      });
-
-      if (error) throw error;
-
-      // Refresh messages and chats
-      await Promise.all([
-        loadChatMessages(chatIdToUse),
-        loadUserChats()
-      ]);
-
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message. Please try again.');
+      // Stop any playing audio before signing out
+      await stopCurrentAudio();
       
-      // Remove the temporary user message on error
-      setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
-    } finally {
-      setIsProcessing(false);
+      await supabase.auth.signOut();
+      setMessages([]);
+      setCurrentChatId(null);
+      setSuggestedQuestions([]);
+      setShowSuggestions(false);
+      setIsMobileSidebarOpen(false);
+      toast.success('Signed out successfully');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Failed to sign out');
     }
   };
 
-  const LoadingIndicator = () => (
-    <div className="flex justify-center items-center p-4">
-      <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-      <span className="ml-2 text-gray-600">Loading...</span>
-    </div>
-  );
+  // Debounced play function with enhanced synchronization
+  const debouncedPlayLatestResponse = debounce(async () => {
+    if (audioLock.current) return; // Synchronous lock check
+    audioLock.current = true;
+    setIsAudioProcessing(true);
+
+    // Queue audio processing to ensure sequential execution
+    await audioQueue.current;
+    audioQueue.current = audioQueue.current.then(async () => {
+      await stopCurrentAudio(); // Ensure cleanup
+
+      const last = messages.filter(m => !m.isUser).pop();
+      if (!last) {
+        toast.error('No AI response to play');
+        audioLock.current = false;
+        setIsAudioProcessing(false);
+        return;
+      }
+
+      try {
+        audioAbort.current = new AbortController();
+        console.log('Calling TTS with voice:', selectedVoice, 'and text length:', last.text.length);
+        
+        const { data, error } = await supabase.functions.invoke('text-to-speech', {
+          body: {
+            text: last.text,
+            voice: selectedVoice,
+            userId: user?.id
+          }
+        });
+
+        // Check if request was aborted
+        if (audioAbort.current?.signal.aborted) {
+          return;
+        }
+
+        if (error || !data?.audio) {
+          throw new Error(error?.message ?? 'TTS failed');
+        }
+
+        // Convert base64 to audio blob
+        const audioBlob = new Blob([
+          Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))
+        ], { type: 'audio/mpeg' });
+        
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        // Set up event listeners with refs for proper cleanup
+        playListener.current = () => setIsPlaying(true);
+        endListener.current = () => stopCurrentAudio();
+        errListener.current = () => {
+          console.error('Audio playback error');
+          toast.error('Playback error');
+          stopCurrentAudio();
+        };
+
+        audio.addEventListener('play', playListener.current);
+        audio.addEventListener('ended', endListener.current);
+        audio.addEventListener('error', errListener.current);
+
+        setCurrentAudio(audio);
+        await audio.play();
+        
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error playing audio:', error);
+          toast.error('Failed to play audio');
+        }
+      } finally {
+        if (!audioAbort.current?.signal.aborted) {
+          audioLock.current = false;
+          setIsAudioProcessing(false);
+        }
+      }
+    });
+  }, 300); // 300ms debounce
+
+  // Update handler call
+  const handlePlayLatestResponse = () => {
+    debouncedPlayLatestResponse();
+  };
+
+  const handlePauseAudio = () => {
+    console.log('Pause button pressed');
+    stopCurrentAudio();
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  const handleSpeak = (text: string) => {
+    handlePlayLatestResponse();
+  };
+
+  const toggleMobileSidebar = () => {
+    console.log('Toggling mobile sidebar. Current state:', isMobileSidebarOpen);
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingIndicator message="Loading application..." />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
+  if (!hasAgreed) {
+    return <DisclaimerModal isOpen={showModal} onAgree={handleAgree} />;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      <div className="flex h-full">
-        {/* Chat Sidebar */}
-        <div className="w-64 border-r border-gray-200 bg-white">
-          <ChatSidebar
-            chats={chats}
-            currentChatId={currentChatId}
-            onChatSelect={handleChatSelect}
-            onNewChat={handleNewChat}
-            onPlayScript={handlePlayScript}
-            onRefreshChats={loadUserChats}
-            isLoading={isLoading}
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Desktop/Tablet Sidebar - Hidden on mobile */}
+      <div className={`${isMobile ? 'hidden' : 'block'}`}>
+        <ChatSidebar
+          currentChatId={currentChatId}
+          onChatSelect={handleChatSelect}
+          onNewChat={handleNewChat}
+          onSignOut={handleSignOut}
+          userEmail={user?.email}
+          messages={messages}
+          onPlayLatestResponse={handlePlayLatestResponse}
+          onPauseAudio={handlePauseAudio}
+          selectedVoice={selectedVoice}
+          onVoiceChange={setSelectedVoice}
+          isPlaying={isPlaying}
+        />
+      </div>
+
+      {/* Mobile Sidebar Overlay - Only visible when open on mobile */}
+      {isMobile && isMobileSidebarOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setIsMobileSidebarOpen(false)}
           />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col h-full">
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                onPlayAudio={message.audio_url ? () => playAudio(message.audio_url!) : undefined}
-                isAudioLoading={audioLoadingStates[message.id] || false}
-              />
-            ))}
-            
-            {/* Processing Steps */}
-            <ProcessingSteps isVisible={isProcessing} />
-            
-            {isLoading && <LoadingIndicator />}
-          </div>
-
-          {/* Suggested Questions */}
-          <div className="px-4">
-            <SuggestedQuestions
-              onQuestionSelect={handleSendMessage}
-              chatId={currentChatId || undefined}
+          {/* Sidebar */}
+          <div className="fixed left-0 top-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out">
+            <ChatSidebar
+              currentChatId={currentChatId}
+              onChatSelect={handleChatSelect}
+              onNewChat={handleNewChat}
+              onSignOut={handleSignOut}
+              userEmail={user?.email}
               messages={messages}
-              isVisible={messages.length === 0}
-            />
-          </div>
-
-          {/* Input */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center space-x-3">
-              <Textarea
-                placeholder="Type your message..."
-                value={currentMessage}
-                onChange={(e) => setCurrentMessage(e.target.value)}
-                className="flex-1 resize-none border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                rows={1}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage(currentMessage);
-                  }
-                }}
-              />
-              <Button
-                onClick={() => handleSendMessage(currentMessage)}
-                disabled={!currentMessage.trim()}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Send
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Settings Sheet */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" className="absolute top-4 right-4 rounded-full">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="sm:max-w-lg">
-            <SheetHeader>
-              <SheetTitle>User Settings</SheetTitle>
-              <SheetDescription>
-                Manage your preferences and account settings here.
-              </SheetDescription>
-            </SheetHeader>
-            <UserSettings
+              onPlayLatestResponse={handlePlayLatestResponse}
+              onPauseAudio={handlePauseAudio}
               selectedVoice={selectedVoice}
               onVoiceChange={setSelectedVoice}
-              onRefreshChats={loadUserChats}
+              isPlaying={isPlaying}
             />
-          </SheetContent>
-        </Sheet>
+          </div>
+        </>
+      )}
+      
+      <div className="flex-1 flex flex-col">
+        <ChatBot
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          onCopy={handleCopy}
+          onSpeak={handleSpeak}
+          isLoading={isLoading}
+          loadingIndicator={<LoadingIndicator message="Processing with AI model..." />}
+          suggestedQuestions={
+            <SuggestedQuestions
+              questions={suggestedQuestions}
+              onQuestionClick={handleSuggestionClick}
+              isVisible={showSuggestions}
+            />
+          }
+          onSuggestionClick={handleSuggestionClick}
+          isMobile={isMobile}
+          onToggleMobileSidebar={toggleMobileSidebar}
+          isMobileSidebarOpen={isMobileSidebarOpen}
+        />
       </div>
     </div>
   );
-};
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<AppContent />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toaster />
+        </Router>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
