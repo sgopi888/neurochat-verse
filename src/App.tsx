@@ -44,7 +44,10 @@ function AppContent() {
     setSelectedVoice,
     handlePlayLatestResponse,
     handlePauseAudio,
-    stopCurrentAudio
+    stopCurrentAudio,
+    musicName,
+    handleMusicUpload,
+    handleRemoveMusic
   } = useAudioManager(messages);
 
   // Initialize app effects and utilities
@@ -128,6 +131,9 @@ function AppContent() {
       onVoiceChange={setSelectedVoice}
       onPlayLatestResponse={handlePlayLatestResponse}
       onPauseAudio={handlePauseAudio}
+      musicName={musicName}
+      onMusicUpload={handleMusicUpload}
+      onRemoveMusic={handleRemoveMusic}
       isMobile={isMobile}
       isMobileSidebarOpen={isMobileSidebarOpen}
       onToggleMobileSidebar={toggleMobileSidebar}

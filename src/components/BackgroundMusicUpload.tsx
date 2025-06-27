@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Music, X, Upload } from 'lucide-react';
+import { Music, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -57,9 +57,10 @@ const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
         <Button
           size="sm"
           variant="outline"
-          className="w-8 h-8 p-0 rounded-full bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-300 transition-all duration-200"
+          className="flex items-center gap-2 bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-300 transition-all duration-200 text-green-700 hover:text-green-800"
         >
-          <Plus className="h-4 w-4 text-green-600" />
+          <Music className="h-4 w-4" />
+          <span className="text-xs font-medium">Add Music</span>
         </Button>
       </DialogTrigger>
       
