@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import UserSettings from './UserSettings';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
+import VolumeControl from './VolumeControl';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -46,8 +47,10 @@ interface ChatSidebarProps {
   onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   isPlaying: boolean;
   musicName?: string;
+  musicVolume: number;
   onMusicUpload: (file: File) => void;
   onRemoveMusic: () => void;
+  onVolumeChange: (volume: number) => void;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -63,8 +66,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onVoiceChange,
   isPlaying,
   musicName,
+  musicVolume,
   onMusicUpload,
-  onRemoveMusic
+  onRemoveMusic,
+  onVolumeChange
 }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -283,6 +288,20 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             <span>{isPlaying ? 'Pause' : 'Play Script'}</span>
           </Button>
+          
+          {/* Volume Control - Added here as requested */}
+          {musicName && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Music Volume
+              </div>
+              <VolumeControl
+                volume={musicVolume}
+                onVolumeChange={onVolumeChange}
+                disabled={!musicName}
+              />
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +21,7 @@ export const useAudioManager = (messages: Message[]) => {
   // Background music state
   const [backgroundMusic, setBackgroundMusic] = useState<HTMLAudioElement | null>(null);
   const [musicName, setMusicName] = useState<string>('');
+  const [musicVolume, setMusicVolume] = useState<number>(0.7); // Default 70% volume
   const musicUrlRef = useRef<string | null>(null);
 
   // Enhanced audio management refs
@@ -47,7 +47,7 @@ export const useAudioManager = (messages: Message[]) => {
     const url = URL.createObjectURL(file);
     const audio = new Audio(url);
     audio.loop = true;
-    audio.volume = 0.7; // 70% volume as requested
+    audio.volume = musicVolume; // Use current volume setting
     
     // Store references
     musicUrlRef.current = url;
@@ -68,10 +68,32 @@ export const useAudioManager = (messages: Message[]) => {
     setMusicName('');
   };
 
-  const playBackgroundMusic = async () => {
+  const handleVolumeChange = (newVolume: number) => {
+    setMusicVolume(newVolume);
     if (backgroundMusic) {
+      backgroundMusic.volume = newVolume;
+    }
+    // Persist volume to localStorage
+    localStorage.setItem('musicVolume', newVolume.toString());
+  };
+
+  // Initialize volume from localStorage on component mount
+  React.useEffect(() => {
+    const savedVolume = localStorage.getItem('musicVolume');
+    if (savedVolume) {
+      const volume = parseFloat(savedVolume);
+      setMusicVolume(volume);
+      if (backgroundMusic) {
+        backgroundMusic.volume = volume;
+      }
+    }
+  }, [backgroundMusic]);
+
+  const playBackgroundMusic = async () => {
+    if (backgroundMusic && musicVolume > 0) {
       try {
         backgroundMusic.currentTime = 0; // Start from beginning
+        backgroundMusic.volume = musicVolume; // Ensure correct volume
         await backgroundMusic.play();
       } catch (error) {
         console.error('Error playing background music:', error);
@@ -214,7 +236,9 @@ export const useAudioManager = (messages: Message[]) => {
     stopCurrentAudio,
     // Background music functions
     musicName,
+    musicVolume,
     handleMusicUpload,
-    handleRemoveMusic
+    handleRemoveMusic,
+    handleVolumeChange
   };
 };

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -46,8 +45,10 @@ function AppContent() {
     handlePauseAudio,
     stopCurrentAudio,
     musicName,
+    musicVolume,
     handleMusicUpload,
-    handleRemoveMusic
+    handleRemoveMusic,
+    handleVolumeChange
   } = useAudioManager(messages);
 
   // Initialize app effects and utilities
@@ -132,8 +133,10 @@ function AppContent() {
       onPlayLatestResponse={handlePlayLatestResponse}
       onPauseAudio={handlePauseAudio}
       musicName={musicName}
+      musicVolume={musicVolume}
       onMusicUpload={handleMusicUpload}
       onRemoveMusic={handleRemoveMusic}
+      onVolumeChange={handleVolumeChange}
       isMobile={isMobile}
       isMobileSidebarOpen={isMobileSidebarOpen}
       onToggleMobileSidebar={toggleMobileSidebar}

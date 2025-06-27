@@ -33,8 +33,10 @@ interface ChatLayoutProps {
   
   // Background music props
   musicName?: string;
+  musicVolume: number;
   onMusicUpload: (file: File) => void;
   onRemoveMusic: () => void;
+  onVolumeChange: (volume: number) => void;
   
   // UI props
   isMobile: boolean;
@@ -66,8 +68,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onPlayLatestResponse,
   onPauseAudio,
   musicName,
+  musicVolume,
   onMusicUpload,
   onRemoveMusic,
+  onVolumeChange,
   isMobile,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
@@ -93,8 +97,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           onVoiceChange={onVoiceChange}
           isPlaying={isPlaying}
           musicName={musicName}
+          musicVolume={musicVolume}
           onMusicUpload={onMusicUpload}
           onRemoveMusic={onRemoveMusic}
+          onVolumeChange={onVolumeChange}
         />
       </div>
 
@@ -121,8 +127,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
               onVoiceChange={onVoiceChange}
               isPlaying={isPlaying}
               musicName={musicName}
+              musicVolume={musicVolume}
               onMusicUpload={onMusicUpload}
               onRemoveMusic={onRemoveMusic}
+              onVolumeChange={onVolumeChange}
             />
           </div>
         </>
