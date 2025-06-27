@@ -1,5 +1,5 @@
 
-import { Settings, Moon, Sun, Volume2, Trash2, AlertTriangle, UserX } from 'lucide-react';
+import { Settings, Moon, Sun, Volume2, Trash2, AlertTriangle, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -79,9 +79,9 @@ const UserSettings = ({
 }: UserSettingsProps) => {
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showDeactivateAccountDialog, setShowDeactivateAccountDialog] = useState(false);
+  const [isDeactivatingAccount, setIsDeactivatingAccount] = useState(false);
+  const [deactivateConfirmText, setDeactivateConfirmText] = useState('');
   const { user, signOut } = useAuth();
 
   const deleteAllChats = async () => {
@@ -116,46 +116,38 @@ const UserSettings = ({
     }
   };
 
-  const deleteAccount = async () => {
-    if (!user || deleteConfirmText !== 'DELETE') return;
+  const deactivateAccount = async () => {
+    if (!user || deactivateConfirmText !== 'DEACTIVATE') return;
     
-    setIsDeletingAccount(true);
+    setIsDeactivatingAccount(true);
     
     try {
-      console.log('Soft deleting account for user:', user.id);
+      console.log('Deactivating account for user:', user.id);
       
-      // First, soft delete all user data
-      const { error: chatError } = await supabase
-        .from('chat_sessions')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('user_id', user.id);
+      // Call the anonymize function
+      const { error } = await supabase.rpc('anonymize_user_account', {
+        p_user_id: user.id
+      });
 
-      if (chatError) {
-        console.error('Error soft deleting user chats:', chatError);
-      }
-
-      // Soft delete user profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', user.id);
-
-      if (profileError) {
-        console.error('Error soft deleting user profile:', profileError);
-        toast.error('Failed to delete account. Please try again or contact support.');
+      if (error) {
+        console.error('Error deactivating account:', error);
+        toast.error('Failed to deactivate account. Please try again or contact support.');
       } else {
-        toast.success('Your account has been deleted. All data will be permanently removed after 90 days for security purposes.');
+        toast.success(
+          'Your account has been deactivated. You can reactivate it within 30 days by signing up with the same email. ' +
+          'After 30 days, your email will be available for new account creation and your data will be permanently removed.'
+        );
         // Sign out and redirect
         await signOut();
         window.location.href = '/';
       }
     } catch (error) {
-      console.error('Error in deleteAccount:', error);
-      toast.error('Failed to delete account. Please try again.');
+      console.error('Error in deactivateAccount:', error);
+      toast.error('Failed to deactivate account. Please try again.');
     } finally {
-      setIsDeletingAccount(false);
-      setShowDeleteAccountDialog(false);
-      setDeleteConfirmText('');
+      setIsDeactivatingAccount(false);
+      setShowDeactivateAccountDialog(false);
+      setDeactivateConfirmText('');
     }
   };
 
@@ -312,52 +304,58 @@ const UserSettings = ({
                   {userEmail}
                 </p>
                 
-                {/* Delete Account */}
-                <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+                {/* Deactivate Account */}
+                <AlertDialog open={showDeactivateAccountDialog} onOpenChange={setShowDeactivateAccountDialog}>
                   <AlertDialogTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 transition-all duration-200"
+                      className="w-full text-orange-600 border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-900/20 transition-all duration-200"
                     >
-                      <UserX className="h-4 w-4 mr-2" />
-                      Delete Account
+                      <UserMinus className="h-4 w-4 mr-2" />
+                      Deactivate Account
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center text-red-600 dark:text-red-400">
+                      <AlertDialogTitle className="flex items-center text-orange-600 dark:text-orange-400">
                         <AlertTriangle className="h-5 w-5 mr-2" />
-                        Delete Account
+                        Deactivate Account
                       </AlertDialogTitle>
                       <AlertDialogDescription className="dark:text-gray-400 space-y-3">
-                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md border border-red-200 dark:border-red-800">
-                          <p className="font-semibold text-red-800 dark:text-red-200 mb-2">⚠️ This action will remove your account!</p>
-                          <p className="text-sm text-red-700 dark:text-red-300">
-                            Deleting your account will remove:
+                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-md border border-orange-200 dark:border-orange-800">
+                          <p className="font-semibold text-orange-800 dark:text-orange-200 mb-2">⚠️ This will temporarily deactivate your account</p>
+                          <p className="text-sm text-orange-700 dark:text-orange-300 mb-2">
+                            What happens when you deactivate:
                           </p>
-                          <ul className="text-sm text-red-700 dark:text-red-300 mt-2 space-y-1 list-disc list-inside">
-                            <li>Your profile and account information</li>
-                            <li>All chat history and conversations</li>
-                            <li>All user preferences and settings</li>
-                            <li>Access to this account</li>
+                          <ul className="text-sm text-orange-700 dark:text-orange-300 space-y-1 list-disc list-inside">
+                            <li>Your account will be anonymized immediately</li>
+                            <li>Your email address will be released for others to use</li>
+                            <li>Your profile information will be cleared</li>
+                            <li>Chat history will be hidden but preserved for 90 days</li>
                           </ul>
                         </div>
                         
-                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-200 dark:border-blue-800">
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Security Notice:</strong> For security and compliance purposes, your data will be retained in our secure systems for 90 days before permanent deletion. During this period, the data is not accessible through your account but remains stored for security purposes only.
+                        <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-md border border-green-200 dark:border-green-800">
+                          <p className="text-sm text-green-800 dark:text-green-200">
+                            <strong>Good News:</strong> You can reactivate your account within 30 days by simply signing up again with the same email address. All your chat history will be restored!
+                          </p>
+                        </div>
+                        
+                        <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md border border-red-200 dark:border-red-800">
+                          <p className="text-sm text-red-800 dark:text-red-200">
+                            <strong>After 30 days:</strong> Your data will be permanently deleted and cannot be recovered. Your email will remain available for new account creation.
                           </p>
                         </div>
                         
                         <div className="space-y-2">
                           <Label className="text-sm font-medium dark:text-white">
-                            Type "DELETE" to confirm account deletion:
+                            Type "DEACTIVATE" to confirm account deactivation:
                           </Label>
                           <Input
-                            value={deleteConfirmText}
-                            onChange={(e) => setDeleteConfirmText(e.target.value)}
-                            placeholder="Type DELETE here"
+                            value={deactivateConfirmText}
+                            onChange={(e) => setDeactivateConfirmText(e.target.value)}
+                            placeholder="Type DEACTIVATE here"
                             className="font-mono"
                           />
                         </div>
@@ -366,19 +364,19 @@ const UserSettings = ({
                     <AlertDialogFooter>
                       <AlertDialogCancel 
                         onClick={() => {
-                          setDeleteConfirmText('');
-                          setShowDeleteAccountDialog(false);
+                          setDeactivateConfirmText('');
+                          setShowDeactivateAccountDialog(false);
                         }}
-                        disabled={isDeletingAccount}
+                        disabled={isDeactivatingAccount}
                       >
                         Cancel
                       </AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={deleteAccount}
-                        disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
-                        className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                        onClick={deactivateAccount}
+                        disabled={deactivateConfirmText !== 'DEACTIVATE' || isDeactivatingAccount}
+                        className="bg-orange-600 hover:bg-orange-700 focus:ring-orange-500"
                       >
-                        {isDeletingAccount ? 'Deleting Account...' : 'Delete Account'}
+                        {isDeactivatingAccount ? 'Deactivating Account...' : 'Deactivate Account'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Bot, ArrowLeft, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Bot, ArrowLeft, Check, X, RotateCcw } from 'lucide-react';
 import { DISCLAIMER_TEXT } from '@/components/DisclaimerModal';
 
 interface PasswordValidation {
@@ -27,6 +28,8 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hasReadAgreement, setHasReadAgreement] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
+  const [canReactivate, setCanReactivate] = useState(false);
+  const [reactivationProfileId, setReactivationProfileId] = useState<string | null>(null);
   const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
     minLength: false,
     hasUppercase: false,
@@ -37,7 +40,6 @@ const Auth = () => {
   const validatePassword = (password: string): PasswordValidation => {
     const minLength = password.length >= 8;
     const hasUppercase = /[A-Z]/.test(password);
-    // Expanded special character regex to include more common special characters
     const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
     const isValid = minLength && hasUppercase && hasSpecialChar;
 
@@ -64,10 +66,38 @@ const Auth = () => {
     const newPassword = e.target.value;
     setPassword(newPassword);
     
-    // Always validate password immediately, regardless of mode
     const validation = validatePassword(newPassword);
     setPasswordValidation(validation);
     console.log('Real-time validation update:', validation);
+  };
+
+  const handleEmailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    
+    // Check for reactivation possibility when in sign-up mode
+    if (isSignUp && newEmail && newEmail.includes('@')) {
+      try {
+        const { data, error } = await supabase.rpc('check_reactivation_possibility', {
+          p_email: newEmail
+        });
+
+        if (error) {
+          console.error('Error checking reactivation:', error);
+        } else if (data && data.length > 0) {
+          const result = data[0];
+          setCanReactivate(result.can_reactivate);
+          setReactivationProfileId(result.anonymized_profile_id);
+        } else {
+          setCanReactivate(false);
+          setReactivationProfileId(null);
+        }
+      } catch (error) {
+        console.error('Error checking reactivation:', error);
+        setCanReactivate(false);
+        setReactivationProfileId(null);
+      }
+    }
   };
 
   // Validate existing password when switching to sign-up mode
@@ -100,19 +130,52 @@ const Auth = () => {
     }
   };
 
+  const handleReactivation = async () => {
+    if (!reactivationProfileId || !email) return;
+    
+    setIsLoading(true);
+    
+    try {
+      console.log('Attempting to reactivate account:', reactivationProfileId);
+      
+      const { error } = await supabase.rpc('reactivate_user_account', {
+        p_profile_id: reactivationProfileId,
+        p_original_email: email
+      });
+
+      if (error) {
+        console.error('Error reactivating account:', error);
+        toast.error('Failed to reactivate account. Please try again.');
+      } else {
+        toast.success('Welcome back! Your account has been reactivated and all your chat history is restored.');
+        // The user will be automatically signed in through the auth state change
+      }
+    } catch (error) {
+      console.error('Error in handleReactivation:', error);
+      toast.error('Failed to reactivate account. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       if (isSignUp) {
+        // Check if this is a reactivation case
+        if (canReactivate && reactivationProfileId) {
+          await handleReactivation();
+          return;
+        }
+
         if (!hasReadAgreement || !hasAgreedToTerms) {
           toast.error('Please read and agree to the terms and disclaimer');
           setIsLoading(false);
           return;
         }
 
-        // Triple-check password validation at submission time
         const currentValidation = validatePassword(password);
         console.log('Final password validation check at submission:', currentValidation);
         
@@ -147,7 +210,6 @@ const Auth = () => {
             toast.error(error.message);
           }
         } else {
-          // Save user agreement if signup was successful
           if (data.user) {
             await saveUserAgreement(data.user.id);
           }
@@ -270,8 +332,41 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Account Reactivation Notice */}
+          {isSignUp && canReactivate && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+              <div className="flex items-center space-x-2 mb-2">
+                <RotateCcw className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <h3 className="font-semibold text-green-800 dark:text-green-200">Account Reactivation Available</h3>
+              </div>
+              <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                We found a deactivated account with this email address. You can reactivate it to restore all your chat history and settings.
+              </p>
+              <Button
+                onClick={handleReactivation}
+                disabled={isLoading}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                size="sm"
+              >
+                {isLoading ? 'Reactivating...' : 'Reactivate My Account'}
+              </Button>
+              <div className="mt-2">
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    setCanReactivate(false);
+                    setReactivationProfileId(null);
+                  }}
+                  className="text-sm text-green-700 dark:text-green-300 p-0 h-auto"
+                >
+                  No, create a new account instead
+                </Button>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleAuth} className="space-y-4">
-            {isSignUp && (
+            {isSignUp && !canReactivate && (
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
@@ -292,78 +387,80 @@ const Auth = () => {
                 type="email"
                 placeholder="Enter your email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 required
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={handlePasswordChange}
-                  required
-                  minLength={8}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+            {!canReactivate && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={handlePasswordChange}
+                    required
+                    minLength={8}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
 
-              {isSignUp && password && (
-                <div className="mt-2 p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      {passwordValidation.minLength ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <X className="h-4 w-4 text-red-500" />
-                      )}
-                      <span className={`text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-red-500'}`}>
-                        At least 8 characters
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {passwordValidation.hasUppercase ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <X className="h-4 w-4 text-red-500" />
-                      )}
-                      <span className={`text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
-                        One uppercase letter (A-Z)
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {passwordValidation.hasSpecialChar ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <X className="h-4 w-4 text-red-500" />
-                      )}
-                      <span className={`text-sm ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
-                        One special character (!@#$%^&*()_+-=[]{}; etc.)
-                      </span>
+                {isSignUp && password && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.minLength ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-red-500'}`}>
+                          At least 8 characters
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.hasUppercase ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
+                          One uppercase letter (A-Z)
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {passwordValidation.hasSpecialChar ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-sm ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
+                          One special character (!@#$%^&*()_+-=[]{}; etc.)
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
-            {isSignUp && (
+            {isSignUp && !canReactivate && (
               <div className="space-y-4 border-t pt-4">
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg">Important Disclaimer & Terms</h3>
@@ -410,13 +507,15 @@ const Auth = () => {
               </div>
             )}
 
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700" 
-              disabled={isLoading || (isSignUp && (!hasReadAgreement || !hasAgreedToTerms || !passwordValidation.isValid))}
-            >
-              {isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-            </Button>
+            {!canReactivate && (
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700" 
+                disabled={isLoading || (isSignUp && (!hasReadAgreement || !hasAgreedToTerms || !passwordValidation.isValid))}
+              >
+                {isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+              </Button>
+            )}
           </form>
 
           <div className="mt-4 space-y-2 text-center">
@@ -431,7 +530,11 @@ const Auth = () => {
             )}
             <Button
               variant="link"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setCanReactivate(false);
+                setReactivationProfileId(null);
+              }}
               className="text-sm"
             >
               {isSignUp 
