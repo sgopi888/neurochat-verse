@@ -30,11 +30,13 @@ export const useTTSAudio = (
   const playListener = useRef<(e: Event) => void>();
   const endListener = useRef<(e: Event) => void>();
   const errListener = useRef<(e: Event) => void>();
+  const backgroundMusicStarted = useRef(false);
 
   // Enhanced audio cleanup function
   const stopCurrentAudio = async () => {
     // Stop background music when stopping TTS
     stopBackgroundMusic();
+    backgroundMusicStarted.current = false;
     
     if (audioAbort.current) {
       audioAbort.current.abort();
@@ -59,6 +61,13 @@ export const useTTSAudio = (
     if (audioLock.current) return;
     audioLock.current = true;
     setIsAudioProcessing(true);
+
+    // Start background music immediately when user clicks play
+    if (!backgroundMusicStarted.current) {
+      console.log('Starting background music immediately on play button click');
+      await playBackgroundMusic();
+      backgroundMusicStarted.current = true;
+    }
 
     // Queue audio processing to ensure sequential execution
     await audioQueue.current;
@@ -105,8 +114,7 @@ export const useTTSAudio = (
         // Set up event listeners with refs for proper cleanup
         playListener.current = async () => {
           setIsPlaying(true);
-          // Start background music when TTS starts playing
-          await playBackgroundMusic();
+          console.log('TTS audio started playing, background music already running');
         };
         
         endListener.current = () => stopCurrentAudio();
@@ -128,6 +136,8 @@ export const useTTSAudio = (
         if (error.name !== 'AbortError') {
           console.error('Error playing audio:', error);
           toast.error('Failed to play audio');
+          // Make sure to stop background music on error
+          stopCurrentAudio();
         }
       } finally {
         if (!audioAbort.current?.signal.aborted) {
@@ -139,6 +149,7 @@ export const useTTSAudio = (
   }, 300);
 
   const handlePlayLatestResponse = () => {
+    console.log('Play button clicked - starting background music immediately');
     debouncedPlayLatestResponse();
   };
 
