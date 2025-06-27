@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +7,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Bot, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Bot, ArrowLeft, Check, X } from 'lucide-react';
 import { DISCLAIMER_TEXT } from '@/components/DisclaimerModal';
+
+interface PasswordValidation {
+  minLength: boolean;
+  hasUppercase: boolean;
+  hasSpecialChar: boolean;
+  isValid: boolean;
+}
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -21,6 +27,36 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hasReadAgreement, setHasReadAgreement] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
+    minLength: false,
+    hasUppercase: false,
+    hasSpecialChar: false,
+    isValid: false
+  });
+
+  const validatePassword = (password: string): PasswordValidation => {
+    const minLength = password.length >= 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const isValid = minLength && hasUppercase && hasSpecialChar;
+
+    return {
+      minLength,
+      hasUppercase,
+      hasSpecialChar,
+      isValid
+    };
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    
+    if (isSignUp) {
+      const validation = validatePassword(newPassword);
+      setPasswordValidation(validation);
+    }
+  };
 
   const saveUserAgreement = async (userId: string) => {
     try {
@@ -51,6 +87,12 @@ const Auth = () => {
       if (isSignUp) {
         if (!hasReadAgreement || !hasAgreedToTerms) {
           toast.error('Please read and agree to the terms and disclaimer');
+          setIsLoading(false);
+          return;
+        }
+
+        if (!passwordValidation.isValid) {
+          toast.error('Please ensure your password meets all requirements');
           setIsLoading(false);
           return;
         }
@@ -231,9 +273,9 @@ const Auth = () => {
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   required
-                  minLength={6}
+                  minLength={8}
                 />
                 <Button
                   type="button"
@@ -249,6 +291,44 @@ const Auth = () => {
                   )}
                 </Button>
               </div>
+
+              {isSignUp && password && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      {passwordValidation.minLength ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-red-500'}`}>
+                        At least 8 characters
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {passwordValidation.hasUppercase ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
+                        One uppercase letter (A-Z)
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {passwordValidation.hasSpecialChar ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
+                        One special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {isSignUp && (
@@ -301,7 +381,7 @@ const Auth = () => {
             <Button 
               type="submit" 
               className="w-full bg-blue-600 hover:bg-blue-700" 
-              disabled={isLoading || (isSignUp && (!hasReadAgreement || !hasAgreedToTerms))}
+              disabled={isLoading || (isSignUp && (!hasReadAgreement || !hasAgreedToTerms || !passwordValidation.isValid))}
             >
               {isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
             </Button>
