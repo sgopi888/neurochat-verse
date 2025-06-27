@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,8 @@ const Auth = () => {
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
     const isValid = minLength && hasUppercase && hasSpecialChar;
 
+    console.log('Password validation:', { password, minLength, hasUppercase, hasSpecialChar, isValid });
+
     return {
       minLength,
       hasUppercase,
@@ -52,11 +55,19 @@ const Auth = () => {
     const newPassword = e.target.value;
     setPassword(newPassword);
     
-    if (isSignUp) {
-      const validation = validatePassword(newPassword);
-      setPasswordValidation(validation);
-    }
+    // Always validate password, regardless of mode
+    const validation = validatePassword(newPassword);
+    setPasswordValidation(validation);
   };
+
+  // Validate existing password when switching to sign-up mode
+  useEffect(() => {
+    if (isSignUp && password) {
+      const validation = validatePassword(password);
+      setPasswordValidation(validation);
+      console.log('Re-validating existing password on sign-up mode switch:', validation);
+    }
+  }, [isSignUp, password]);
 
   const saveUserAgreement = async (userId: string) => {
     try {
@@ -91,8 +102,12 @@ const Auth = () => {
           return;
         }
 
-        if (!passwordValidation.isValid) {
-          toast.error('Please ensure your password meets all requirements');
+        // Double-check password validation at submission time
+        const currentValidation = validatePassword(password);
+        console.log('Final password validation check at submission:', currentValidation);
+        
+        if (!currentValidation.isValid) {
+          toast.error('Please ensure your password meets all requirements: minimum 8 characters, one uppercase letter, and one special character');
           setIsLoading(false);
           return;
         }
