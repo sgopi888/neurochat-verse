@@ -122,7 +122,7 @@ const UserSettings = ({
     setIsDeletingAccount(true);
     
     try {
-      console.log('Deleting account for user:', user.id);
+      console.log('Soft deleting account for user:', user.id);
       
       // First, soft delete all user data
       const { error: chatError } = await supabase
@@ -131,37 +131,20 @@ const UserSettings = ({
         .eq('user_id', user.id);
 
       if (chatError) {
-        console.error('Error deleting user chats:', chatError);
+        console.error('Error soft deleting user chats:', chatError);
       }
 
-      // Delete user profile
+      // Soft delete user profile
       const { error: profileError } = await supabase
         .from('profiles')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', user.id);
 
       if (profileError) {
-        console.error('Error deleting user profile:', profileError);
-      }
-
-      // Delete user agreements
-      const { error: agreementError } = await supabase
-        .from('user_agreements')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (agreementError) {
-        console.error('Error deleting user agreements:', agreementError);
-      }
-
-      // Finally, delete the auth user
-      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
-
-      if (authError) {
-        console.error('Error deleting auth user:', authError);
+        console.error('Error soft deleting user profile:', profileError);
         toast.error('Failed to delete account. Please try again or contact support.');
       } else {
-        toast.success('Your account has been successfully deleted.');
+        toast.success('Your account has been deleted. All data will be permanently removed after 90 days for security purposes.');
         // Sign out and redirect
         await signOut();
         window.location.href = '/';
@@ -345,20 +328,26 @@ const UserSettings = ({
                     <AlertDialogHeader>
                       <AlertDialogTitle className="flex items-center text-red-600 dark:text-red-400">
                         <AlertTriangle className="h-5 w-5 mr-2" />
-                        Delete Account Permanently
+                        Delete Account
                       </AlertDialogTitle>
                       <AlertDialogDescription className="dark:text-gray-400 space-y-3">
                         <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md border border-red-200 dark:border-red-800">
-                          <p className="font-semibold text-red-800 dark:text-red-200 mb-2">⚠️ This action cannot be undone!</p>
+                          <p className="font-semibold text-red-800 dark:text-red-200 mb-2">⚠️ This action will remove your account!</p>
                           <p className="text-sm text-red-700 dark:text-red-300">
-                            Deleting your account will permanently remove:
+                            Deleting your account will remove:
                           </p>
                           <ul className="text-sm text-red-700 dark:text-red-300 mt-2 space-y-1 list-disc list-inside">
                             <li>Your profile and account information</li>
                             <li>All chat history and conversations</li>
                             <li>All user preferences and settings</li>
-                            <li>Access to this account forever</li>
+                            <li>Access to this account</li>
                           </ul>
+                        </div>
+                        
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-200 dark:border-blue-800">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            <strong>Security Notice:</strong> For security and compliance purposes, your data will be retained in our secure systems for 90 days before permanent deletion. During this period, the data is not accessible through your account but remains stored for security purposes only.
+                          </p>
                         </div>
                         
                         <div className="space-y-2">
@@ -389,7 +378,7 @@ const UserSettings = ({
                         disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
                         className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
                       >
-                        {isDeletingAccount ? 'Deleting Account...' : 'Delete Account Forever'}
+                        {isDeletingAccount ? 'Deleting Account...' : 'Delete Account'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
