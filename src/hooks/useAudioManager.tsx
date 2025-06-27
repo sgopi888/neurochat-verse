@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -78,7 +78,7 @@ export const useAudioManager = (messages: Message[]) => {
   };
 
   // Initialize volume from localStorage on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     const savedVolume = localStorage.getItem('musicVolume');
     if (savedVolume) {
       const volume = parseFloat(savedVolume);
