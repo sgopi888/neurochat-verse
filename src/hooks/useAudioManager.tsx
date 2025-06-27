@@ -19,16 +19,78 @@ export const useAudioManager = (messages: Message[]) => {
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isAudioProcessing, setIsAudioProcessing] = useState(false);
 
+  // Background music state
+  const [backgroundMusic, setBackgroundMusic] = useState<HTMLAudioElement | null>(null);
+  const [musicName, setMusicName] = useState<string>('');
+  const musicUrlRef = useRef<string | null>(null);
+
   // Enhanced audio management refs
   const audioLock = useRef(false);
   const audioAbort = useRef<AbortController | null>(null);
-  const audioQueue = useRef<Promise<void>>(Promise.resolve()); // Queue for sequential audio processing
+  const audioQueue = useRef<Promise<void>>(Promise.resolve());
   const playListener = useRef<(e: Event) => void>();
   const endListener = useRef<(e: Event) => void>();
   const errListener = useRef<(e: Event) => void>();
 
+  // Background music functions
+  const handleMusicUpload = (file: File) => {
+    // Clean up previous audio
+    if (backgroundMusic) {
+      backgroundMusic.pause();
+      backgroundMusic.src = '';
+    }
+    if (musicUrlRef.current) {
+      URL.revokeObjectURL(musicUrlRef.current);
+    }
+
+    // Create new audio from file
+    const url = URL.createObjectURL(file);
+    const audio = new Audio(url);
+    audio.loop = true;
+    audio.volume = 0.7; // 70% volume as requested
+    
+    // Store references
+    musicUrlRef.current = url;
+    setBackgroundMusic(audio);
+    setMusicName(file.name);
+  };
+
+  const handleRemoveMusic = () => {
+    if (backgroundMusic) {
+      backgroundMusic.pause();
+      backgroundMusic.src = '';
+      setBackgroundMusic(null);
+    }
+    if (musicUrlRef.current) {
+      URL.revokeObjectURL(musicUrlRef.current);
+      musicUrlRef.current = null;
+    }
+    setMusicName('');
+  };
+
+  const playBackgroundMusic = async () => {
+    if (backgroundMusic) {
+      try {
+        backgroundMusic.currentTime = 0; // Start from beginning
+        await backgroundMusic.play();
+      } catch (error) {
+        console.error('Error playing background music:', error);
+      }
+    }
+  };
+
+  const stopBackgroundMusic = () => {
+    if (backgroundMusic) {
+      backgroundMusic.pause();
+      backgroundMusic.currentTime = 0;
+    }
+  };
+
   // Enhanced audio cleanup function
   const stopCurrentAudio = async () => {
+    // Stop background music when stopping TTS
+    stopBackgroundMusic();
+    
     if (audioAbort.current) {
       audioAbort.current.abort();
       audioAbort.current = null;
@@ -49,7 +111,7 @@ export const useAudioManager = (messages: Message[]) => {
 
   // Debounced play function with enhanced synchronization
   const debouncedPlayLatestResponse = debounce(async () => {
-    if (audioLock.current) return; // Synchronous lock check
+    if (audioLock.current) return;
     audioLock.current = true;
     setIsAudioProcessing(true);
 
@@ -96,8 +158,14 @@ export const useAudioManager = (messages: Message[]) => {
         const audio = new Audio(audioUrl);
         
         // Set up event listeners with refs for proper cleanup
-        playListener.current = () => setIsPlaying(true);
+        playListener.current = async () => {
+          setIsPlaying(true);
+          // Start background music when TTS starts playing
+          await playBackgroundMusic();
+        };
+        
         endListener.current = () => stopCurrentAudio();
+        
         errListener.current = () => {
           console.error('Audio playback error');
           toast.error('Playback error');
@@ -123,7 +191,7 @@ export const useAudioManager = (messages: Message[]) => {
         }
       }
     });
-  }, 300); // 300ms debounce
+  }, 300);
 
   // Update handler call
   const handlePlayLatestResponse = () => {
@@ -143,6 +211,10 @@ export const useAudioManager = (messages: Message[]) => {
     setSelectedVoice,
     handlePlayLatestResponse,
     handlePauseAudio,
-    stopCurrentAudio
+    stopCurrentAudio,
+    // Background music functions
+    musicName,
+    handleMusicUpload,
+    handleRemoveMusic
   };
 };

@@ -5,6 +5,7 @@ import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pau
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import UserSettings from './UserSettings';
+import BackgroundMusicUpload from './BackgroundMusicUpload';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -44,6 +45,9 @@ interface ChatSidebarProps {
   selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
   onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   isPlaying: boolean;
+  musicName?: string;
+  onMusicUpload: (file: File) => void;
+  onRemoveMusic: () => void;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -57,7 +61,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onPauseAudio,
   selectedVoice,
   onVoiceChange,
-  isPlaying
+  isPlaying,
+  musicName,
+  onMusicUpload,
+  onRemoveMusic
 }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -247,14 +254,21 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat History</h2>
-          <Button
-            onClick={onNewChat}
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 px-4 py-2 rounded-md flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="font-medium">New Chat</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <BackgroundMusicUpload
+              onMusicUpload={onMusicUpload}
+              currentMusicName={musicName}
+              onRemoveMusic={onRemoveMusic}
+            />
+            <Button
+              onClick={onNewChat}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 px-4 py-2 rounded-md flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="font-medium">New Chat</span>
+            </Button>
+          </div>
         </div>
         
         {/* Voice Controls */}
