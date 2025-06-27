@@ -1,5 +1,5 @@
 
-import { Settings, Moon, Sun, Volume2, Trash2, AlertTriangle } from 'lucide-react';
+import { Settings, Moon, Sun, Volume2, Trash2, AlertTriangle, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -22,7 +22,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import ProfilePicture from './ProfilePicture';
 import { useState } from 'react';
@@ -67,7 +79,10 @@ const UserSettings = ({
 }: UserSettingsProps) => {
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const { user } = useAuth();
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const { user, signOut } = useAuth();
 
   const deleteAllChats = async () => {
     if (!user) return;
@@ -98,6 +113,66 @@ const UserSettings = ({
       toast.error('Failed to delete chat history');
     } finally {
       setIsDeletingAll(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!user || deleteConfirmText !== 'DELETE') return;
+    
+    setIsDeletingAccount(true);
+    
+    try {
+      console.log('Deleting account for user:', user.id);
+      
+      // First, soft delete all user data
+      const { error: chatError } = await supabase
+        .from('chat_sessions')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+
+      if (chatError) {
+        console.error('Error deleting user chats:', chatError);
+      }
+
+      // Delete user profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error('Error deleting user profile:', profileError);
+      }
+
+      // Delete user agreements
+      const { error: agreementError } = await supabase
+        .from('user_agreements')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (agreementError) {
+        console.error('Error deleting user agreements:', agreementError);
+      }
+
+      // Finally, delete the auth user
+      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+
+      if (authError) {
+        console.error('Error deleting auth user:', authError);
+        toast.error('Failed to delete account. Please try again or contact support.');
+      } else {
+        toast.success('Your account has been successfully deleted.');
+        // Sign out and redirect
+        await signOut();
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Error in deleteAccount:', error);
+      toast.error('Failed to delete account. Please try again.');
+    } finally {
+      setIsDeletingAccount(false);
+      setShowDeleteAccountDialog(false);
+      setDeleteConfirmText('');
     }
   };
 
@@ -246,13 +321,79 @@ const UserSettings = ({
           {userEmail && (
             <>
               <Separator />
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label className="text-sm font-medium text-gray-900 dark:text-white">
                   Account
                 </Label>
                 <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-2 rounded">
                   {userEmail}
                 </p>
+                
+                {/* Delete Account */}
+                <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 transition-all duration-200"
+                    >
+                      <UserX className="h-4 w-4 mr-2" />
+                      Delete Account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center text-red-600 dark:text-red-400">
+                        <AlertTriangle className="h-5 w-5 mr-2" />
+                        Delete Account Permanently
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="dark:text-gray-400 space-y-3">
+                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md border border-red-200 dark:border-red-800">
+                          <p className="font-semibold text-red-800 dark:text-red-200 mb-2">⚠️ This action cannot be undone!</p>
+                          <p className="text-sm text-red-700 dark:text-red-300">
+                            Deleting your account will permanently remove:
+                          </p>
+                          <ul className="text-sm text-red-700 dark:text-red-300 mt-2 space-y-1 list-disc list-inside">
+                            <li>Your profile and account information</li>
+                            <li>All chat history and conversations</li>
+                            <li>All user preferences and settings</li>
+                            <li>Access to this account forever</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium dark:text-white">
+                            Type "DELETE" to confirm account deletion:
+                          </Label>
+                          <Input
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder="Type DELETE here"
+                            className="font-mono"
+                          />
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel 
+                        onClick={() => {
+                          setDeleteConfirmText('');
+                          setShowDeleteAccountDialog(false);
+                        }}
+                        disabled={isDeletingAccount}
+                      >
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={deleteAccount}
+                        disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
+                        className="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                      >
+                        {isDeletingAccount ? 'Deleting Account...' : 'Delete Account Forever'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </>
           )}

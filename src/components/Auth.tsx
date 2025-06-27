@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,10 +37,20 @@ const Auth = () => {
   const validatePassword = (password: string): PasswordValidation => {
     const minLength = password.length >= 8;
     const hasUppercase = /[A-Z]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    // Expanded special character regex to include more common special characters
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password);
     const isValid = minLength && hasUppercase && hasSpecialChar;
 
-    console.log('Password validation:', { password, minLength, hasUppercase, hasSpecialChar, isValid });
+    console.log('Password validation details:', { 
+      password, 
+      minLength, 
+      hasUppercase, 
+      hasSpecialChar, 
+      isValid,
+      passwordLength: password.length,
+      uppercaseMatch: password.match(/[A-Z]/g),
+      specialCharMatch: password.match(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/g)
+    });
 
     return {
       minLength,
@@ -55,9 +64,10 @@ const Auth = () => {
     const newPassword = e.target.value;
     setPassword(newPassword);
     
-    // Always validate password, regardless of mode
+    // Always validate password immediately, regardless of mode
     const validation = validatePassword(newPassword);
     setPasswordValidation(validation);
+    console.log('Real-time validation update:', validation);
   };
 
   // Validate existing password when switching to sign-up mode
@@ -102,12 +112,19 @@ const Auth = () => {
           return;
         }
 
-        // Double-check password validation at submission time
+        // Triple-check password validation at submission time
         const currentValidation = validatePassword(password);
         console.log('Final password validation check at submission:', currentValidation);
         
         if (!currentValidation.isValid) {
-          toast.error('Please ensure your password meets all requirements: minimum 8 characters, one uppercase letter, and one special character');
+          let errorMessage = 'Password requirements not met: ';
+          const requirements = [];
+          if (!currentValidation.minLength) requirements.push('minimum 8 characters');
+          if (!currentValidation.hasUppercase) requirements.push('one uppercase letter (A-Z)');
+          if (!currentValidation.hasSpecialChar) requirements.push('one special character (!@#$%^&* etc.)');
+          
+          errorMessage += requirements.join(', ');
+          toast.error(errorMessage);
           setIsLoading(false);
           return;
         }
@@ -338,7 +355,7 @@ const Auth = () => {
                         <X className="h-4 w-4 text-red-500" />
                       )}
                       <span className={`text-sm ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
-                        One special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+                        One special character (!@#$%^&*()_+-=[]{}; etc.)
                       </span>
                     </div>
                   </div>
