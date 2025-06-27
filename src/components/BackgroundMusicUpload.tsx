@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music, X, Upload } from 'lucide-react';
+import { Music, X, Upload, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -16,12 +16,14 @@ interface BackgroundMusicUploadProps {
   onMusicUpload: (audioFile: File) => void;
   currentMusicName?: string;
   onRemoveMusic: () => void;
+  isDefaultMusic?: boolean;
 }
 
 const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
   onMusicUpload,
   currentMusicName,
-  onRemoveMusic
+  onRemoveMusic,
+  isDefaultMusic = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +51,11 @@ const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleResetToDefault = () => {
+    onRemoveMusic();
+    setIsOpen(false);
   };
 
   return (
@@ -80,10 +87,15 @@ const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="flex items-center gap-2">
                 <Music className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium truncate">{currentMusicName}</span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium truncate">{currentMusicName}</span>
+                  {isDefaultMusic && (
+                    <span className="text-xs text-gray-500">Default from Supabase</span>
+                  )}
+                </div>
               </div>
               <Button
-                onClick={onRemoveMusic}
+                onClick={isDefaultMusic ? handleResetToDefault : onRemoveMusic}
                 size="sm"
                 variant="ghost"
                 className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
@@ -97,11 +109,22 @@ const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
             <Button
               onClick={handleButtonClick}
               className="w-full flex items-center gap-2"
-              variant={currentMusicName ? "outline" : "default"}
+              variant={currentMusicName && !isDefaultMusic ? "outline" : "default"}
             >
               <Upload className="h-4 w-4" />
-              {currentMusicName ? 'Replace Music' : 'Upload Music'}
+              {currentMusicName && !isDefaultMusic ? 'Replace Music' : 'Upload Custom Music'}
             </Button>
+            
+            {currentMusicName && !isDefaultMusic && (
+              <Button
+                onClick={handleResetToDefault}
+                variant="outline"
+                className="w-full flex items-center gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset to Default Piano
+              </Button>
+            )}
             
             <input
               ref={fileInputRef}

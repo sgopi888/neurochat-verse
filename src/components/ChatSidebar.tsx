@@ -48,6 +48,7 @@ interface ChatSidebarProps {
   isPlaying: boolean;
   musicName?: string;
   musicVolume: number;
+  isDefaultMusic?: boolean;
   onMusicUpload: (file: File) => void;
   onRemoveMusic: () => void;
   onVolumeChange: (volume: number) => void;
@@ -67,6 +68,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   isPlaying,
   musicName,
   musicVolume,
+  isDefaultMusic = false,
   onMusicUpload,
   onRemoveMusic,
   onVolumeChange
@@ -264,6 +266,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               onMusicUpload={onMusicUpload}
               currentMusicName={musicName}
               onRemoveMusic={onRemoveMusic}
+              isDefaultMusic={isDefaultMusic}
             />
             <Button
               onClick={onNewChat}
