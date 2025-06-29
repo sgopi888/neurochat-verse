@@ -22,6 +22,8 @@ export const useTTSAudio = (
   const [selectedVoice, setSelectedVoice] = useState<'James' | 'Cassidy' | 'Drew' | 'Lavender'>('Drew');
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isAudioProcessing, setIsAudioProcessing] = useState(false);
+  const [lastGeneratedAudioBlob, setLastGeneratedAudioBlob] = useState<Blob | null>(null);
+  const [lastGeneratedText, setLastGeneratedText] = useState<string>('');
 
   // Enhanced audio management refs
   const audioLock = useRef(false);
@@ -108,6 +110,10 @@ export const useTTSAudio = (
           Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))
         ], { type: 'audio/mpeg' });
         
+        // Store the audio blob and text for video generation
+        setLastGeneratedAudioBlob(audioBlob);
+        setLastGeneratedText(last.text);
+        
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         
@@ -163,6 +169,8 @@ export const useTTSAudio = (
     selectedVoice,
     currentAudio,
     isAudioProcessing,
+    lastGeneratedAudioBlob,
+    lastGeneratedText,
     setSelectedVoice,
     handlePlayLatestResponse,
     handlePauseAudio,
