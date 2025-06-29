@@ -32,6 +32,7 @@ export class TavusVideoService {
       });
 
       if (error) {
+        console.error('Supabase function error:', error);
         throw new Error(error.message || 'Failed to generate video');
       }
 
@@ -53,6 +54,7 @@ export class TavusVideoService {
       });
 
       if (error) {
+        console.error('Supabase function error:', error);
         throw new Error(error.message || 'Failed to check video status');
       }
 

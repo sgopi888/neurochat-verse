@@ -47,13 +47,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Upload audio to Supabase Storage
+    // Upload audio to Supabase Storage (use the correct bucket name)
     const audioBuffer = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))
     const fileName = `audio_${Date.now()}.mp3`
     
     console.log('Uploading audio to Supabase Storage...')
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('audio')
+      .from('audio-uploads')
       .upload(fileName, audioBuffer, {
         contentType: 'audio/mpeg',
         upsert: false
@@ -61,12 +61,12 @@ serve(async (req) => {
 
     if (uploadError) {
       console.error('Error uploading audio:', uploadError)
-      throw new Error('Failed to upload audio file')
+      throw new Error(`Failed to upload audio file: ${uploadError.message}`)
     }
 
     // Get public URL for the uploaded audio
     const { data: { publicUrl } } = supabase.storage
-      .from('audio')
+      .from('audio-uploads')
       .getPublicUrl(fileName)
 
     console.log('Audio uploaded, public URL:', publicUrl)
@@ -98,7 +98,7 @@ serve(async (req) => {
     // Clean up the temporary audio file after a delay
     setTimeout(async () => {
       try {
-        await supabase.storage.from('audio').remove([fileName])
+        await supabase.storage.from('audio-uploads').remove([fileName])
         console.log('Temporary audio file cleaned up')
       } catch (error) {
         console.error('Error cleaning up audio file:', error)

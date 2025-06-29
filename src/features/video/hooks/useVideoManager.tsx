@@ -40,13 +40,25 @@ export const useVideoManager = (
     clearVideo: clearTavusVideo
   } = useTavusVideo();
 
-  const canGenerateVideo = Boolean(lastGeneratedAudioBlob && lastGeneratedText);
+  // Show video button when there's a latest AI response (last non-user message)
+  const latestAiMessage = messages.filter(m => !m.isUser).pop();
+  const canGenerateVideo = Boolean(latestAiMessage);
 
-  const handleGenerateVideo = () => {
+  const handleGenerateVideo = async () => {
+    if (!latestAiMessage) return;
+
+    // If we have both audio and text, generate video directly
     if (lastGeneratedAudioBlob && lastGeneratedText) {
       generateVideoFromAudio(lastGeneratedAudioBlob, lastGeneratedText);
       setPopupState('playing');
+      return;
     }
+
+    // If we don't have audio, we need to generate it first
+    // This should trigger the TTS generation first
+    console.log('No audio available - need to generate audio first');
+    // For now, we'll show an error message asking user to generate audio first
+    // In a future enhancement, we could automatically trigger TTS generation
   };
 
   const clearVideo = () => {
