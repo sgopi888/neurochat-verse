@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,13 +146,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               )}
             </Button>
 
-            {/* Video Button */}
+            {/* Independent Video Button */}
             {isVideoEnabled && (
               <PlayVideoButton
                 onClick={handleVideoClick}
-                disabled={!canGenerateVideo}
+                disabled={false}
                 isGenerating={isVideoGenerating}
-                hasAudio={false} // We'll improve this in the future
+                canGenerate={canGenerateVideo}
               />
             )}
           </CardContent>

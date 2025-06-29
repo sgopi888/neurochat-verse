@@ -1,6 +1,7 @@
 
 import { VIDEO_CONFIG } from '../config/videoConfig';
 import { useTavusVideo } from './useTavusVideo';
+import { useVideoTTS } from './useVideoTTS';
 import { useState } from 'react';
 
 interface Message {
@@ -10,11 +11,7 @@ interface Message {
   timestamp: Date;
 }
 
-export const useVideoManager = (
-  messages: Message[],
-  lastGeneratedAudioBlob: Blob | null,
-  lastGeneratedText: string
-) => {
+export const useVideoManager = (messages: Message[]) => {
   const [popupState, setPopupState] = useState<'hidden' | 'playing' | 'minimized'>('hidden');
   
   // Return disabled state if video feature is turned off
@@ -33,12 +30,18 @@ export const useVideoManager = (
   }
 
   const {
-    isGenerating,
+    isGenerating: isVideoGenerating,
     videoUrl,
     error: videoError,
     generateVideoFromAudio,
     clearVideo: clearTavusVideo
   } = useTavusVideo();
+
+  const {
+    isGenerating: isAudioGenerating,
+    generateAudioForVideo,
+    clearAudio
+  } = useVideoTTS();
 
   // Show video button when there's a latest AI response (last non-user message)
   const latestAiMessage = messages.filter(m => !m.isUser).pop();
@@ -47,24 +50,30 @@ export const useVideoManager = (
   const handleGenerateVideo = async () => {
     if (!latestAiMessage) return;
 
-    // If we have both audio and text, generate video directly
-    if (lastGeneratedAudioBlob && lastGeneratedText) {
-      generateVideoFromAudio(lastGeneratedAudioBlob, lastGeneratedText);
+    try {
+      console.log('Starting independent video generation process');
+      
+      // Step 1: Generate audio using ElevenLabs (independent from Play Script)
+      const audioBlob = await generateAudioForVideo(latestAiMessage.text);
+      
+      // Step 2: Generate video using the generated audio
+      await generateVideoFromAudio(audioBlob, latestAiMessage.text);
+      
+      // Step 3: Show video popup
       setPopupState('playing');
-      return;
+      
+    } catch (error) {
+      console.error('Error in video generation process:', error);
     }
-
-    // If we don't have audio, we need to generate it first
-    // This should trigger the TTS generation first
-    console.log('No audio available - need to generate audio first');
-    // For now, we'll show an error message asking user to generate audio first
-    // In a future enhancement, we could automatically trigger TTS generation
   };
 
   const clearVideo = () => {
     clearTavusVideo();
+    clearAudio();
     setPopupState('hidden');
   };
+
+  const isGenerating = isAudioGenerating || isVideoGenerating;
 
   return {
     isVideoEnabled: true,

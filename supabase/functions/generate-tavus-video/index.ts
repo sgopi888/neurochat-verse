@@ -19,9 +19,9 @@ serve(async (req) => {
     
     console.log(`Tavus video generation request - Script length: ${script?.length || 0}, Replica: ${replicaId}`)
     
-    if (!audioBase64 || !script) {
+    if (!audioBase64) {
       return new Response(
-        JSON.stringify({ error: 'Audio and script are required' }),
+        JSON.stringify({ error: 'Audio is required for video generation' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -47,11 +47,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Upload audio to Supabase Storage (use the correct bucket name)
+    // Upload audio to Supabase Storage
     const audioBuffer = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0))
-    const fileName = `audio_${Date.now()}.mp3`
+    const fileName = `video_audio_${Date.now()}.mp3`
     
-    console.log('Uploading audio to Supabase Storage...')
+    console.log('Uploading audio to Supabase Storage for video generation...')
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('audio-uploads')
       .upload(fileName, audioBuffer, {
@@ -69,21 +69,25 @@ serve(async (req) => {
       .from('audio-uploads')
       .getPublicUrl(fileName)
 
-    console.log('Audio uploaded, public URL:', publicUrl)
+    console.log('Audio uploaded for video, public URL:', publicUrl)
 
-    // Call Tavus API with the audio URL
+    // Call Tavus API with ONLY audio_url (not script) - this is the critical fix
+    const tavusPayload = {
+      replica_id: replicaId,
+      audio_url: publicUrl,
+      video_name: `NeuroHeart_Avatar_${Date.now()}`
+      // NOTE: Intentionally NOT including 'script' parameter when using audio_url
+    }
+
+    console.log('Calling Tavus API with payload:', tavusPayload)
+
     const tavusResponse = await fetch('https://tavusapi.com/v2/videos', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': tavusApiKey
       },
-      body: JSON.stringify({
-        replica_id: replicaId,
-        script: script,
-        audio_url: publicUrl,
-        video_name: `NeuroHeart_Avatar_${Date.now()}`
-      })
+      body: JSON.stringify(tavusPayload)
     })
 
     if (!tavusResponse.ok) {
@@ -93,15 +97,15 @@ serve(async (req) => {
     }
 
     const tavusData = await tavusResponse.json()
-    console.log('Tavus video generation started:', tavusData)
+    console.log('Tavus video generation started successfully:', tavusData)
 
     // Clean up the temporary audio file after a delay
     setTimeout(async () => {
       try {
         await supabase.storage.from('audio-uploads').remove([fileName])
-        console.log('Temporary audio file cleaned up')
+        console.log('Temporary video audio file cleaned up')
       } catch (error) {
-        console.error('Error cleaning up audio file:', error)
+        console.error('Error cleaning up video audio file:', error)
       }
     }, 60000) // Clean up after 1 minute
 
@@ -109,7 +113,7 @@ serve(async (req) => {
       JSON.stringify({
         videoId: tavusData.video_id,
         status: tavusData.status,
-        videoUrl: tavusData.video_url
+        videoUrl: tavusData.video_url || null
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
