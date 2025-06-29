@@ -38,7 +38,7 @@ serve(async (req) => {
       )
     }
 
-    // Poll Tavus API for video status
+    // Poll Tavus API for video status - matching your test code
     const response = await fetch(`https://tavusapi.com/v2/videos/${videoId}`, {
       method: 'GET',
       headers: {
@@ -52,11 +52,13 @@ serve(async (req) => {
     }
 
     const data = await response.json()
+    console.log(`Polling video ${videoId} - Status: ${data.status}`)
     
     return new Response(
       JSON.stringify({
         status: data.status,
-        videoUrl: data.video_url
+        videoUrl: data.video_url,
+        hostedUrl: data.hosted_url // Include hosted URL like in your test
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

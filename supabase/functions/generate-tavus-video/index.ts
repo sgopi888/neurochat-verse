@@ -71,12 +71,11 @@ serve(async (req) => {
 
     console.log('Audio uploaded for video, public URL:', publicUrl)
 
-    // Call Tavus API with ONLY audio_url (not script) - this is the critical fix
+    // Call Tavus API with the exact same approach as your working test code
     const tavusPayload = {
       replica_id: replicaId,
       audio_url: publicUrl,
       video_name: `NeuroHeart_Avatar_${Date.now()}`
-      // NOTE: Intentionally NOT including 'script' parameter when using audio_url
     }
 
     console.log('Calling Tavus API with payload:', tavusPayload)
@@ -113,7 +112,8 @@ serve(async (req) => {
       JSON.stringify({
         videoId: tavusData.video_id,
         status: tavusData.status,
-        videoUrl: tavusData.video_url || null
+        videoUrl: tavusData.video_url || null,
+        hostedUrl: tavusData.hosted_url || null
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

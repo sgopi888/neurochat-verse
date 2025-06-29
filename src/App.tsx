@@ -55,12 +55,14 @@ function AppContent() {
     lastGeneratedText
   } = useAudioManager(messages);
 
-  // Initialize video management - now only needs messages
+  // Initialize video management - now with enhanced progress tracking
   const {
     isVideoEnabled,
     isGenerating: isVideoGenerating,
     videoUrl,
+    hostedUrl,
     videoError,
+    currentStep,
     popupState,
     canGenerateVideo,
     handleGenerateVideo,
@@ -158,17 +160,19 @@ function AppContent() {
         onCopy={handleCopy}
         onSpeak={enhancedHandleSpeak}
         onSignOut={handleSignOut}
-        // Video props
+        // Enhanced video props
         isVideoEnabled={isVideoEnabled}
         canGenerateVideo={canGenerateVideo}
         onGenerateVideo={handleGenerateVideo}
         isVideoGenerating={isVideoGenerating}
+        videoCurrentStep={currentStep}
       />
       
-      {/* Video Player Popup */}
+      {/* Enhanced Video Player Popup */}
       {isVideoEnabled && (
         <VideoPlayerPopup
           videoUrl={videoUrl}
+          hostedUrl={hostedUrl}
           isVisible={popupState !== 'hidden'}
           isMinimized={popupState === 'minimized'}
           onClose={() => {

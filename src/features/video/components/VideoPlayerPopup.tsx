@@ -1,11 +1,12 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Minimize2, Maximize2 } from 'lucide-react';
+import { X, Minimize2, Maximize2, ExternalLink } from 'lucide-react';
 import { VIDEO_CONFIG } from '../config/videoConfig';
 
 interface VideoPlayerPopupProps {
   videoUrl: string | null;
+  hostedUrl?: string | null;
   isVisible: boolean;
   isMinimized: boolean;
   onClose: () => void;
@@ -15,6 +16,7 @@ interface VideoPlayerPopupProps {
 
 const VideoPlayerPopup: React.FC<VideoPlayerPopupProps> = ({
   videoUrl,
+  hostedUrl,
   isVisible,
   isMinimized,
   onClose,
@@ -29,9 +31,11 @@ const VideoPlayerPopup: React.FC<VideoPlayerPopupProps> = ({
     }
   }, [videoUrl]);
 
-  if (!isVisible || !videoUrl) {
+  if (!isVisible || (!videoUrl && !hostedUrl)) {
     return null;
   }
+
+  const displayUrl = videoUrl || hostedUrl;
 
   const popupClasses = `
     fixed z-50 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700
@@ -45,9 +49,21 @@ const VideoPlayerPopup: React.FC<VideoPlayerPopupProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
         <span className="text-sm font-medium text-gray-900 dark:text-white">
-          {isMinimized ? '' : 'Avatar Video'}
+          {isMinimized ? '' : '🎬 Avatar Video'}
         </span>
         <div className="flex items-center gap-1">
+          {/* External link button for hosted URL */}
+          {!isMinimized && hostedUrl && (
+            <Button
+              onClick={() => window.open(hostedUrl, '_blank')}
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              title="Open in new tab"
+            >
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          )}
           {!isMinimized && (
             <Button
               onClick={onMinimize}
@@ -84,13 +100,26 @@ const VideoPlayerPopup: React.FC<VideoPlayerPopupProps> = ({
         <div className="p-2">
           <video
             ref={videoRef}
-            src={videoUrl}
+            src={displayUrl}
             controls
             className="w-full rounded"
             style={{ maxHeight: VIDEO_CONFIG.maxHeight }}
           >
             Your browser does not support the video tag.
           </video>
+          {hostedUrl && (
+            <div className="mt-2 text-center">
+              <Button
+                onClick={() => window.open(hostedUrl, '_blank')}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Open in Tavus
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

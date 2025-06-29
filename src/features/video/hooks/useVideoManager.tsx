@@ -20,7 +20,9 @@ export const useVideoManager = (messages: Message[]) => {
       isVideoEnabled: false,
       isGenerating: false,
       videoUrl: null,
+      hostedUrl: null,
       videoError: null,
+      currentStep: '',
       popupState: 'hidden',
       canGenerateVideo: false,
       handleGenerateVideo: () => {},
@@ -32,7 +34,9 @@ export const useVideoManager = (messages: Message[]) => {
   const {
     isGenerating: isVideoGenerating,
     videoUrl,
+    hostedUrl,
     error: videoError,
+    currentStep,
     generateVideoFromAudio,
     clearVideo: clearTavusVideo
   } = useTavusVideo();
@@ -51,15 +55,15 @@ export const useVideoManager = (messages: Message[]) => {
     if (!latestAiMessage) return;
 
     try {
-      console.log('Starting independent video generation process');
+      console.log('Starting video generation process - matching test code approach');
       
-      // Step 1: Generate audio using ElevenLabs (independent from Play Script)
+      // Step 1: Generate audio using ElevenLabs
       const audioBlob = await generateAudioForVideo(latestAiMessage.text);
       
-      // Step 2: Generate video using the generated audio
+      // Step 2: Generate video using the generated audio (matching your test code)
       await generateVideoFromAudio(audioBlob, latestAiMessage.text);
       
-      // Step 3: Show video popup
+      // Step 3: Show video popup when ready
       setPopupState('playing');
       
     } catch (error) {
@@ -79,7 +83,9 @@ export const useVideoManager = (messages: Message[]) => {
     isVideoEnabled: true,
     isGenerating,
     videoUrl,
+    hostedUrl,
     videoError,
+    currentStep: isAudioGenerating ? 'Generating Audio...' : currentStep,
     popupState,
     canGenerateVideo,
     handleGenerateVideo,

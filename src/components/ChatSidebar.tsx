@@ -8,6 +8,7 @@ import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
 import UserSettings from './UserSettings';
 import PlayVideoButton from '@/features/video/components/PlayVideoButton';
+import VideoProgress from '@/features/video/components/VideoProgress';
 import { toast } from 'sonner';
 
 interface Message {
@@ -39,6 +40,8 @@ interface ChatSidebarProps {
   canGenerateVideo?: boolean;
   onGenerateVideo?: () => void;
   isVideoGenerating?: boolean;
+  videoCurrentStep?: string;
+  videoError?: string | null;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -61,7 +64,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   isVideoEnabled = false,
   canGenerateVideo = false,
   onGenerateVideo = () => {},
-  isVideoGenerating = false
+  isVideoGenerating = false,
+  videoCurrentStep = '',
+  videoError = null
 }) => {
   const [showSettings, setShowSettings] = useState(false);
 
@@ -146,14 +151,23 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               )}
             </Button>
 
-            {/* Independent Video Button */}
+            {/* Enhanced Video Button with Progress */}
             {isVideoEnabled && (
-              <PlayVideoButton
-                onClick={handleVideoClick}
-                disabled={false}
-                isGenerating={isVideoGenerating}
-                canGenerate={canGenerateVideo}
-              />
+              <div className="space-y-2">
+                <PlayVideoButton
+                  onClick={handleVideoClick}
+                  disabled={false}
+                  isGenerating={isVideoGenerating}
+                  canGenerate={canGenerateVideo}
+                />
+                
+                {/* Video Progress Display */}
+                <VideoProgress
+                  currentStep={videoCurrentStep}
+                  isGenerating={isVideoGenerating}
+                  error={videoError}
+                />
+              </div>
             )}
           </CardContent>
         </Card>

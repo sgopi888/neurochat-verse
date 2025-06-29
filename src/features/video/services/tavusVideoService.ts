@@ -9,8 +9,9 @@ interface TavusVideoRequest {
 
 interface TavusVideoResponse {
   videoId: string;
-  status: 'processing' | 'completed' | 'failed';
+  status: 'processing' | 'completed' | 'ready' | 'failed';
   videoUrl?: string;
+  hostedUrl?: string;
 }
 
 export class TavusVideoService {
@@ -39,7 +40,8 @@ export class TavusVideoService {
       return {
         videoId: data.videoId,
         status: data.status,
-        videoUrl: data.videoUrl
+        videoUrl: data.videoUrl,
+        hostedUrl: data.hostedUrl
       };
     } catch (error) {
       console.error('Error generating Tavus video:', error);
@@ -61,7 +63,8 @@ export class TavusVideoService {
       return {
         videoId,
         status: data.status,
-        videoUrl: data.videoUrl
+        videoUrl: data.videoUrl,
+        hostedUrl: data.hostedUrl
       };
     } catch (error) {
       console.error('Error polling video status:', error);
