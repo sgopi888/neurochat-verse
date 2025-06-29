@@ -14,7 +14,7 @@ interface TavusVideoResponse {
 }
 
 export class TavusVideoService {
-  private static readonly REPLICA_ID = 'r6ae5b6efc9d';
+  private static readonly REPLICA_ID = 'r62baeccd777';
 
   static async generateVideo(request: TavusVideoRequest): Promise<TavusVideoResponse> {
     try {
