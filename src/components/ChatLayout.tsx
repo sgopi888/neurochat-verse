@@ -95,6 +95,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
     <SuggestedQuestions 
       questions={suggestedQuestions} 
       onQuestionClick={onSuggestionClick}
+      isVisible={showSuggestions}
     />
   ) : null;
 
@@ -107,8 +108,19 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
             currentChatId={currentChatId}
             onChatSelect={onChatSelect}
             onNewChat={onNewChat}
-            onSettingsClick={() => setIsSettingsOpen(true)}
+            onSignOut={onSignOut}
             userEmail={userEmail}
+            messages={messages}
+            onPlayLatestResponse={onPlayLatestResponse}
+            onPauseAudio={onPauseAudio}
+            selectedVoice={selectedVoice}
+            onVoiceChange={onVoiceChange}
+            isPlaying={isPlaying}
+            musicName={musicName}
+            musicVolume={musicVolume}
+            onMusicUpload={onMusicUpload}
+            onRemoveMusic={onRemoveMusic}
+            onVolumeChange={onVolumeChange}
           />
         </div>
       )}
@@ -121,10 +133,19 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
               currentChatId={currentChatId}
               onChatSelect={onChatSelect}
               onNewChat={onNewChat}
-              onSettingsClick={() => setIsSettingsOpen(true)}
+              onSignOut={onSignOut}
               userEmail={userEmail}
-              isMobile={true}
-              onClose={() => onToggleMobileSidebar()}
+              messages={messages}
+              onPlayLatestResponse={onPlayLatestResponse}
+              onPauseAudio={onPauseAudio}
+              selectedVoice={selectedVoice}
+              onVoiceChange={onVoiceChange}
+              isPlaying={isPlaying}
+              musicName={musicName}
+              musicVolume={musicVolume}
+              onMusicUpload={onMusicUpload}
+              onRemoveMusic={onRemoveMusic}
+              onVolumeChange={onVolumeChange}
             />
           </div>
         </div>

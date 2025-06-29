@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, MessageSquare, FileText, Trash2, LogOut, AlertTriangle, Play, Pause, User } from 'lucide-react';
+import { Plus, MessageSquare, FileText, Trash2, LogOut, Play, Pause, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
-import UserSettings from './UserSettings';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
 import { useAuth } from '@/hooks/useAuth';
@@ -388,19 +387,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <UserSettings
-              userEmail={userEmail}
-              selectedVoice={selectedVoice}
-              onVoiceChange={onVoiceChange}
-              onThemeToggle={toggleTheme}
-              currentTheme={theme}
-              avatarUrl={avatarUrl}
-              onAvatarUpdate={handleAvatarUpdate}
-              chats={chats}
-              currentChatId={currentChatId}
-              onNewChat={onNewChat}
-              onChatRefresh={fetchChats}
-            />
             <Button
               onClick={onSignOut}
               variant="ghost"
