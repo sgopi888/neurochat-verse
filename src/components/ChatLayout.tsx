@@ -1,9 +1,10 @@
 
-import React from 'react';
-import ChatBot from '@/components/ChatBot';
-import ChatSidebar from '@/components/ChatSidebar';
-import LoadingIndicator from '@/components/LoadingIndicator';
-import SuggestedQuestions from '@/components/SuggestedQuestions';
+import React, { useState } from 'react';
+import ChatBot from './ChatBot';
+import ChatSidebar from './ChatSidebar';
+import UserSettings from './UserSettings';
+import SuggestedQuestions from './SuggestedQuestions';
+import LoadingIndicator from './LoadingIndicator';
 
 interface Message {
   id: string;
@@ -13,7 +14,6 @@ interface Message {
 }
 
 interface ChatLayoutProps {
-  // Chat props
   messages: Message[];
   currentChatId: string | null;
   isLoading: boolean;
@@ -23,33 +23,30 @@ interface ChatLayoutProps {
   onSuggestionClick: (question: string) => void;
   onChatSelect: (chatId: string) => void;
   onNewChat: () => void;
-  
-  // Audio props
   isPlaying: boolean;
   selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
   onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   onPlayLatestResponse: () => void;
   onPauseAudio: () => void;
-  
-  // Background music props
-  musicName?: string;
+  musicName: string;
   musicVolume: number;
   onMusicUpload: (file: File) => void;
   onRemoveMusic: () => void;
   onVolumeChange: (volume: number) => void;
-  
-  // UI props
   isMobile: boolean;
   isMobileSidebarOpen: boolean;
   onToggleMobileSidebar: () => void;
-  
-  // User props
   userEmail?: string;
-  
-  // Handlers
   onCopy: (text: string) => void;
   onSpeak: (text: string) => void;
   onSignOut: () => void;
+  // Video generation props
+  isVideoGenerating: boolean;
+  videoUrl: string | null;
+  videoError: string | null;
+  lastGeneratedAudioBlob: Blob | null;
+  onGenerateVideo: () => void;
+  onClearVideo: () => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -78,87 +75,101 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   userEmail,
   onCopy,
   onSpeak,
-  onSignOut
+  onSignOut,
+  isVideoGenerating,
+  videoUrl,
+  videoError,
+  lastGeneratedAudioBlob,
+  onGenerateVideo,
+  onClearVideo
 }) => {
-  return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Desktop/Tablet Sidebar - Hidden on mobile */}
-      <div className={`${isMobile ? 'hidden' : 'block'}`}>
-        <ChatSidebar
-          currentChatId={currentChatId}
-          onChatSelect={onChatSelect}
-          onNewChat={onNewChat}
-          onSignOut={onSignOut}
-          userEmail={userEmail}
-          messages={messages}
-          onPlayLatestResponse={onPlayLatestResponse}
-          onPauseAudio={onPauseAudio}
-          selectedVoice={selectedVoice}
-          onVoiceChange={onVoiceChange}
-          isPlaying={isPlaying}
-          musicName={musicName}
-          musicVolume={musicVolume}
-          onMusicUpload={onMusicUpload}
-          onRemoveMusic={onRemoveMusic}
-          onVolumeChange={onVolumeChange}
-        />
-      </div>
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-      {/* Mobile Sidebar Overlay - Only visible when open on mobile */}
-      {isMobile && isMobileSidebarOpen && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => onToggleMobileSidebar()}
+  const loadingIndicator = (
+    <div className="flex justify-center py-4">
+      <LoadingIndicator message="AI is thinking..." />
+    </div>
+  );
+
+  const suggestedQuestionsComponent = showSuggestions && suggestedQuestions.length > 0 ? (
+    <SuggestedQuestions 
+      questions={suggestedQuestions} 
+      onQuestionClick={onSuggestionClick}
+    />
+  ) : null;
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <div className="w-80 border-r border-gray-200 dark:border-gray-700">
+          <ChatSidebar
+            currentChatId={currentChatId}
+            onChatSelect={onChatSelect}
+            onNewChat={onNewChat}
+            onSettingsClick={() => setIsSettingsOpen(true)}
+            userEmail={userEmail}
           />
-          {/* Sidebar */}
-          <div className="fixed left-0 top-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out">
+        </div>
+      )}
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobile && isMobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
+          <div className="absolute left-0 top-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl">
             <ChatSidebar
               currentChatId={currentChatId}
               onChatSelect={onChatSelect}
               onNewChat={onNewChat}
-              onSignOut={onSignOut}
+              onSettingsClick={() => setIsSettingsOpen(true)}
               userEmail={userEmail}
-              messages={messages}
-              onPlayLatestResponse={onPlayLatestResponse}
-              onPauseAudio={onPauseAudio}
-              selectedVoice={selectedVoice}
-              onVoiceChange={onVoiceChange}
-              isPlaying={isPlaying}
-              musicName={musicName}
-              musicVolume={musicVolume}
-              onMusicUpload={onMusicUpload}
-              onRemoveMusic={onRemoveMusic}
-              onVolumeChange={onVolumeChange}
+              isMobile={true}
+              onClose={() => onToggleMobileSidebar()}
             />
           </div>
-        </>
+        </div>
       )}
-      
-      <div className="flex-1 flex flex-col">
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         <ChatBot
           messages={messages}
           onSendMessage={onSendMessage}
           onCopy={onCopy}
           onSpeak={onSpeak}
           isLoading={isLoading}
-          loadingIndicator={
-            <LoadingIndicator message="Processing with AI model..." />
-          }
-          suggestedQuestions={
-            <SuggestedQuestions
-              questions={suggestedQuestions}
-              onQuestionClick={onSuggestionClick}
-              isVisible={showSuggestions}
-            />
-          }
+          loadingIndicator={loadingIndicator}
+          suggestedQuestions={suggestedQuestionsComponent}
           onSuggestionClick={onSuggestionClick}
           isMobile={isMobile}
           onToggleMobileSidebar={onToggleMobileSidebar}
           isMobileSidebarOpen={isMobileSidebarOpen}
         />
       </div>
+
+      {/* Settings Modal */}
+      <UserSettings
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        isPlaying={isPlaying}
+        selectedVoice={selectedVoice}
+        onVoiceChange={onVoiceChange}
+        onPlayLatestResponse={onPlayLatestResponse}
+        onPauseAudio={onPauseAudio}
+        musicName={musicName}
+        musicVolume={musicVolume}
+        onMusicUpload={onMusicUpload}
+        onRemoveMusic={onRemoveMusic}
+        onVolumeChange={onVolumeChange}
+        userEmail={userEmail}
+        onSignOut={onSignOut}
+        isVideoGenerating={isVideoGenerating}
+        videoUrl={videoUrl}
+        videoError={videoError}
+        lastGeneratedAudioBlob={lastGeneratedAudioBlob}
+        onGenerateVideo={onGenerateVideo}
+        onClearVideo={onClearVideo}
+      />
     </div>
   );
 };

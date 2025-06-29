@@ -48,7 +48,14 @@ function AppContent() {
     musicVolume,
     handleMusicUpload,
     handleRemoveMusic,
-    handleVolumeChange
+    handleVolumeChange,
+    // Video generation exports
+    isVideoGenerating,
+    videoUrl,
+    videoError,
+    lastGeneratedAudioBlob,
+    handleGenerateVideo,
+    clearVideo
   } = useAudioManager(messages);
 
   // Initialize app effects and utilities
@@ -144,6 +151,12 @@ function AppContent() {
       onCopy={handleCopy}
       onSpeak={enhancedHandleSpeak}
       onSignOut={handleSignOut}
+      isVideoGenerating={isVideoGenerating}
+      videoUrl={videoUrl}
+      videoError={videoError}
+      lastGeneratedAudioBlob={lastGeneratedAudioBlob}
+      onGenerateVideo={handleGenerateVideo}
+      onClearVideo={clearVideo}
     />
   );
 }
