@@ -46,6 +46,8 @@ interface ChatLayoutProps {
   canGenerateVideo?: boolean;
   onGenerateVideo?: () => void;
   isVideoGenerating?: boolean;
+  videoCurrentStep?: string;
+  videoError?: string | null;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -78,7 +80,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   isVideoEnabled = false,
   canGenerateVideo = false,
   onGenerateVideo = () => {},
-  isVideoGenerating = false
+  isVideoGenerating = false,
+  videoCurrentStep = '',
+  videoError = null
 }) => {
   const loadingIndicator = (
     <div className="flex justify-center py-4">
@@ -118,6 +122,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
       canGenerateVideo={canGenerateVideo}
       onGenerateVideo={onGenerateVideo}
       isVideoGenerating={isVideoGenerating}
+      videoCurrentStep={videoCurrentStep}
+      videoError={videoError}
     />
   );
 
