@@ -1,13 +1,12 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Play, Pause, Settings, Volume2, Music, Video } from 'lucide-react';
+import { Play, Pause, Settings, Volume2, Music } from 'lucide-react';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
-import VideoGenerationControls from './VideoGenerationControls';
 
 interface UserSettingsProps {
   isOpen: boolean;
@@ -24,13 +23,6 @@ interface UserSettingsProps {
   onVolumeChange: (volume: number) => void;
   userEmail?: string;
   onSignOut: () => void;
-  // Video generation props
-  isVideoGenerating: boolean;
-  videoUrl: string | null;
-  videoError: string | null;
-  lastGeneratedAudioBlob: Blob | null;
-  onGenerateVideo: () => void;
-  onClearVideo: () => void;
 }
 
 const UserSettings: React.FC<UserSettingsProps> = ({
@@ -47,13 +39,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({
   onRemoveMusic,
   onVolumeChange,
   userEmail,
-  onSignOut,
-  isVideoGenerating,
-  videoUrl,
-  videoError,
-  lastGeneratedAudioBlob,
-  onGenerateVideo,
-  onClearVideo
+  onSignOut
 }) => {
   if (!isOpen) return null;
 
@@ -131,25 +117,6 @@ const UserSettings: React.FC<UserSettingsProps> = ({
             <VolumeControl
               volume={musicVolume}
               onVolumeChange={onVolumeChange}
-            />
-          </div>
-
-          <Separator />
-
-          {/* Avatar Video Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium flex items-center">
-              <Video className="h-4 w-4 mr-2" />
-              Avatar Video
-            </h3>
-            
-            <VideoGenerationControls
-              isVideoGenerating={isVideoGenerating}
-              videoUrl={videoUrl}
-              videoError={videoError}
-              lastGeneratedAudioBlob={lastGeneratedAudioBlob}
-              onGenerateVideo={onGenerateVideo}
-              onClearVideo={onClearVideo}
             />
           </div>
 

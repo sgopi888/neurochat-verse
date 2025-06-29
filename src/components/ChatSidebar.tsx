@@ -6,17 +6,10 @@ import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
+import UserSettings from './UserSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import PlayVideoButton from '@/features/video/components/PlayVideoButton';
 
 interface Chat {
   id: string;
@@ -51,6 +44,11 @@ interface ChatSidebarProps {
   onMusicUpload: (file: File) => void;
   onRemoveMusic: () => void;
   onVolumeChange: (volume: number) => void;
+  // Video props
+  isVideoEnabled?: boolean;
+  canGenerateVideo?: boolean;
+  onGenerateVideo?: () => void;
+  isVideoGenerating?: boolean;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -70,11 +68,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   isDefaultMusic = false,
   onMusicUpload,
   onRemoveMusic,
-  onVolumeChange
+  onVolumeChange,
+  isVideoEnabled = false,
+  canGenerateVideo = false,
+  onGenerateVideo = () => {},
+  isVideoGenerating = false
 }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
 
@@ -291,7 +294,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             <span>{isPlaying ? 'Pause' : 'Play Script'}</span>
           </Button>
           
-          {/* Volume Control - Added here as requested */}
+          {/* Video Button - Only show if video is enabled and audio exists */}
+          {isVideoEnabled && canGenerateVideo && (
+            <PlayVideoButton
+              onClick={onGenerateVideo}
+              disabled={!canGenerateVideo}
+              isGenerating={isVideoGenerating}
+            />
+          )}
+          
+          {/* Volume Control */}
           {musicName && (
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
               <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -388,6 +400,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </div>
           <div className="flex items-center space-x-2">
             <Button
+              onClick={() => setIsSettingsOpen(true)}
+              variant="ghost"
+              size="sm"
+              className="hover:bg-gray-50 hover:text-gray-600 dark:hover:bg-gray-800 h-8 w-8 p-0 transition-all duration-200 hover:scale-110"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button
               onClick={onSignOut}
               variant="ghost"
               size="sm"
@@ -398,6 +418,24 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      <UserSettings
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        isPlaying={isPlaying}
+        selectedVoice={selectedVoice}
+        onVoiceChange={onVoiceChange}
+        onPlayLatestResponse={onPlayLatestResponse}
+        onPauseAudio={onPauseAudio}
+        musicName={musicName}
+        musicVolume={musicVolume}
+        onMusicUpload={onMusicUpload}
+        onRemoveMusic={onRemoveMusic}
+        onVolumeChange={onVolumeChange}
+        userEmail={userEmail}
+        onSignOut={onSignOut}
+      />
     </div>
   );
 };

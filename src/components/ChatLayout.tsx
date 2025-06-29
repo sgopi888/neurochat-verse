@@ -5,6 +5,7 @@ import ChatSidebar from './ChatSidebar';
 import UserSettings from './UserSettings';
 import SuggestedQuestions from './SuggestedQuestions';
 import LoadingIndicator from './LoadingIndicator';
+import PlayVideoButton from '@/features/video/components/PlayVideoButton';
 
 interface Message {
   id: string;
@@ -40,13 +41,11 @@ interface ChatLayoutProps {
   onCopy: (text: string) => void;
   onSpeak: (text: string) => void;
   onSignOut: () => void;
-  // Video generation props
-  isVideoGenerating: boolean;
-  videoUrl: string | null;
-  videoError: string | null;
-  lastGeneratedAudioBlob: Blob | null;
-  onGenerateVideo: () => void;
-  onClearVideo: () => void;
+  // Video props
+  isVideoEnabled?: boolean;
+  canGenerateVideo?: boolean;
+  onGenerateVideo?: () => void;
+  isVideoGenerating?: boolean;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -76,15 +75,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onCopy,
   onSpeak,
   onSignOut,
-  isVideoGenerating,
-  videoUrl,
-  videoError,
-  lastGeneratedAudioBlob,
-  onGenerateVideo,
-  onClearVideo
+  isVideoEnabled = false,
+  canGenerateVideo = false,
+  onGenerateVideo = () => {},
+  isVideoGenerating = false
 }) => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
   const loadingIndicator = (
     <div className="flex justify-center py-4">
       <LoadingIndicator message="AI is thinking..." />
@@ -99,29 +94,39 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
     />
   ) : null;
 
+  // Enhanced ChatSidebar with Video Button
+  const renderChatSidebar = () => (
+    <ChatSidebar
+      currentChatId={currentChatId}
+      onChatSelect={onChatSelect}
+      onNewChat={onNewChat}
+      onSignOut={onSignOut}
+      userEmail={userEmail}
+      messages={messages}
+      onPlayLatestResponse={onPlayLatestResponse}
+      onPauseAudio={onPauseAudio}
+      selectedVoice={selectedVoice}
+      onVoiceChange={onVoiceChange}
+      isPlaying={isPlaying}
+      musicName={musicName}
+      musicVolume={musicVolume}
+      onMusicUpload={onMusicUpload}
+      onRemoveMusic={onRemoveMusic}
+      onVolumeChange={onVolumeChange}
+      // Video button props
+      isVideoEnabled={isVideoEnabled}
+      canGenerateVideo={canGenerateVideo}
+      onGenerateVideo={onGenerateVideo}
+      isVideoGenerating={isVideoGenerating}
+    />
+  );
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
       {!isMobile && (
         <div className="w-80 border-r border-gray-200 dark:border-gray-700">
-          <ChatSidebar
-            currentChatId={currentChatId}
-            onChatSelect={onChatSelect}
-            onNewChat={onNewChat}
-            onSignOut={onSignOut}
-            userEmail={userEmail}
-            messages={messages}
-            onPlayLatestResponse={onPlayLatestResponse}
-            onPauseAudio={onPauseAudio}
-            selectedVoice={selectedVoice}
-            onVoiceChange={onVoiceChange}
-            isPlaying={isPlaying}
-            musicName={musicName}
-            musicVolume={musicVolume}
-            onMusicUpload={onMusicUpload}
-            onRemoveMusic={onRemoveMusic}
-            onVolumeChange={onVolumeChange}
-          />
+          {renderChatSidebar()}
         </div>
       )}
 
@@ -129,24 +134,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
       {isMobile && isMobileSidebarOpen && (
         <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
           <div className="absolute left-0 top-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl">
-            <ChatSidebar
-              currentChatId={currentChatId}
-              onChatSelect={onChatSelect}
-              onNewChat={onNewChat}
-              onSignOut={onSignOut}
-              userEmail={userEmail}
-              messages={messages}
-              onPlayLatestResponse={onPlayLatestResponse}
-              onPauseAudio={onPauseAudio}
-              selectedVoice={selectedVoice}
-              onVoiceChange={onVoiceChange}
-              isPlaying={isPlaying}
-              musicName={musicName}
-              musicVolume={musicVolume}
-              onMusicUpload={onMusicUpload}
-              onRemoveMusic={onRemoveMusic}
-              onVolumeChange={onVolumeChange}
-            />
+            {renderChatSidebar()}
           </div>
         </div>
       )}
@@ -167,30 +155,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           isMobileSidebarOpen={isMobileSidebarOpen}
         />
       </div>
-
-      {/* Settings Modal */}
-      <UserSettings
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        isPlaying={isPlaying}
-        selectedVoice={selectedVoice}
-        onVoiceChange={onVoiceChange}
-        onPlayLatestResponse={onPlayLatestResponse}
-        onPauseAudio={onPauseAudio}
-        musicName={musicName}
-        musicVolume={musicVolume}
-        onMusicUpload={onMusicUpload}
-        onRemoveMusic={onRemoveMusic}
-        onVolumeChange={onVolumeChange}
-        userEmail={userEmail}
-        onSignOut={onSignOut}
-        isVideoGenerating={isVideoGenerating}
-        videoUrl={videoUrl}
-        videoError={videoError}
-        lastGeneratedAudioBlob={lastGeneratedAudioBlob}
-        onGenerateVideo={onGenerateVideo}
-        onClearVideo={onClearVideo}
-      />
     </div>
   );
 };

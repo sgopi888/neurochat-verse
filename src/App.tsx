@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,6 +13,8 @@ import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { useChatManager } from '@/hooks/useChatManager';
 import { useAudioManager } from '@/hooks/useAudioManager';
 import { useAppEffects } from '@/hooks/useAppEffects';
+import { useVideoManager } from '@/features/video/hooks/useVideoManager';
+import VideoPlayerPopup from '@/features/video/components/VideoPlayerPopup';
 
 const queryClient = new QueryClient();
 
@@ -49,14 +52,22 @@ function AppContent() {
     handleMusicUpload,
     handleRemoveMusic,
     handleVolumeChange,
-    // Video generation exports
-    isVideoGenerating,
+    lastGeneratedAudioBlob,
+    lastGeneratedText
+  } = useAudioManager(messages);
+
+  // Initialize video management
+  const {
+    isVideoEnabled,
+    isGenerating: isVideoGenerating,
     videoUrl,
     videoError,
-    lastGeneratedAudioBlob,
+    popupState,
+    canGenerateVideo,
     handleGenerateVideo,
-    clearVideo
-  } = useAudioManager(messages);
+    clearVideo,
+    setPopupState
+  } = useVideoManager(messages, lastGeneratedAudioBlob, lastGeneratedText);
 
   // Initialize app effects and utilities
   const {
@@ -78,7 +89,6 @@ function AppContent() {
 
   // Enhanced handleSendMessage that closes mobile sidebar
   const enhancedHandleSendMessage = (text: string) => {
-    // Close mobile sidebar when sending a message
     if (isMobile) {
       setIsMobileSidebarOpen(false);
     }
@@ -88,7 +98,6 @@ function AppContent() {
   // Enhanced handlers for mobile sidebar management
   const enhancedHandleNewChat = () => {
     handleNewChat();
-    // Close mobile sidebar when starting new chat
     if (isMobile) {
       setIsMobileSidebarOpen(false);
     }
@@ -96,13 +105,11 @@ function AppContent() {
 
   const enhancedHandleChatSelect = (chatId: string) => {
     handleChatSelect(chatId);
-    // Close mobile sidebar when selecting a chat
     if (isMobile) {
       setIsMobileSidebarOpen(false);
     }
   };
 
-  // Enhanced handleSpeak that actually calls the audio function
   const enhancedHandleSpeak = (text: string) => {
     handlePlayLatestResponse();
   };
@@ -124,40 +131,56 @@ function AppContent() {
   }
 
   return (
-    <ChatLayout
-      messages={messages}
-      currentChatId={currentChatId}
-      isLoading={isLoading}
-      suggestedQuestions={suggestedQuestions}
-      showSuggestions={showSuggestions}
-      onSendMessage={enhancedHandleSendMessage}
-      onSuggestionClick={handleSuggestionClick}
-      onChatSelect={enhancedHandleChatSelect}
-      onNewChat={enhancedHandleNewChat}
-      isPlaying={isPlaying}
-      selectedVoice={selectedVoice}
-      onVoiceChange={setSelectedVoice}
-      onPlayLatestResponse={handlePlayLatestResponse}
-      onPauseAudio={handlePauseAudio}
-      musicName={musicName}
-      musicVolume={musicVolume}
-      onMusicUpload={handleMusicUpload}
-      onRemoveMusic={handleRemoveMusic}
-      onVolumeChange={handleVolumeChange}
-      isMobile={isMobile}
-      isMobileSidebarOpen={isMobileSidebarOpen}
-      onToggleMobileSidebar={toggleMobileSidebar}
-      userEmail={user?.email}
-      onCopy={handleCopy}
-      onSpeak={enhancedHandleSpeak}
-      onSignOut={handleSignOut}
-      isVideoGenerating={isVideoGenerating}
-      videoUrl={videoUrl}
-      videoError={videoError}
-      lastGeneratedAudioBlob={lastGeneratedAudioBlob}
-      onGenerateVideo={handleGenerateVideo}
-      onClearVideo={clearVideo}
-    />
+    <>
+      <ChatLayout
+        messages={messages}
+        currentChatId={currentChatId}
+        isLoading={isLoading}
+        suggestedQuestions={suggestedQuestions}
+        showSuggestions={showSuggestions}
+        onSendMessage={enhancedHandleSendMessage}
+        onSuggestionClick={handleSuggestionClick}
+        onChatSelect={enhancedHandleChatSelect}
+        onNewChat={enhancedHandleNewChat}
+        isPlaying={isPlaying}
+        selectedVoice={selectedVoice}
+        onVoiceChange={setSelectedVoice}
+        onPlayLatestResponse={handlePlayLatestResponse}
+        onPauseAudio={handlePauseAudio}
+        musicName={musicName}
+        musicVolume={musicVolume}
+        onMusicUpload={handleMusicUpload}
+        onRemoveMusic={handleRemoveMusic}
+        onVolumeChange={handleVolumeChange}
+        isMobile={isMobile}
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        onToggleMobileSidebar={toggleMobileSidebar}
+        userEmail={user?.email}
+        onCopy={handleCopy}
+        onSpeak={enhancedHandleSpeak}
+        onSignOut={handleSignOut}
+        // Video props
+        isVideoEnabled={isVideoEnabled}
+        canGenerateVideo={canGenerateVideo}
+        onGenerateVideo={handleGenerateVideo}
+        isVideoGenerating={isVideoGenerating}
+      />
+      
+      {/* Video Player Popup */}
+      {isVideoEnabled && (
+        <VideoPlayerPopup
+          videoUrl={videoUrl}
+          isVisible={popupState !== 'hidden'}
+          isMinimized={popupState === 'minimized'}
+          onClose={() => {
+            clearVideo();
+            setPopupState('hidden');
+          }}
+          onMinimize={() => setPopupState('minimized')}
+          onMaximize={() => setPopupState('playing')}
+        />
+      )}
+    </>
   );
 }
 

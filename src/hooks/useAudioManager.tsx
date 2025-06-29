@@ -1,7 +1,6 @@
 
 import { useBackgroundMusic } from './useBackgroundMusic';
 import { useTTSAudio } from './useTTSAudio';
-import { useTavusVideo } from './useTavusVideo';
 
 interface Message {
   id: string;
@@ -37,25 +36,6 @@ export const useAudioManager = (messages: Message[]) => {
     stopCurrentAudio
   } = useTTSAudio(messages, playBackgroundMusic, stopBackgroundMusic);
 
-  // Tavus video functionality
-  const {
-    isGenerating: isVideoGenerating,
-    videoUrl,
-    videoId,
-    error: videoError,
-    generateVideoFromAudio,
-    clearVideo
-  } = useTavusVideo();
-
-  // Generate video using the existing audio
-  const handleGenerateVideo = () => {
-    if (lastGeneratedAudioBlob && lastGeneratedText) {
-      generateVideoFromAudio(lastGeneratedAudioBlob, lastGeneratedText);
-    } else {
-      console.error('No audio available for video generation');
-    }
-  };
-
   return {
     // TTS audio exports
     isPlaying,
@@ -74,13 +54,6 @@ export const useAudioManager = (messages: Message[]) => {
     isDefaultMusic,
     handleMusicUpload,
     handleRemoveMusic,
-    handleVolumeChange,
-    // Tavus video exports
-    isVideoGenerating,
-    videoUrl,
-    videoId,
-    videoError,
-    handleGenerateVideo,
-    clearVideo
+    handleVolumeChange
   };
 };
