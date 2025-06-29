@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -56,7 +55,7 @@ function AppContent() {
     lastGeneratedText
   } = useAudioManager(messages);
 
-  // Initialize video management
+  // Initialize video management - now only needs messages
   const {
     isVideoEnabled,
     isGenerating: isVideoGenerating,
@@ -67,7 +66,7 @@ function AppContent() {
     handleGenerateVideo,
     clearVideo,
     setPopupState
-  } = useVideoManager(messages, lastGeneratedAudioBlob, lastGeneratedText);
+  } = useVideoManager(messages);
 
   // Initialize app effects and utilities
   const {
