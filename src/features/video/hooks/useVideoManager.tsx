@@ -2,7 +2,7 @@
 import { VIDEO_CONFIG } from '../config/videoConfig';
 import { useTavusVideo } from './useTavusVideo';
 import { useVideoTTS } from './useVideoTTS';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Message {
   id: string;
@@ -47,6 +47,14 @@ export const useVideoManager = (messages: Message[]) => {
     clearAudio
   } = useVideoTTS();
 
+  // Show popup when video is ready (when videoUrl or hostedUrl becomes available)
+  useEffect(() => {
+    if (videoUrl || hostedUrl) {
+      console.log('Video is ready, showing popup:', { videoUrl, hostedUrl });
+      setPopupState('playing');
+    }
+  }, [videoUrl, hostedUrl]);
+
   // Show video button when there's a latest AI response (last non-user message)
   const latestAiMessage = messages.filter(m => !m.isUser).pop();
   const canGenerateVideo = Boolean(latestAiMessage);
@@ -63,8 +71,7 @@ export const useVideoManager = (messages: Message[]) => {
       // Step 2: Generate video using the generated audio (matching your test code)
       await generateVideoFromAudio(audioBlob, latestAiMessage.text);
       
-      // Step 3: Show video popup when ready
-      setPopupState('playing');
+      // Note: Popup will be shown automatically when video becomes ready via useEffect
       
     } catch (error) {
       console.error('Error in video generation process:', error);
