@@ -48,6 +48,7 @@ export type Database = {
         Row: {
           created_at: string
           deleted_at: string | null
+          expires_at: string | null
           id: string
           is_article: boolean
           title: string
@@ -57,6 +58,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deleted_at?: string | null
+          expires_at?: string | null
           id?: string
           is_article?: boolean
           title: string
@@ -66,6 +68,7 @@ export type Database = {
         Update: {
           created_at?: string
           deleted_at?: string | null
+          expires_at?: string | null
           id?: string
           is_article?: boolean
           title?: string
@@ -76,27 +79,39 @@ export type Database = {
       }
       profiles: {
         Row: {
+          anonymized_at: string | null
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
           email: string | null
           full_name: string | null
           id: string
+          original_email_hash: string | null
+          reactivation_expires_at: string | null
           updated_at: string
         }
         Insert: {
+          anonymized_at?: string | null
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          original_email_hash?: string | null
+          reactivation_expires_at?: string | null
           updated_at?: string
         }
         Update: {
+          anonymized_at?: string | null
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          original_email_hash?: string | null
+          reactivation_expires_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -231,6 +246,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      anonymize_user_account: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      check_reactivation_possibility: {
+        Args: { p_email: string }
+        Returns: {
+          user_id: string
+          can_reactivate: boolean
+          anonymized_profile_id: string
+        }[]
+      }
       cleanup_old_chats: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -246,6 +273,10 @@ export type Database = {
           monthly_chat_count: number
           monthly_tts_count: number
         }[]
+      }
+      reactivate_user_account: {
+        Args: { p_profile_id: string; p_original_email: string }
+        Returns: undefined
       }
     }
     Enums: {
