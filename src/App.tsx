@@ -3,12 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import Auth from '@/components/Auth';
 import LoadingIndicator from '@/components/LoadingIndicator';
-import DisclaimerModal from '@/components/DisclaimerModal';
 import ChatLayout from '@/components/ChatLayout';
-import { useAuth } from '@/hooks/useAuth';
-import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { useChatManager } from '@/hooks/useChatManager';
 import { useAudioManager } from '@/hooks/useAudioManager';
 import { useAppEffects } from '@/hooks/useAppEffects';
@@ -18,10 +14,7 @@ import VideoPlayerPopup from '@/features/video/components/VideoPlayerPopup';
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { user, loading } = useAuth();
-  const { hasAgreed, showModal, handleAgree } = useUserAgreement();
-  
-  // Initialize chat management
+  // Initialize chat management (no auth required)
   const {
     messages,
     currentChatId,
@@ -115,22 +108,6 @@ function AppContent() {
     handlePlayLatestResponse();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingIndicator message="Loading application..." />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Auth />;
-  }
-
-  if (!hasAgreed) {
-    return <DisclaimerModal isOpen={showModal} onAgree={handleAgree} />;
-  }
-
   return (
     <>
       <ChatLayout
@@ -156,7 +133,7 @@ function AppContent() {
         isMobile={isMobile}
         isMobileSidebarOpen={isMobileSidebarOpen}
         onToggleMobileSidebar={toggleMobileSidebar}
-        userEmail={user?.email}
+        userEmail="guest@example.com"
         onCopy={handleCopy}
         onSpeak={enhancedHandleSpeak}
         onSignOut={handleSignOut}
