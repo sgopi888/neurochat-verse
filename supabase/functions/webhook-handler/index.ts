@@ -287,7 +287,7 @@ serve(async (req) => {
     }
 
     // Get webhook URL from secrets
-    const webhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://sreen8n.app.n8n.cloud/webhook/trial-webhook'
+    const webhookUrl = Deno.env.get('N8N_WEBHOOK_URL')
     
     if (!webhookUrl) {
       console.error('N8N_WEBHOOK_URL secret not configured')

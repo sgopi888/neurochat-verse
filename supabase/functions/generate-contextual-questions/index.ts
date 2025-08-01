@@ -44,11 +44,10 @@ Latest AI response: "${lastResponse}"
 
 Generate exactly 3 thoughtful follow-up questions that:
 1. Are relevant to the mindfulness/wellness context
-2. Help deepen the user's understanding of the most recent chat
-3. Encourage reflection to understand the recent chatss
+2. Help deepen the user's understanding or practice
+3. Encourage reflection and growth
 4. Are specific to the conversation topic
-5. Sound natural and supportive and leading the user to deeper understanding and inquisitive and become open to meditative processes.
-
+5. Sound natural and supportive
 
 Focus on themes like: meditation, stress management, emotional wellness, self-care, mindfulness practices, breathing techniques, sleep wellness, relationships, and personal growth.
 

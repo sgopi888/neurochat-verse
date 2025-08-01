@@ -15,30 +15,8 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak }) => {
-  const formatTimestamp = (date: Date) => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    
-    const timeString = date.toLocaleTimeString([], { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
-    
-    if (messageDate.getTime() === today.getTime()) {
-      return `Today ${timeString}`;
-    } else if (messageDate.getTime() === yesterday.getTime()) {
-      return `Yesterday ${timeString}`;
-    } else {
-      return `${date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      })} ${timeString}`;
-    }
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -64,13 +42,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
             : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-md shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600'
         } px-4 py-3 relative`}>
           
-          {/* Timestamp - Always visible at top */}
-          <div className={`text-xs mb-2 ${
-            message.isUser ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
-          }`}>
-            {formatTimestamp(message.timestamp)}
-          </div>
-
           {/* Message Text */}
           <div className="mb-2">
             <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
@@ -80,33 +51,41 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
             </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
-            message.isUser ? 'justify-end' : 'justify-start'
+          {/* Timestamp and Actions */}
+          <div className={`flex items-center justify-between gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
+            message.isUser ? 'flex-row-reverse' : 'flex-row'
           }`}>
-            <Button
-              onClick={() => onCopy(message.text)}
-              variant="ghost"
-              size="sm"
-              className={`h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 ${
-                message.isUser 
-                  ? 'hover:bg-blue-500 text-blue-100 hover:text-white' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
+            <span className={`text-xs transition-colors duration-200 ${
+              message.isUser ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+            }`}>
+              {formatTime(message.timestamp)}
+            </span>
             
-            {!message.isUser && (
+            <div className="flex gap-1">
               <Button
-                onClick={() => onSpeak(message.text)}
+                onClick={() => onCopy(message.text)}
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                className={`h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 ${
+                  message.isUser 
+                    ? 'hover:bg-blue-500 text-blue-100 hover:text-white' 
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
               >
-                <Volume2 className="h-3 w-3" />
+                <Copy className="h-3 w-3" />
               </Button>
-            )}
+              
+              {!message.isUser && (
+                <Button
+                  onClick={() => onSpeak(message.text)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  <Volume2 className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
