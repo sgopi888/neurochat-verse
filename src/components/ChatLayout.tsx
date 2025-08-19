@@ -92,7 +92,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Desktop/Tablet Sidebar - Hidden on mobile */}
-      <div className={`${isMobile ? 'hidden' : 'block'}`}>
+      <div className={`${isMobile ? 'hidden' : 'block w-[30%]'}`}>
         <ChatSidebar
           currentChatId={currentChatId}
           onChatSelect={onChatSelect}
