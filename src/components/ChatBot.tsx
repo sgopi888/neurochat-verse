@@ -1,9 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
+import FileUpload from './FileUpload';
 
 interface Message {
   id: string;
@@ -24,6 +24,11 @@ interface ChatBotProps {
   isMobile?: boolean;
   onToggleMobileSidebar?: () => void;
   isMobileSidebarOpen?: boolean;
+  // PDF/File upload props
+  uploadedFile?: { name: string; type: 'pdf' | 'image' } | null;
+  onFileContent?: (content: string, filename: string, type: 'pdf' | 'image') => void;
+  onClearFile?: () => void;
+  getFileContextForMessage?: (userInput: string) => string;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -37,7 +42,11 @@ const ChatBot: React.FC<ChatBotProps> = ({
   onSuggestionClick,
   isMobile = false,
   onToggleMobileSidebar,
-  isMobileSidebarOpen = false
+  isMobileSidebarOpen = false,
+  uploadedFile,
+  onFileContent,
+  onClearFile,
+  getFileContextForMessage
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -55,7 +64,12 @@ const ChatBot: React.FC<ChatBotProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      onSendMessage(input.trim());
+      // Use file context if available
+      const messageToSend = getFileContextForMessage ? 
+        getFileContextForMessage(input.trim()) : 
+        input.trim();
+      
+      onSendMessage(messageToSend);
       setInput('');
     }
   };
@@ -123,6 +137,14 @@ const ChatBot: React.FC<ChatBotProps> = ({
       })
     : suggestedQuestions;
 
+  // Updated welcome questions as specified
+  const welcomeMeditationQuestions = [
+    "Help me with my stress today",
+    "Conduct an emotional healing session",
+    "Guide me through a relaxation process",
+    "Meditation for better sleep"
+  ];
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Header */}
@@ -148,7 +170,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  NeuroHeart.AI Mindfulness Coach
+                  NeuroHeart.AI Meditative Process Generator
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Your personal wellness companion
@@ -167,25 +189,19 @@ const ChatBot: React.FC<ChatBotProps> = ({
               <span className="text-white font-bold text-2xl">AI</span>
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              Welcome to your Mindfulness Coach
+              Welcome to your Meditative Process Generator
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-              I'm here to help you with meditation, stress relief, and wellness practices. 
-              What would you like to explore today?
+              I'm here to create personalized meditation scripts for you. Choose a duration that feels right for your current needs.
             </p>
             <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
-              {[
-                "Help me with a breathing exercise",
-                "I'm feeling stressed today",
-                "Guide me through meditation",
-                "Tips for better sleep"
-              ].map((suggestion, index) => (
+              {welcomeMeditationQuestions.map((suggestion, index) => (
                 <Button
                   key={index}
                   variant="outline"
                   size="sm"
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className="bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  className="bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-800 border-gray-300 dark:border-gray-600 text-left justify-start max-w-xs"
                   disabled={isLoading}
                 >
                   {suggestion}
@@ -212,6 +228,27 @@ const ChatBot: React.FC<ChatBotProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* File Upload Display */}
+      {uploadedFile && (
+        <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              📎 {uploadedFile.type.toUpperCase()} attached: {uploadedFile.name}
+            </span>
+            {onClearFile && (
+              <Button
+                onClick={onClearFile}
+                variant="ghost"
+                size="sm"
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="border-t border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4">
         <form onSubmit={handleSubmit} className="flex items-end space-x-2">
@@ -221,24 +258,37 @@ const ChatBot: React.FC<ChatBotProps> = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me about mindfulness, meditation, or wellness..."
-              className="min-h-[44px] max-h-32 resize-none pr-12 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
+              placeholder="Ask me to create a meditation script for you..."
+              className="min-h-[44px] max-h-32 resize-none pr-20 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
               disabled={isLoading}
             />
-            <Button
-              type="button"
-              onClick={toggleVoiceRecognition}
-              size="sm"
-              variant="ghost"
-              className={`absolute right-2 top-2 h-8 w-8 p-0 ${
-                isListening 
-                  ? 'text-red-500 hover:text-red-600' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-              disabled={isLoading}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
+            <div className="absolute right-2 top-2 flex items-center gap-1">
+              {/* File Upload Button */}
+              {onFileContent && onClearFile && (
+                <FileUpload
+                  onFileContent={onFileContent}
+                  onClearFile={onClearFile}
+                  uploadedFile={uploadedFile}
+                  disabled={isLoading}
+                />
+              )}
+              
+              {/* Voice Recognition Button */}
+              <Button
+                type="button"
+                onClick={toggleVoiceRecognition}
+                size="sm"
+                variant="ghost"
+                className={`h-8 w-8 p-0 ${
+                  isListening 
+                    ? 'text-red-500 hover:text-red-600' 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+                disabled={isLoading}
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
           <Button
             type="submit"

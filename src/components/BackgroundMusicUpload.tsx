@@ -1,146 +1,165 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music, X, Upload, RotateCcw } from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Upload, Music, Trash2, RotateCcw } from 'lucide-react';
 
 interface BackgroundMusicUploadProps {
-  onMusicUpload: (audioFile: File) => void;
-  currentMusicName?: string;
+  musicName?: string;
+  isCustomMusic?: boolean;
+  onMusicUpload: (file: File) => void;
   onRemoveMusic: () => void;
-  isDefaultMusic?: boolean;
+  disabled?: boolean;
 }
 
 const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
+  musicName,
+  isCustomMusic = false,
   onMusicUpload,
-  currentMusicName,
   onRemoveMusic,
-  isDefaultMusic = false
+  disabled = false
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('audio/')) {
-      toast.error('Please select an audio file (MP3, WAV, etc.)');
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size must be less than 10MB');
-      return;
-    }
-
-    onMusicUpload(file);
-    setIsOpen(false);
-    toast.success('Background music uploaded successfully');
-  };
-
-  const handleButtonClick = () => {
+  const handleFileSelect = () => {
     fileInputRef.current?.click();
   };
 
-  const handleResetToDefault = () => {
-    onRemoveMusic();
-    setIsOpen(false);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onMusicUpload(file);
+    }
+    // Reset the input value so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const truncateFileName = (name: string, maxLength: number = 25) => {
+    if (name.length <= maxLength) return name;
+    const extension = name.split('.').pop();
+    const nameWithoutExt = name.substring(0, name.lastIndexOf('.'));
+    const truncated = nameWithoutExt.substring(0, maxLength - extension!.length - 4) + '...';
+    return `${truncated}.${extension}`;
+  };
+
+  // Display name logic - show "Background Music" for default, actual filename for custom
+  const getDisplayName = () => {
+    if (!musicName) return '';
+    if (isCustomMusic) {
+      return truncateFileName(musicName);
+    } else {
+      return 'Background Music'; // Changed from "Default Piano Music"
+    }
+  };
+
+  // Display subtitle logic
+  const getDisplaySubtitle = () => {
+    if (!musicName) return '';
+    if (isCustomMusic) {
+      return 'Custom Upload';
+    } else {
+      return 'Default Piano'; // Changed from showing the full filename
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex items-center gap-2 bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-300 transition-all duration-200 text-green-700 hover:text-green-800"
-        >
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
           <Music className="h-4 w-4" />
-          <span className="text-xs font-medium">Add Music</span>
+          Background Music
+        </label>
+      </div>
+
+      {!musicName ? (
+        <Button
+          onClick={handleFileSelect}
+          disabled={disabled}
+          variant="outline"
+          size="sm"
+          className="w-full justify-start bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Upload Background Music
         </Button>
-      </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Music className="h-5 w-5 text-blue-600" />
-            Background Music
-          </DialogTitle>
-          <DialogDescription>
-            Upload an MP3 or audio file to play in the background during voice playback.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          {currentMusicName && (
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Music className="h-4 w-4 text-blue-600" />
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium truncate">{currentMusicName}</span>
-                  {isDefaultMusic && (
-                    <span className="text-xs text-gray-500">Default from Supabase</span>
-                  )}
-                </div>
+      ) : (
+        <div className={`rounded-lg p-3 border ${
+          isCustomMusic 
+            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' 
+            : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Music className={`h-4 w-4 flex-shrink-0 ${
+                isCustomMusic 
+                  ? 'text-blue-600 dark:text-blue-400' 
+                  : 'text-green-600 dark:text-green-400'
+              }`} />
+              <div className="flex-1 min-w-0">
+                <span className={`text-sm font-medium truncate block ${
+                  isCustomMusic 
+                    ? 'text-blue-700 dark:text-blue-300' 
+                    : 'text-green-700 dark:text-green-300'
+                }`} title={musicName}>
+                  {getDisplayName()}
+                </span>
+                <span className={`text-xs ${
+                  isCustomMusic 
+                    ? 'text-blue-600 dark:text-blue-400' 
+                    : 'text-green-600 dark:text-green-400'
+                }`}>
+                  {getDisplaySubtitle()}
+                </span>
               </div>
-              <Button
-                onClick={isDefaultMusic ? handleResetToDefault : onRemoveMusic}
-                size="sm"
-                variant="ghost"
-                className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
-              >
-                <X className="h-3 w-3" />
-              </Button>
             </div>
-          )}
-          
-          <div className="space-y-2">
-            <Button
-              onClick={handleButtonClick}
-              className="w-full flex items-center gap-2"
-              variant={currentMusicName && !isDefaultMusic ? "outline" : "default"}
-            >
-              <Upload className="h-4 w-4" />
-              {currentMusicName && !isDefaultMusic ? 'Replace Music' : 'Upload Custom Music'}
-            </Button>
-            
-            {currentMusicName && !isDefaultMusic && (
+            <div className="flex items-center gap-1 ml-2">
               <Button
-                onClick={handleResetToDefault}
-                variant="outline"
-                className="w-full flex items-center gap-2"
+                onClick={handleFileSelect}
+                disabled={disabled}
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                title="Upload different music"
               >
-                <RotateCcw className="h-4 w-4" />
-                Reset to Default Piano
+                <Upload className="h-3 w-3" />
               </Button>
-            )}
-            
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="audio/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            
-            <p className="text-xs text-gray-500 text-center">
-              Supported formats: MP3, WAV, OGG (Max: 10MB)
-            </p>
+              {isCustomMusic && (
+                <Button
+                  onClick={onRemoveMusic}
+                  disabled={disabled}
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                  title="Reset to default piano music"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      {!musicName && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Supported formats: MP3, WAV, OGG, M4A (Max 50MB)
+        </p>
+      )}
+      
+      {musicName && !isCustomMusic && (
+        <p className="text-xs text-green-600 dark:text-green-400">
+          🎹 Default piano music is chosen. Upload your own to replace it.
+        </p>
+      )}
+    </div>
   );
 };
 
