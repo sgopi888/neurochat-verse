@@ -109,7 +109,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({
             </h3>
             
             <BackgroundMusicUpload
-              currentMusicName={musicName}
+              musicName={musicName}
               onMusicUpload={onMusicUpload}
               onRemoveMusic={onRemoveMusic}
             />

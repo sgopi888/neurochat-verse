@@ -25,6 +25,7 @@ interface ChatLayoutProps {
   onChatSelect: (chatId: string) => void;
   onNewChat: () => void;
   isPlaying: boolean;
+  isAudioProcessing?: boolean;
   selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
   onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   onPlayLatestResponse: () => void;
@@ -61,6 +62,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onChatSelect,
   onNewChat,
   isPlaying,
+  isAudioProcessing = false,
   selectedVoice,
   onVoiceChange,
   onPlayLatestResponse,
@@ -112,6 +114,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
       selectedVoice={selectedVoice}
       onVoiceChange={onVoiceChange}
       isPlaying={isPlaying}
+      isAudioProcessing={isAudioProcessing}
       musicName={musicName}
       musicVolume={musicVolume}
       onMusicUpload={onMusicUpload}

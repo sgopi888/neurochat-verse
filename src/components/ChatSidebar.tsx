@@ -30,6 +30,7 @@ interface ChatSidebarProps {
   selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
   onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   isPlaying: boolean;
+  isAudioProcessing?: boolean;
   musicName: string;
   musicVolume: number;
   onMusicUpload: (file: File) => void;
@@ -56,6 +57,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   selectedVoice,
   onVoiceChange,
   isPlaying,
+  isAudioProcessing = false,
   musicName,
   musicVolume,
   onMusicUpload,
@@ -182,7 +184,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </CardHeader>
           <CardContent className="space-y-3">
             <BackgroundMusicUpload
-              currentMusicName={musicName}
+              musicName={musicName}
               onMusicUpload={onMusicUpload}
               onRemoveMusic={onRemoveMusic}
             />
