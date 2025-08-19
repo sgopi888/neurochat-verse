@@ -50,6 +50,11 @@ interface ChatLayoutProps {
 
   // User props
   userEmail?: string;
+
+  // File upload props
+  onFileContent: (content: string, filename: string, type: 'pdf' | 'image') => void;
+  onClearFile: () => void;
+  uploadedFile: { name: string; type: 'pdf' | 'image' } | null;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -79,7 +84,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   isMobile,
   isMobileSidebarOpen,
   onToggleMobileSidebar,
-  userEmail
+  userEmail,
+  onFileContent,
+  onClearFile,
+  uploadedFile
 }) => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
@@ -158,6 +166,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           isMobile={isMobile}
           onToggleMobileSidebar={onToggleMobileSidebar}
           isMobileSidebarOpen={isMobileSidebarOpen}
+          onFileContent={onFileContent}
+          onClearFile={onClearFile}
+          uploadedFile={uploadedFile}
         />
       </div>
     </div>

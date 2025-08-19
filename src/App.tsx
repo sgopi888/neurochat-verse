@@ -20,6 +20,10 @@ function AppContent() {
   const { user, loading } = useAuth();
   const { hasAgreed, showModal, handleAgree } = useUserAgreement();
 
+  // File upload state
+  const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
+  const [fileContent, setFileContent] = React.useState<string>('');
+
   // Chat management
   const {
     messages,
@@ -104,6 +108,17 @@ function AppContent() {
     handlePlayLatestResponse();
   };
 
+  // File upload handlers
+  const handleFileContent = (content: string, filename: string, type: 'pdf' | 'image') => {
+    setFileContent(content);
+    setUploadedFile({ name: filename, type });
+  };
+
+  const handleClearFile = () => {
+    setFileContent('');
+    setUploadedFile(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -149,6 +164,9 @@ function AppContent() {
       isMobileSidebarOpen={isMobileSidebarOpen}
       onToggleMobileSidebar={toggleMobileSidebar}
       userEmail={user?.email}
+      onFileContent={handleFileContent}
+      onClearFile={handleClearFile}
+      uploadedFile={uploadedFile}
     />
   );
 }

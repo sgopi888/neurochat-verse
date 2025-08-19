@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import BoltBadge from './BoltBadge';
+import FileUpload from './FileUpload';
 
 interface Message {
   id: string;
@@ -24,6 +25,10 @@ interface ChatBotProps {
   isMobile?: boolean;
   onToggleMobileSidebar?: () => void;
   isMobileSidebarOpen?: boolean;
+  // File upload props
+  onFileContent: (content: string, filename: string, type: 'pdf' | 'image') => void;
+  onClearFile: () => void;
+  uploadedFile: { name: string; type: 'pdf' | 'image' } | null;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -37,7 +42,10 @@ const ChatBot: React.FC<ChatBotProps> = ({
   onSuggestionClick,
   isMobile = false,
   onToggleMobileSidebar,
-  isMobileSidebarOpen = false
+  isMobileSidebarOpen = false,
+  onFileContent,
+  onClearFile,
+  uploadedFile
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -229,23 +237,31 @@ const ChatBot: React.FC<ChatBotProps> = ({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me to create a meditation script for you..."
-              className="min-h-[44px] max-h-32 resize-none pr-12 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
+              className="min-h-[44px] max-h-32 resize-none pr-16 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
               disabled={isLoading}
             />
-            <Button
-              type="button"
-              onClick={toggleVoiceRecognition}
-              size="sm"
-              variant="ghost"
-              className={`absolute right-2 top-2 h-8 w-8 p-0 ${
-                isListening
-                  ? 'text-red-500 hover:text-red-600'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-              disabled={isLoading}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
+            <div className="absolute right-2 top-2 flex items-center gap-1">
+              <FileUpload
+                onFileContent={onFileContent}
+                onClearFile={onClearFile}
+                uploadedFile={uploadedFile}
+                disabled={isLoading}
+              />
+              <Button
+                type="button"
+                onClick={toggleVoiceRecognition}
+                size="sm"
+                variant="ghost"
+                className={`h-8 w-8 p-0 ${
+                  isListening
+                    ? 'text-red-500 hover:text-red-600'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+                disabled={isLoading}
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
           <Button
             type="submit"

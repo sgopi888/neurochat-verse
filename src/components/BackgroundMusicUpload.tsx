@@ -42,13 +42,13 @@ const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
     return `${truncated}.${extension}`;
   };
 
-  // Display name logic - show "Background Music" for default, actual filename for custom
+  // Display name logic - show "Default Piano" for default, actual filename for custom
   const getDisplayName = () => {
     if (!musicName) return '';
     if (isCustomMusic) {
       return truncateFileName(musicName);
     } else {
-      return 'Background Music'; // Changed from "Default Piano Music"
+      return 'Default Piano';
     }
   };
 
@@ -64,12 +64,6 @@ const BackgroundMusicUpload: React.FC<BackgroundMusicUploadProps> = ({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-          <Music className="h-4 w-4" />
-          Background Music
-        </label>
-      </div>
 
       {!musicName ? (
         <Button
