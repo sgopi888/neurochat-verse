@@ -112,6 +112,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({
               musicName={musicName}
               onMusicUpload={onMusicUpload}
               onRemoveMusic={onRemoveMusic}
+              defaultSrc="https://obgbnrasiyozdnmoixxx.supabase.co/storage/v1/object/public/music/piano.mp3"
             />
             
             <VolumeControl
