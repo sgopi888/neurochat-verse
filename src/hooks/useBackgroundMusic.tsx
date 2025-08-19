@@ -37,29 +37,54 @@ export const useBackgroundMusic = () => {
 
   const loadDefaultMusic = async (initialVolume: number = musicVolume) => {
     try {
-      console.log('Loading default music with volume:', initialVolume);
+      console.log('🎵 Loading default music with volume:', initialVolume);
       
       const audio = new Audio(DEFAULT_MUSIC_URL);
       audio.loop = true;
-      audio.volume = initialVolume; // Use the correct volume from the start
+      audio.volume = initialVolume;
+      audio.preload = 'auto';
+      
+      // Add more detailed logging
+      audio.addEventListener('loadstart', () => {
+        console.log('🎵 Audio loading started...');
+      });
+      
+      audio.addEventListener('canplay', () => {
+        console.log('🎵 Audio can start playing');
+      });
+      
+      audio.addEventListener('error', (e) => {
+        console.error('🎵 Audio loading error:', e);
+        console.error('🎵 Audio error details:', audio.error);
+      });
       
       // Wait for audio to be ready
       await new Promise((resolve, reject) => {
-        audio.addEventListener('canplaythrough', resolve, { once: true });
-        audio.addEventListener('error', reject, { once: true });
-        audio.addEventListener('loadstart', () => {
-          console.log('Audio loading started...');
-        });
+        const timeout = setTimeout(() => {
+          reject(new Error('Audio loading timeout'));
+        }, 10000); // 10 second timeout
+        
+        audio.addEventListener('canplaythrough', () => {
+          clearTimeout(timeout);
+          resolve(void 0);
+        }, { once: true });
+        
+        audio.addEventListener('error', () => {
+          clearTimeout(timeout);
+          reject(audio.error || new Error('Audio loading failed'));
+        }, { once: true });
       });
       
       backgroundMusicRef.current = audio;
       setMusicName(DEFAULT_MUSIC_NAME);
       setIsDefaultMusic(true);
       
-      console.log('Default piano music loaded successfully with volume:', audio.volume);
+      console.log('🎵 Default piano music loaded successfully with volume:', audio.volume);
+      console.log('🎵 Audio ready state:', audio.readyState);
+      console.log('🎵 Audio duration:', audio.duration);
     } catch (error) {
-      console.error('Error loading default music:', error);
-      toast.error('Failed to load default background music');
+      console.error('🎵 Error loading default music:', error);
+      toast.error('Failed to load default background music: ' + error.message);
     }
   };
 

@@ -137,11 +137,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Audio Controls */}
-        <div className="p-4 pb-2">
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center">
-                <Volume2 className="h-4 w-4 mr-2" />
+        <div className="p-3 pb-2">
+          <Card className="bg-card/50 border-border/50 scale-90 transform origin-top">
+            <CardHeader className="pb-2 px-3 pt-3">
+              <CardTitle className="text-xs flex items-center">
+                <Volume2 className="h-3 w-3 mr-2" />
                 Audio Controls
               </CardTitle>
             </CardHeader>
@@ -210,11 +210,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
 
         {/* Background Music */}
-        <div className="p-4 pt-0">
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center">
-                <Music className="h-4 w-4 mr-2" />
+        <div className="p-3 pt-0">
+          <Card className="bg-card/50 border-border/50 scale-90 transform origin-top">
+            <CardHeader className="pb-2 px-3 pt-3">
+              <CardTitle className="text-xs flex items-center">
+                <Music className="h-3 w-3 mr-2" />
                 Background Music
               </CardTitle>
             </CardHeader>
@@ -233,11 +233,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
 
         {/* Chat History */}
-        <div className="p-4 pt-0 flex-1 min-h-0">
-          <Card className="bg-card/50 border-border/50 h-full flex flex-col">
-            <CardHeader className="pb-2 flex-shrink-0">
-              <CardTitle className="text-sm flex items-center">
-                <MessageSquare className="h-4 w-4 mr-2" />
+        <div className="p-3 pt-0 flex-1 min-h-0">
+          <Card className="bg-card/50 border-border/50 h-full flex flex-col scale-90 transform origin-top">
+            <CardHeader className="pb-2 flex-shrink-0 px-3 pt-3">
+              <CardTitle className="text-xs flex items-center">
+                <MessageSquare className="h-3 w-3 mr-2" />
                 Chat History
               </CardTitle>
             </CardHeader>
