@@ -3,26 +3,24 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import Auth from '@/components/Auth';
 import LoadingIndicator from '@/components/LoadingIndicator';
+import DisclaimerModal from '@/components/DisclaimerModal';
 import ChatLayout from '@/components/ChatLayout';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { useChatManager } from '@/hooks/useChatManager';
 import { useAudioManager } from '@/hooks/useAudioManager';
 import { useAppEffects } from '@/hooks/useAppEffects';
-import { useVideoManager } from '@/features/video/hooks/useVideoManager';
-import VideoPlayerPopup from '@/features/video/components/VideoPlayerPopup';
+import { useMobileManager } from '@/hooks/useMobileManager';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
-  // Work without authentication
-  const userId = 'test-user-12345';
-  const userEmail = 'test@example.com';
-  
-  // File upload state
-  const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
-  const [fileContent, setFileContent] = React.useState<string>('');
-  
-  // Initialize chat management
+  const { user, loading } = useAuth();
+  const { hasAgreed, showModal, handleAgree } = useUserAgreement();
+
+  // Chat management
   const {
     messages,
     currentChatId,
@@ -33,54 +31,38 @@ function AppContent() {
     handleSuggestionClick,
     handleNewChat,
     handleChatSelect,
+    setShowSuggestions,
     setMessages,
     setCurrentChatId,
-    setSuggestedQuestions,
-    setShowSuggestions,
+    setSuggestedQuestions
   } = useChatManager();
 
-  // Initialize audio management
+  // Audio management with background music
   const {
     isPlaying,
     selectedVoice,
-    setSelectedVoice,
+    isAudioProcessing,
     handlePlayLatestResponse,
     handlePauseAudio,
+    setSelectedVoice,
     stopCurrentAudio,
     musicName,
     musicVolume,
-    
     handleMusicUpload,
     handleRemoveMusic,
-    handleVolumeChange,
-    isAudioProcessing
+    handleVolumeChange
   } = useAudioManager(messages);
 
-  // Initialize video management - now with enhanced progress tracking
-  const {
-    isVideoEnabled,
-    isGenerating: isVideoGenerating,
-    videoUrl,
-    hostedUrl,
-    videoError,
-    currentStep,
-    popupState,
-    canGenerateVideo,
-    handleGenerateVideo,
-    clearVideo,
-    setPopupState
-  } = useVideoManager(messages);
-
-  // Initialize app effects and utilities
+  // Mobile management
   const {
     isMobile,
     isMobileSidebarOpen,
-    setIsMobileSidebarOpen,
-    handleCopy,
-    handleSpeak,
-    handleSignOut,
-    toggleMobileSidebar
-  } = useAppEffects(
+    toggleMobileSidebar,
+    closeMobileSidebar
+  } = useMobileManager();
+
+  // App effects and utilities
+  const { handleCopy, handleSignOut } = useAppEffects(
     messages,
     setMessages,
     setCurrentChatId,
@@ -89,101 +71,85 @@ function AppContent() {
     stopCurrentAudio
   );
 
-  // Enhanced handleSendMessage that closes mobile sidebar
-  const enhancedHandleSendMessage = (text: string) => {
-    if (isMobile) {
-      setIsMobileSidebarOpen(false);
-    }
+  // Enhanced handlers that include mobile sidebar management
+  const enhancedSendMessage = (text: string) => {
+    closeMobileSidebar();
     handleSendMessage(text);
   };
 
-  // Enhanced handlers for mobile sidebar management
-  const enhancedHandleNewChat = () => {
-    handleNewChat();
-    if (isMobile) {
-      setIsMobileSidebarOpen(false);
-    }
-  };
-
-  const enhancedHandleChatSelect = (chatId: string) => {
+  const enhancedChatSelect = (chatId: string) => {
+    closeMobileSidebar();
     handleChatSelect(chatId);
-    if (isMobile) {
-      setIsMobileSidebarOpen(false);
-    }
   };
 
-  const enhancedHandleSpeak = (text: string) => {
+  const enhancedNewChat = () => {
+    closeMobileSidebar();
+    handleNewChat();
+  };
+
+  const enhancedSuggestionClick = (question: string) => {
+    setShowSuggestions(false);
+    enhancedSendMessage(question);
+  };
+
+  const enhancedSignOut = async () => {
+    await handleSignOut();
+    handleNewChat();
+    closeMobileSidebar();
+  };
+
+  // Enhanced speak handler that uses TTS
+  const handleSpeak = (text: string) => {
+    // This will trigger the latest response audio play
     handlePlayLatestResponse();
   };
 
-  // File upload handlers
-  const handleFileContent = (content: string, filename: string, type: 'pdf' | 'image') => {
-    setFileContent(content);
-    setUploadedFile({ name: filename, type });
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingIndicator message="Loading application..." />
+      </div>
+    );
+  }
 
-  const handleClearFile = () => {
-    setUploadedFile(null);
-    setFileContent('');
-  };
+  if (!user) {
+    return <Auth />;
+  }
 
-  const getFileContextForMessage = (userInput: string) => {
-    if (!fileContent) return userInput;
-    return `File content (${uploadedFile?.name}):\n\n${fileContent}\n\nUser message: ${userInput}`;
-  };
+  if (!hasAgreed) {
+    return <DisclaimerModal isOpen={showModal} onAgree={handleAgree} />;
+  }
 
   return (
-    <>
-      <ChatLayout
-        messages={messages}
-        currentChatId={currentChatId}
-        isLoading={isLoading}
-        suggestedQuestions={suggestedQuestions}
-        showSuggestions={showSuggestions}
-        onSendMessage={enhancedHandleSendMessage}
-        onSuggestionClick={handleSuggestionClick}
-        onChatSelect={enhancedHandleChatSelect}
-        onNewChat={enhancedHandleNewChat}
-        isPlaying={isPlaying}
-        isAudioProcessing={isAudioProcessing}
-        selectedVoice={selectedVoice}
-        onVoiceChange={setSelectedVoice}
-        onPlayLatestResponse={handlePlayLatestResponse}
-        onPauseAudio={handlePauseAudio}
-        musicName={musicName}
-        musicVolume={musicVolume}
-        onMusicUpload={handleMusicUpload}
-        onRemoveMusic={handleRemoveMusic}
-        onVolumeChange={handleVolumeChange}
-        isMobile={isMobile}
-        isMobileSidebarOpen={isMobileSidebarOpen}
-        onToggleMobileSidebar={toggleMobileSidebar}
-        userEmail={userEmail}
-        onCopy={handleCopy}
-        onSpeak={enhancedHandleSpeak}
-        onSignOut={() => {}}
-        uploadedFile={uploadedFile}
-        onFileContent={handleFileContent}
-        onClearFile={handleClearFile}
-        getFileContextForMessage={getFileContextForMessage}
-      />
-      
-      {/* Enhanced Video Player Popup */}
-      {isVideoEnabled && (
-        <VideoPlayerPopup
-          videoUrl={videoUrl}
-          hostedUrl={hostedUrl}
-          isVisible={popupState !== 'hidden'}
-          isMinimized={popupState === 'minimized'}
-          onClose={() => {
-            clearVideo();
-            setPopupState('hidden');
-          }}
-          onMinimize={() => setPopupState('minimized')}
-          onMaximize={() => setPopupState('playing')}
-        />
-      )}
-    </>
+    <ChatLayout
+      messages={messages}
+      currentChatId={currentChatId}
+      isLoading={isLoading}
+      suggestedQuestions={suggestedQuestions}
+      showSuggestions={showSuggestions}
+      onSendMessage={enhancedSendMessage}
+      onSuggestionClick={enhancedSuggestionClick}
+      onChatSelect={enhancedChatSelect}
+      onNewChat={enhancedNewChat}
+      isPlaying={isPlaying}
+      isAudioProcessing={isAudioProcessing}
+      selectedVoice={selectedVoice}
+      onPlayLatestResponse={handlePlayLatestResponse}
+      onPauseAudio={handlePauseAudio}
+      onVoiceChange={setSelectedVoice}
+      musicName={musicName}
+      musicVolume={musicVolume}
+      onMusicUpload={handleMusicUpload}
+      onRemoveMusic={handleRemoveMusic}
+      onVolumeChange={handleVolumeChange}
+      onCopy={handleCopy}
+      onSpeak={handleSpeak}
+      onSignOut={enhancedSignOut}
+      isMobile={isMobile}
+      isMobileSidebarOpen={isMobileSidebarOpen}
+      onToggleMobileSidebar={toggleMobileSidebar}
+      userEmail={user?.email}
+    />
   );
 }
 

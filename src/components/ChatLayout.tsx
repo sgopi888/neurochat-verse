@@ -1,11 +1,8 @@
-
-import React, { useState } from 'react';
-import ChatBot from './ChatBot';
-import ChatSidebar from './ChatSidebar';
-import UserSettings from './UserSettings';
-import SuggestedQuestions from './SuggestedQuestions';
-import LoadingIndicator from './LoadingIndicator';
-import PlayVideoButton from '@/features/video/components/PlayVideoButton';
+import React from 'react';
+import ChatBot from '@/components/ChatBot';
+import ChatSidebar from '@/components/ChatSidebar';
+import LoadingIndicator from '@/components/LoadingIndicator';
+import SuggestedQuestions from '@/components/SuggestedQuestions';
 
 interface Message {
   id: string;
@@ -15,45 +12,44 @@ interface Message {
 }
 
 interface ChatLayoutProps {
+  // Chat props
   messages: Message[];
   currentChatId: string | null;
   isLoading: boolean;
   suggestedQuestions: string[];
   showSuggestions: boolean;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (text: string) => void;
   onSuggestionClick: (question: string) => void;
   onChatSelect: (chatId: string) => void;
   onNewChat: () => void;
+
+  // Audio props
   isPlaying: boolean;
   isAudioProcessing?: boolean;
   selectedVoice: 'James' | 'Cassidy' | 'Drew' | 'Lavender';
-  onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
   onPlayLatestResponse: () => void;
   onPauseAudio: () => void;
-  musicName: string;
-  musicVolume: number;
-  onMusicUpload: (file: File) => void;
-  onRemoveMusic: () => void;
-  onVolumeChange: (volume: number) => void;
-  isMobile: boolean;
-  isMobileSidebarOpen: boolean;
-  onToggleMobileSidebar: () => void;
-  userEmail?: string;
+  onVoiceChange: (voice: 'James' | 'Cassidy' | 'Drew' | 'Lavender') => void;
+
+  // Background music props
+  musicName?: string;
+  musicVolume?: number;
+  onMusicUpload?: (file: File) => void;
+  onRemoveMusic?: () => void;
+  onVolumeChange?: (volume: number) => void;
+
+  // UI props
   onCopy: (text: string) => void;
   onSpeak: (text: string) => void;
   onSignOut: () => void;
-  // File upload props
-  uploadedFile?: { name: string; type: 'pdf' | 'image' } | null;
-  onFileContent?: (content: string, filename: string, type: 'pdf' | 'image') => void;
-  onClearFile?: () => void;
-  getFileContextForMessage?: (userInput: string) => string;
-  // Video props
-  isVideoEnabled?: boolean;
-  canGenerateVideo?: boolean;
-  onGenerateVideo?: () => void;
-  isVideoGenerating?: boolean;
-  videoCurrentStep?: string;
-  videoError?: string | null;
+
+  // Mobile props
+  isMobile: boolean;
+  isMobileSidebarOpen: boolean;
+  onToggleMobileSidebar: () => void;
+
+  // User props
+  userEmail?: string;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -67,114 +63,101 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onChatSelect,
   onNewChat,
   isPlaying,
-  isAudioProcessing = false,
+  isAudioProcessing,
   selectedVoice,
-  onVoiceChange,
   onPlayLatestResponse,
   onPauseAudio,
+  onVoiceChange,
   musicName,
   musicVolume,
   onMusicUpload,
   onRemoveMusic,
   onVolumeChange,
-  isMobile,
-  isMobileSidebarOpen,
-  onToggleMobileSidebar,
-  userEmail,
   onCopy,
   onSpeak,
   onSignOut,
-  uploadedFile,
-  onFileContent,
-  onClearFile,
-  getFileContextForMessage,
-  isVideoEnabled = false,
-  canGenerateVideo = false,
-  onGenerateVideo = () => {},
-  isVideoGenerating = false,
-  videoCurrentStep = '',
-  videoError = null
+  isMobile,
+  isMobileSidebarOpen,
+  onToggleMobileSidebar,
+  userEmail
 }) => {
-  const loadingIndicator = (
-    <div className="flex justify-center py-4">
-      <LoadingIndicator message="AI is thinking..." />
-    </div>
-  );
-
-  const suggestedQuestionsComponent = showSuggestions && suggestedQuestions.length > 0 ? (
-    <SuggestedQuestions 
-      questions={suggestedQuestions} 
-      onQuestionClick={onSuggestionClick}
-      isVisible={showSuggestions}
-    />
-  ) : null;
-
-  // Enhanced ChatSidebar with Video Button
-  const renderChatSidebar = () => (
-    <ChatSidebar
-      currentChatId={currentChatId}
-      onChatSelect={onChatSelect}
-      onNewChat={onNewChat}
-      onSignOut={onSignOut}
-      userEmail={userEmail}
-      messages={messages}
-      onPlayLatestResponse={onPlayLatestResponse}
-      onPauseAudio={onPauseAudio}
-      selectedVoice={selectedVoice}
-      onVoiceChange={onVoiceChange}
-      isPlaying={isPlaying}
-      isAudioProcessing={isAudioProcessing}
-      musicName={musicName}
-      musicVolume={musicVolume}
-      onMusicUpload={onMusicUpload}
-      onRemoveMusic={onRemoveMusic}
-      onVolumeChange={onVolumeChange}
-      // Video button props
-      isVideoEnabled={isVideoEnabled}
-      canGenerateVideo={canGenerateVideo}
-      onGenerateVideo={onGenerateVideo}
-      isVideoGenerating={isVideoGenerating}
-      videoCurrentStep={videoCurrentStep}
-      videoError={videoError}
-    />
-  );
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Desktop Sidebar */}
-      {!isMobile && (
-        <div className="w-80 border-r border-gray-200 dark:border-gray-700">
-          {renderChatSidebar()}
-        </div>
-      )}
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Desktop/Tablet Sidebar - Hidden on mobile */}
+      <div className={`${isMobile ? 'hidden' : 'block'}`}>
+        <ChatSidebar
+          currentChatId={currentChatId}
+          onChatSelect={onChatSelect}
+          onNewChat={onNewChat}
+          onSignOut={onSignOut}
+          userEmail={userEmail}
+          messages={messages}
+          onPlayLatestResponse={onPlayLatestResponse}
+          onPauseAudio={onPauseAudio}
+          selectedVoice={selectedVoice}
+          onVoiceChange={onVoiceChange}
+          isPlaying={isPlaying}
+          isAudioProcessing={isAudioProcessing}
+          musicName={musicName}
+          musicVolume={musicVolume}
+          onMusicUpload={onMusicUpload}
+          onRemoveMusic={onRemoveMusic}
+          onVolumeChange={onVolumeChange}
+        />
+      </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar Overlay - Only visible when open on mobile */}
       {isMobile && isMobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
-          <div className="absolute left-0 top-0 h-full w-80 bg-white dark:bg-gray-900 shadow-xl">
-            {renderChatSidebar()}
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => onToggleMobileSidebar()}
+          />
+          {/* Sidebar */}
+          <div className="fixed left-0 top-0 h-full w-80 z-50 transform transition-transform duration-300 ease-in-out">
+            <ChatSidebar
+              currentChatId={currentChatId}
+              onChatSelect={onChatSelect}
+              onNewChat={onNewChat}
+              onSignOut={onSignOut}
+              userEmail={userEmail}
+              messages={messages}
+              onPlayLatestResponse={onPlayLatestResponse}
+              onPauseAudio={onPauseAudio}
+              selectedVoice={selectedVoice}
+              onVoiceChange={onVoiceChange}
+              isPlaying={isPlaying}
+              isAudioProcessing={isAudioProcessing}
+              musicName={musicName}
+              musicVolume={musicVolume}
+              onMusicUpload={onMusicUpload}
+              onRemoveMusic={onRemoveMusic}
+              onVolumeChange={onVolumeChange}
+            />
           </div>
-        </div>
+        </>
       )}
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <ChatBot
           messages={messages}
           onSendMessage={onSendMessage}
           onCopy={onCopy}
           onSpeak={onSpeak}
           isLoading={isLoading}
-          loadingIndicator={loadingIndicator}
-          suggestedQuestions={suggestedQuestionsComponent}
+          loadingIndicator={<LoadingIndicator message="Processing with AI model..." />}
+          suggestedQuestions={
+            <SuggestedQuestions
+              questions={suggestedQuestions}
+              onQuestionClick={onSuggestionClick}
+              isVisible={showSuggestions}
+            />
+          }
           onSuggestionClick={onSuggestionClick}
           isMobile={isMobile}
           onToggleMobileSidebar={onToggleMobileSidebar}
           isMobileSidebarOpen={isMobileSidebarOpen}
-          uploadedFile={uploadedFile}
-          onFileContent={onFileContent}
-          onClearFile={onClearFile}
-          getFileContextForMessage={getFileContextForMessage}
         />
       </div>
     </div>
