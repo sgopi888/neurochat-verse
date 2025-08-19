@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
-import BoltBadge from './BoltBadge';
 import FileUpload from './FileUpload';
 
 interface Message {
@@ -140,9 +139,9 @@ const ChatBot: React.FC<ChatBotProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="flex flex-col h-full bg-gradient-to-br from-background via-card to-accent/10">
       {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+      <div className="border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -159,22 +158,17 @@ const ChatBot: React.FC<ChatBotProps> = ({
                 </Button>
               )}
 
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center">
                 <span className="text-white font-bold text-lg">AI</span>
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-semibold text-foreground">
                   NeuroHeart.AI Meditative Process Generator
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Your personal wellness companion
                 </p>
               </div>
-            </div>
-
-            {/* Bolt.new Badge - Top Right */}
-            <div className="flex-shrink-0">
-              <BoltBadge className="transition-transform hover:scale-105" />
             </div>
           </div>
         </div>
@@ -184,13 +178,13 @@ const ChatBot: React.FC<ChatBotProps> = ({
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.length === 0 && !isLoading && (
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-white font-bold text-2xl">AI</span>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">
               Welcome to your Meditative Process Generator
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               I'm here to create personalized meditation scripts for you. Choose a duration that feels right for your current needs.
             </p>
             <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
@@ -200,7 +194,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className="bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-800 border-gray-300 dark:border-gray-600 text-left justify-start max-w-xs"
+                  className="bg-card/60 hover:bg-card border-border text-left justify-start max-w-xs hover:border-primary/50 transition-all duration-200"
                   disabled={isLoading}
                 >
                   {suggestion}
@@ -228,7 +222,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4">
+      <div className="border-t border-border bg-card/80 backdrop-blur-sm p-4">
         <form onSubmit={handleSubmit} className="flex items-end space-x-2">
           <div className="flex-1 relative">
             <Textarea
@@ -237,7 +231,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me to create a meditation script for you..."
-              className="min-h-[44px] max-h-32 resize-none pr-16 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
+              className="min-h-[44px] max-h-32 resize-none pr-16 bg-card border-border focus:border-primary"
               disabled={isLoading}
             />
             <div className="absolute right-2 top-2 flex items-center gap-1">
@@ -254,8 +248,8 @@ const ChatBot: React.FC<ChatBotProps> = ({
                 variant="ghost"
                 className={`h-8 w-8 p-0 ${
                   isListening
-                    ? 'text-red-500 hover:text-red-600'
-                    : 'text-gray-400 hover:text-gray-600'
+                    ? 'text-destructive hover:text-destructive/80'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
                 disabled={isLoading}
               >
@@ -266,7 +260,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
           <Button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="h-11 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
+            className="h-11 px-4 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground border-0"
           >
             <Send className="h-4 w-4" />
           </Button>

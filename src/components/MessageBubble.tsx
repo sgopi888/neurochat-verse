@@ -47,26 +47,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
         {/* Avatar */}
         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
           message.isUser 
-            ? 'bg-blue-600 text-white hover:bg-blue-700' 
-            : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+            : 'bg-card border border-border hover:border-primary/50'
         }`}>
           {message.isUser ? (
             <User className="h-4 w-4" />
           ) : (
-            <Bot className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <Bot className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
 
         {/* Message Content */}
         <div className={`transition-all duration-300 ease-out transform hover:scale-[1.01] ${
           message.isUser 
-            ? 'bg-blue-600 text-white rounded-2xl rounded-tr-md shadow-lg hover:shadow-xl' 
-            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-md shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600'
+            ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-md shadow-lg hover:shadow-xl' 
+            : 'bg-card border border-border rounded-2xl rounded-tl-md shadow-sm hover:shadow-md hover:border-primary/50'
         } px-4 py-3 relative`}>
           
           {/* Timestamp - Always visible at top */}
           <div className={`text-xs mb-2 ${
-            message.isUser ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+            message.isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
           }`}>
             {formatTimestamp(message.timestamp)}
           </div>
@@ -74,7 +74,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
           {/* Message Text */}
           <div className="mb-2">
             <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
-              message.isUser ? 'text-white' : 'text-gray-900 dark:text-gray-100'
+              message.isUser ? 'text-primary-foreground' : 'text-foreground'
             }`}>
               {message.text}
             </p>
@@ -90,8 +90,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
               size="sm"
               className={`h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 ${
                 message.isUser 
-                  ? 'hover:bg-blue-500 text-blue-100 hover:text-white' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'hover:bg-primary/80 text-primary-foreground/70 hover:text-primary-foreground' 
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
               <Copy className="h-3 w-3" />
@@ -102,7 +102,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
                 onClick={() => onSpeak(message.text)}
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                className="h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 hover:bg-muted text-muted-foreground hover:text-primary"
               >
                 <Volume2 className="h-3 w-3" />
               </Button>
