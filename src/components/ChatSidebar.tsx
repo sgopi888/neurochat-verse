@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, LogOut, Play, Pause, Volume2, Music, MessageSquare, Plus, User, Trash2, Clock } from 'lucide-react';
+import { Settings, LogOut, Play, Pause, Volume2, Music, MessageSquare, Plus, User, Trash2, Clock, Loader2 } from 'lucide-react';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
 import UserSettings from './UserSettings';
@@ -109,7 +109,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   return (
     <div className="h-full flex flex-col bg-card border-r border-border">
       {/* Header */}
-      <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
+      <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             NeuroHeart AI
@@ -134,17 +134,114 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </Button>
       </div>
 
-      {/* Chat History */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Audio Controls */}
         <div className="p-4 pb-2">
           <Card className="bg-card/50 border-border/50">
             <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Volume2 className="h-4 w-4 mr-2" />
+                Audio Controls
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Voice Selection */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Voice</label>
+                <Select value={selectedVoice} onValueChange={onVoiceChange}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="James">James</SelectItem>
+                    <SelectItem value="Cassidy">Cassidy</SelectItem>
+                    <SelectItem value="Drew">Drew</SelectItem>
+                    <SelectItem value="Lavender">Lavender</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Play/Pause Button */}
+              <Button
+                onClick={isPlaying ? onPauseAudio : onPlayLatestResponse}
+                size="sm"
+                className="w-full"
+                disabled={isAudioProcessing}
+              >
+                {isAudioProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : isPlaying ? (
+                  <>
+                    <Pause className="h-4 w-4 mr-2" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    Play Script
+                  </>
+                )}
+              </Button>
+
+              {/* Enhanced Video Button with Progress */}
+              {isVideoEnabled && (
+                <div className="space-y-2">
+                  <PlayVideoButton
+                    onClick={handleVideoClick}
+                    disabled={false}
+                    isGenerating={isVideoGenerating}
+                    canGenerate={canGenerateVideo}
+                  />
+                  
+                  {/* Video Progress Display */}
+                  <VideoProgress
+                    currentStep={videoCurrentStep}
+                    isGenerating={isVideoGenerating}
+                    error={videoError}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Background Music */}
+        <div className="p-4 pt-0">
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Music className="h-4 w-4 mr-2" />
+                Background Music
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <BackgroundMusicUpload
+                musicName={musicName}
+                onMusicUpload={onMusicUpload}
+                onRemoveMusic={onRemoveMusic}
+              />
+              <VolumeControl
+                volume={musicVolume}
+                onVolumeChange={onVolumeChange}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Chat History */}
+        <div className="p-4 pt-0 flex-1 min-h-0">
+          <Card className="bg-card/50 border-border/50 h-full flex flex-col">
+            <CardHeader className="pb-2 flex-shrink-0">
               <CardTitle className="text-sm flex items-center">
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Chat History
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1 max-h-48 overflow-y-auto">
+            <CardContent className="flex-1 overflow-y-auto space-y-1">
               {isLoadingHistory ? (
                 <div className="text-xs text-muted-foreground">Loading...</div>
               ) : chatSessions.length === 0 ? (
@@ -184,98 +281,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             </CardContent>
           </Card>
         </div>
-
-        {/* Audio Controls */}
-        <div className="p-4 pt-2 space-y-3">
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center">
-                <Volume2 className="h-4 w-4 mr-2" />
-                Audio Controls
-              </CardTitle>
-            </CardHeader>
-          <CardContent className="space-y-3">
-            {/* Voice Selection */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Voice</label>
-              <Select value={selectedVoice} onValueChange={onVoiceChange}>
-                <SelectTrigger className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="James">James</SelectItem>
-                  <SelectItem value="Cassidy">Cassidy</SelectItem>
-                  <SelectItem value="Drew">Drew</SelectItem>
-                  <SelectItem value="Lavender">Lavender</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Play/Pause Button */}
-            <Button
-              onClick={isPlaying ? onPauseAudio : onPlayLatestResponse}
-              size="sm"
-              className="w-full"
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Play Script
-                </>
-              )}
-            </Button>
-
-            {/* Enhanced Video Button with Progress */}
-            {isVideoEnabled && (
-              <div className="space-y-2">
-                <PlayVideoButton
-                  onClick={handleVideoClick}
-                  disabled={false}
-                  isGenerating={isVideoGenerating}
-                  canGenerate={canGenerateVideo}
-                />
-                
-                {/* Video Progress Display */}
-                <VideoProgress
-                  currentStep={videoCurrentStep}
-                  isGenerating={isVideoGenerating}
-                  error={videoError}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-          {/* Background Music */}
-          <Card className="bg-card/50 border-border/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center">
-                <Music className="h-4 w-4 mr-2" />
-                Background Music
-              </CardTitle>
-            </CardHeader>
-          <CardContent className="space-y-3">
-            <BackgroundMusicUpload
-              musicName={musicName}
-              onMusicUpload={onMusicUpload}
-              onRemoveMusic={onRemoveMusic}
-            />
-            <VolumeControl
-              volume={musicVolume}
-              onVolumeChange={onVolumeChange}
-            />
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* User Info */}
-      <div className="mt-auto p-4 border-t border-border bg-gradient-to-r from-primary/5 to-accent/5">
+      <div className="p-4 border-t border-border bg-gradient-to-r from-primary/5 to-accent/5 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <User className="h-4 w-4 text-gray-500" />

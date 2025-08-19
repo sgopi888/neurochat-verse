@@ -23,28 +23,22 @@ const FileUpload: React.FC<FileUploadProps> = ({
     fileInputRef.current?.click();
   };
 
-  // HURIDOCS Layout API text extraction function
+  // Extract text using Supabase edge function
   const extractTextFromFileAPI = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch('/huridocs-api/layout', {
+    const response = await fetch('/api/extract-text', {
       method: 'POST',
       body: formData,
     });
 
     if (!response.ok) {
-      throw new Error('Failed to extract text via HURIDOCS API');
+      throw new Error('Failed to extract text from file');
     }
 
     const data = await response.json();
-
-    const extractedText = data.pages
-      .map((page: any) =>
-        page.blocks.map((block: any) => block.text).join('\n')
-      ).join('\n\n');
-
-    return extractedText.trim();
+    return data.text || '';
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

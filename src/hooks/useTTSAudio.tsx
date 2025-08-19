@@ -156,6 +156,7 @@ export const useTTSAudio = (
 
   const handlePlayLatestResponse = () => {
     console.log('Play button clicked - starting background music immediately');
+    setIsPlaying(true); // Immediately update UI state
     debouncedPlayLatestResponse();
   };
 

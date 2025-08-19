@@ -47,7 +47,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
         {/* Avatar */}
         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
           message.isUser 
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+            ? 'bg-gradient-to-br from-primary via-accent to-secondary text-primary-foreground hover:from-primary/90 hover:via-accent/90 hover:to-secondary/90 shadow-lg' 
             : 'bg-card border border-border hover:border-primary/50'
         }`}>
           {message.isUser ? (
@@ -60,7 +60,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
         {/* Message Content */}
         <div className={`transition-all duration-300 ease-out transform hover:scale-[1.01] ${
           message.isUser 
-            ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-md shadow-lg hover:shadow-xl' 
+            ? 'bg-gradient-to-br from-primary via-accent to-secondary text-primary-foreground rounded-2xl rounded-tr-md shadow-lg hover:shadow-xl border border-primary/20' 
             : 'bg-card border border-border rounded-2xl rounded-tl-md shadow-sm hover:shadow-md hover:border-primary/50'
         } px-4 py-3 relative`}>
           
