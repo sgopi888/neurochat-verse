@@ -3,12 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, LogOut, Play, Pause, Volume2, Music, MessageSquare, Plus, User } from 'lucide-react';
+import { Settings, LogOut, Play, Pause, Volume2, Music, MessageSquare, Plus, User, Trash2, Clock } from 'lucide-react';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
 import UserSettings from './UserSettings';
 import PlayVideoButton from '@/features/video/components/PlayVideoButton';
 import VideoProgress from '@/features/video/components/VideoProgress';
+import { useChatHistory } from '@/hooks/useChatHistory';
 import { toast } from 'sonner';
 
 interface Message {
@@ -71,6 +72,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   videoError = null
 }) => {
   const [showSettings, setShowSettings] = useState(false);
+  const { chatSessions, isLoading: isLoadingHistory, deleteChat } = useChatHistory(currentChatId);
 
   const handleVideoClick = () => {
     if (!canGenerateVideo) {
@@ -80,19 +82,43 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     onGenerateVideo();
   };
 
+  const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this chat?')) {
+      await deleteChat(chatId);
+      if (chatId === currentChatId) {
+        onNewChat();
+      }
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 168) { // 7 days
+      return date.toLocaleDateString([], { weekday: 'short' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
+    <div className="h-full flex flex-col bg-card border-r border-border">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             NeuroHeart AI
           </h2>
           <Button
             onClick={() => setShowSettings(true)}
             variant="ghost"
             size="sm"
-            className="p-2"
+            className="p-2 hover:bg-primary/20"
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -100,7 +126,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         
         <Button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2"
+          className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
           size="sm"
         >
           <Plus className="h-4 w-4" />
@@ -108,15 +134,66 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </Button>
       </div>
 
-      {/* Audio Controls */}
-      <div className="p-4 space-y-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center">
-              <Volume2 className="h-4 w-4 mr-2" />
-              Audio Controls
-            </CardTitle>
-          </CardHeader>
+      {/* Chat History */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="p-4 pb-2">
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Chat History
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1 max-h-48 overflow-y-auto">
+              {isLoadingHistory ? (
+                <div className="text-xs text-muted-foreground">Loading...</div>
+              ) : chatSessions.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No chat history yet</div>
+              ) : (
+                chatSessions.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`group flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                      chat.id === currentChatId 
+                        ? 'bg-primary/20 border border-primary/50' 
+                        : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => onChatSelect(chat.id)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate" title={chat.title}>
+                        {chat.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(chat.updated_at)}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                      onClick={(e) => handleDeleteChat(chat.id, e)}
+                      title="Delete chat"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Audio Controls */}
+        <div className="p-4 pt-2 space-y-3">
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Volume2 className="h-4 w-4 mr-2" />
+                Audio Controls
+              </CardTitle>
+            </CardHeader>
           <CardContent className="space-y-3">
             {/* Voice Selection */}
             <div className="space-y-2">
@@ -174,14 +251,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </CardContent>
         </Card>
 
-        {/* Background Music */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center">
-              <Music className="h-4 w-4 mr-2" />
-              Background Music
-            </CardTitle>
-          </CardHeader>
+          {/* Background Music */}
+          <Card className="bg-card/50 border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Music className="h-4 w-4 mr-2" />
+                Background Music
+              </CardTitle>
+            </CardHeader>
           <CardContent className="space-y-3">
             <BackgroundMusicUpload
               musicName={musicName}
@@ -192,12 +269,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               volume={musicVolume}
               onVolumeChange={onVolumeChange}
             />
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* User Info */}
-      <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="mt-auto p-4 border-t border-border bg-gradient-to-r from-primary/5 to-accent/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <User className="h-4 w-4 text-gray-500" />
