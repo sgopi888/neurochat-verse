@@ -42,6 +42,11 @@ interface ChatLayoutProps {
   onCopy: (text: string) => void;
   onSpeak: (text: string) => void;
   onSignOut: () => void;
+  // File upload props
+  uploadedFile?: { name: string; type: 'pdf' | 'image' } | null;
+  onFileContent?: (content: string, filename: string, type: 'pdf' | 'image') => void;
+  onClearFile?: () => void;
+  getFileContextForMessage?: (userInput: string) => string;
   // Video props
   isVideoEnabled?: boolean;
   canGenerateVideo?: boolean;
@@ -79,6 +84,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onCopy,
   onSpeak,
   onSignOut,
+  uploadedFile,
+  onFileContent,
+  onClearFile,
+  getFileContextForMessage,
   isVideoEnabled = false,
   canGenerateVideo = false,
   onGenerateVideo = () => {},
@@ -162,6 +171,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           isMobile={isMobile}
           onToggleMobileSidebar={onToggleMobileSidebar}
           isMobileSidebarOpen={isMobileSidebarOpen}
+          uploadedFile={uploadedFile}
+          onFileContent={onFileContent}
+          onClearFile={onClearFile}
+          getFileContextForMessage={getFileContextForMessage}
         />
       </div>
     </div>

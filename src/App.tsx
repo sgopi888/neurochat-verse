@@ -18,6 +18,10 @@ function AppContent() {
   const userId = 'test-user-12345';
   const userEmail = 'test@example.com';
   
+  // File upload state
+  const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
+  const [fileContent, setFileContent] = React.useState<string>('');
+  
   // Initialize chat management
   const {
     messages,
@@ -112,6 +116,22 @@ function AppContent() {
     handlePlayLatestResponse();
   };
 
+  // File upload handlers
+  const handleFileContent = (content: string, filename: string, type: 'pdf' | 'image') => {
+    setFileContent(content);
+    setUploadedFile({ name: filename, type });
+  };
+
+  const handleClearFile = () => {
+    setUploadedFile(null);
+    setFileContent('');
+  };
+
+  const getFileContextForMessage = (userInput: string) => {
+    if (!fileContent) return userInput;
+    return `File content (${uploadedFile?.name}):\n\n${fileContent}\n\nUser message: ${userInput}`;
+  };
+
   return (
     <>
       <ChatLayout
@@ -132,7 +152,6 @@ function AppContent() {
         onPauseAudio={handlePauseAudio}
         musicName={musicName}
         musicVolume={musicVolume}
-        
         onMusicUpload={handleMusicUpload}
         onRemoveMusic={handleRemoveMusic}
         onVolumeChange={handleVolumeChange}
@@ -143,6 +162,10 @@ function AppContent() {
         onCopy={handleCopy}
         onSpeak={enhancedHandleSpeak}
         onSignOut={() => {}}
+        uploadedFile={uploadedFile}
+        onFileContent={handleFileContent}
+        onClearFile={handleClearFile}
+        getFileContextForMessage={getFileContextForMessage}
       />
       
       {/* Enhanced Video Player Popup */}
