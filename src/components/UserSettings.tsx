@@ -108,12 +108,13 @@ const UserSettings: React.FC<UserSettingsProps> = ({
               Background Music
             </h3>
             
-            <BackgroundMusicUpload
-              musicName={musicName}
-              onMusicUpload={onMusicUpload}
-              onRemoveMusic={onRemoveMusic}
-              defaultSrc="https://obgbnrasiyozdnmoixxx.supabase.co/storage/v1/object/public/music/piano.mp3"
-            />
+              <BackgroundMusicUpload
+                musicName={musicName}
+                onMusicUpload={onMusicUpload}
+                onRemoveMusic={onRemoveMusic}
+                defaultSrc="https://obgbnrasiyozdnmoixxx.supabase.co/storage/v1/object/public/music/piano.mp3"
+                autoPlay={false}
+              />
             
             <VolumeControl
               volume={musicVolume}

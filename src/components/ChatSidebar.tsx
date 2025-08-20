@@ -127,9 +127,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <Button
           onClick={onNewChat}
           size="sm"
-          className="w-full"
+          className="w-full h-9"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 mr-2" />
           New Chat
         </Button>
       </div>
@@ -224,6 +224,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 onMusicUpload={onMusicUpload}
                 onRemoveMusic={onRemoveMusic}
                 defaultSrc="https://obgbnrasiyozdnmoixxx.supabase.co/storage/v1/object/public/music/piano.mp3"
+                autoPlay={false}
               />
               <VolumeControl
                 volume={musicVolume}

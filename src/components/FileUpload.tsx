@@ -4,8 +4,8 @@ import { Paperclip, X, FileText, Image, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set the worker source for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set the worker source for PDF.js using a more reliable method
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
 
 interface FileUploadProps {
   onFileContent: (content: string, filename: string, type: 'pdf' | 'image') => void;
