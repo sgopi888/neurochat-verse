@@ -9,7 +9,7 @@ import VolumeControl from './VolumeControl';
 import UserSettings from './UserSettings';
 import PlayVideoButton from '@/features/video/components/PlayVideoButton';
 import VideoProgress from '@/features/video/components/VideoProgress';
-import { useChatHistory } from '@/hooks/useChatHistory';
+// Removed useChatHistory - now using unified useChatManager
 import { toast } from 'sonner';
 
 interface Message {
@@ -44,6 +44,10 @@ interface ChatSidebarProps {
   isVideoGenerating?: boolean;
   videoCurrentStep?: string;
   videoError?: string | null;
+  // Chat data now passed from parent
+  chatSessions: { id: string; title: string; updated_at: string; created_at: string; }[];
+  isLoadingHistory: boolean;
+  onDeleteChat: (chatId: string) => void;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -69,10 +73,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onGenerateVideo = () => {},
   isVideoGenerating = false,
   videoCurrentStep = '',
-  videoError = null
+  videoError = null,
+  chatSessions,
+  isLoadingHistory,
+  onDeleteChat
 }) => {
   const [showSettings, setShowSettings] = useState(false);
-  const { chatSessions, isLoading: isLoadingHistory, deleteChat } = useChatHistory(currentChatId);
 
   const handleVideoClick = () => {
     if (!canGenerateVideo) {
@@ -85,10 +91,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this chat?')) {
-      await deleteChat(chatId);
-      if (chatId === currentChatId) {
-        onNewChat();
-      }
+      await onDeleteChat(chatId);
     }
   };
 

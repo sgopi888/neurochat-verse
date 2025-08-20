@@ -9,7 +9,7 @@ import DisclaimerModal from '@/components/DisclaimerModal';
 import ChatLayout from '@/components/ChatLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
-import { useEnhancedChatManager } from '@/hooks/useEnhancedChatManager';
+import { useChatManager } from '@/hooks/useChatManager';
 import { useAudioManager } from '@/hooks/useAudioManager';
 import { useAppEffects } from '@/hooks/useAppEffects';
 import { useMobileManager } from '@/hooks/useMobileManager';
@@ -24,18 +24,22 @@ function AppContent() {
   const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
   const [fileContent, setFileContent] = React.useState<string>('');
 
-  // Enhanced chat management with dual-mode support
+  // Unified chat management with real-time database sync
   const {
     allDisplayMessages,
+    messages,
+    chatSessions,
     currentChatId,
     isLoading,
+    isLoadingHistory,
     suggestedQuestions,
     showSuggestions,
-    handleProbingMessage,
+    handleSendMessage,
     generateMeditationScript,
     handleSuggestionClick,
     handleNewChat,
     handleChatSelect,
+    deleteChat,
     chatMode,
     isGeneratingMeditation,
     canGenerateMeditation,
@@ -45,7 +49,7 @@ function AppContent() {
     setMessages,
     setCurrentChatId,
     setSuggestedQuestions
-  } = useEnhancedChatManager();
+  } = useChatManager();
 
   // Audio management with background music
   const {
@@ -90,7 +94,7 @@ function AppContent() {
   // Enhanced handlers that include mobile sidebar management
   const enhancedSendMessage = (text: string) => {
     closeMobileSidebar();
-    handleProbingMessage(text);
+    handleSendMessage(text);
   };
 
   const enhancedChatSelect = (chatId: string) => {
@@ -188,11 +192,15 @@ function AppContent() {
       uploadedFile={uploadedFile}
       // Enhanced chat props
       chatMode={chatMode}
-          canGenerateMeditation={canGenerateMeditation}
-          isGeneratingMeditation={isGeneratingMeditation}
-          onGenerateMeditation={generateMeditationScript}
-          canStopOperation={canStopOperation}
-          onStopOperation={stopCurrentOperation}
+      canGenerateMeditation={canGenerateMeditation}
+      isGeneratingMeditation={isGeneratingMeditation}
+      onGenerateMeditation={generateMeditationScript}
+      canStopOperation={canStopOperation}
+      onStopOperation={stopCurrentOperation}
+      // New unified chat props
+      chatSessions={chatSessions}
+      isLoadingHistory={isLoadingHistory}
+      onDeleteChat={deleteChat}
     />
   );
 }

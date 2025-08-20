@@ -13,7 +13,7 @@ interface Message {
 
 interface ChatMode {
   mode: 'probing' | 'generating';
-  probingMessages: Message[];
+  probingMessages?: Message[]; // Made optional for backward compatibility
 }
 
 interface ChatLayoutProps {
@@ -71,6 +71,11 @@ interface ChatLayoutProps {
   onGenerateMeditation?: () => void;
   canStopOperation?: boolean;
   onStopOperation?: () => void;
+
+  // Chat data props (now required for unified management)
+  chatSessions: { id: string; title: string; updated_at: string; created_at: string; }[];
+  isLoadingHistory: boolean;
+  onDeleteChat: (chatId: string) => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -112,7 +117,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   isGeneratingMeditation,
   onGenerateMeditation,
   canStopOperation,
-  onStopOperation
+  onStopOperation,
+  chatSessions,
+  isLoadingHistory,
+  onDeleteChat
 }) => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
@@ -136,6 +144,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           onMusicUpload={onMusicUpload}
           onRemoveMusic={onRemoveMusic}
           onVolumeChange={onVolumeChange}
+          chatSessions={chatSessions}
+          isLoadingHistory={isLoadingHistory}
+          onDeleteChat={onDeleteChat}
         />
       </div>
 
@@ -167,6 +178,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
               onMusicUpload={onMusicUpload}
               onRemoveMusic={onRemoveMusic}
               onVolumeChange={onVolumeChange}
+              chatSessions={chatSessions}
+              isLoadingHistory={isLoadingHistory}
+              onDeleteChat={onDeleteChat}
             />
           </div>
         </>

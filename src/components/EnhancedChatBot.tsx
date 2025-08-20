@@ -11,7 +11,7 @@ interface Message {
 
 interface ChatMode {
   mode: 'probing' | 'generating';
-  probingMessages: Message[];
+  probingMessages?: Message[]; // Made optional for backward compatibility
 }
 
 interface EnhancedChatBotProps {

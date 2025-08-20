@@ -244,7 +244,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
       {/* Input Area - Fixed at bottom */}
       <div className="border-t border-border bg-card/80 backdrop-blur-sm p-4 flex-shrink-0">
         {/* Generate Meditation Button - Show when ready */}
-        {chatMode?.mode === 'probing' && chatMode.probingMessages.length > 0 && canGenerateMeditation && (
+        {chatMode?.mode === 'probing' && messages.length > 0 && canGenerateMeditation && (
           <div className="mb-4 p-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/20">
             <div className="flex items-center justify-between">
               <div>
