@@ -91,35 +91,36 @@ export const useBackgroundMusic = () => {
   const handleMusicUpload = (file: File, isCurrentlyPlaying?: boolean) => {
     try {
       console.log('Uploading new music file:', file.name, 'isCurrentlyPlaying:', isCurrentlyPlaying);
-      
-      // Clean up previous audio
-      if (backgroundMusicRef.current) {
-        backgroundMusicRef.current.pause();
+
+      const audioBlob = new Blob([file], { type: file.type });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // ✅ Reuse existing element if available to prevent audio context conflicts
+      if (!backgroundMusicRef.current) {
+        backgroundMusicRef.current = new Audio();
+        backgroundMusicRef.current.loop = true;
+        backgroundMusicRef.current.preload = 'auto';
+      } else {
+        // Clean up previous blob URL
         if (backgroundMusicRef.current.src.startsWith('blob:')) {
           URL.revokeObjectURL(backgroundMusicRef.current.src);
         }
+        backgroundMusicRef.current.pause();
       }
 
-      // Create new audio element from uploaded file
-      const audioBlob = new Blob([file], { type: file.type });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      
-      audio.loop = true;
-      audio.volume = musicVolume; // Use current volume state
-      audio.preload = 'auto'; // 🔑 Ensure browser loads it early
-      
-      backgroundMusicRef.current = audio;
+      // ✅ Just change the src instead of creating new element
+      backgroundMusicRef.current.src = audioUrl;
+      backgroundMusicRef.current.volume = musicVolume;
       setMusicName(file.name);
       setIsDefaultMusic(false);
-      
-      console.log('Background music uploaded:', file.name, 'with volume:', audio.volume);
+
+      console.log('Background music uploaded:', file.name, 'with volume:', backgroundMusicRef.current.volume);
       toast.success('Background music uploaded successfully');
-      
+
       // 🔑 If currently playing, immediately play the new track
       if (isCurrentlyPlaying) {
         console.log('🎵 Immediately playing new BGM since TTS is active');
-        audio.play().catch(err => {
+        backgroundMusicRef.current.play().catch(err => {
           console.error('Error playing uploaded BGM:', err);
         });
       }
