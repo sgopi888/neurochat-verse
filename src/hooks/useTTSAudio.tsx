@@ -34,7 +34,7 @@ export const useTTSAudio = (
   const errListener = useRef<(e: Event) => void>();
   const backgroundMusicStarted = useRef(false);
 
-  // Enhanced audio cleanup function
+  // Clean up only TTS audio (never touch background music)
   const stopCurrentAudio = async () => {
     if (audioAbort.current) {
       audioAbort.current.abort();
@@ -47,19 +47,11 @@ export const useTTSAudio = (
       if (endListener.current) currentAudio.removeEventListener('ended', endListener.current);
       if (errListener.current) currentAudio.removeEventListener('error', errListener.current);
       if (currentAudio.src.startsWith('blob:')) URL.revokeObjectURL(currentAudio.src);
+      setCurrentAudio(null);
     }
-    setCurrentAudio(null);
     setIsPlaying(false);
     audioLock.current = false;
     setIsAudioProcessing(false);
-    
-    // Restart background music after TTS ends
-    if (backgroundMusicStarted.current) {
-      console.log('TTS ended, restarting background music');
-      setTimeout(() => {
-        playBackgroundMusic();
-      }, 100); // Small delay to ensure clean transition
-    }
   };
 
   // Debounced play function with enhanced synchronization
@@ -78,7 +70,18 @@ export const useTTSAudio = (
     // Queue audio processing to ensure sequential execution
     await audioQueue.current;
     audioQueue.current = audioQueue.current.then(async () => {
-      await stopCurrentAudio(); // Ensure cleanup
+      // Only stop the last TTS audio, not background music
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        if (playListener.current) currentAudio.removeEventListener('play', playListener.current);
+        if (endListener.current) currentAudio.removeEventListener('ended', endListener.current);
+        if (errListener.current) currentAudio.removeEventListener('error', errListener.current);
+        if (currentAudio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(currentAudio.src);
+        }
+        setCurrentAudio(null);
+      }
 
       const last = messages.filter(m => !m.isUser).pop();
       if (!last) {
@@ -124,13 +127,20 @@ export const useTTSAudio = (
         // Set up event listeners with refs for proper cleanup
         playListener.current = async () => {
           setIsPlaying(true);
-          // Lower background music volume during TTS instead of stopping it
-          console.log('TTS audio started playing, lowering background music volume');
+          console.log('TTS audio started playing');
         };
         
         endListener.current = () => {
-          console.log('TTS audio ended, will restart background music');
-          stopCurrentAudio();
+          console.log('TTS ended');
+          // Clean up only TTS audio, leave background music alone
+          if (currentAudio) {
+            if (currentAudio.src.startsWith('blob:')) {
+              URL.revokeObjectURL(currentAudio.src);
+            }
+            setCurrentAudio(null);
+          }
+          setIsPlaying(false);
+          audioLock.current = false;
         };
         
         errListener.current = () => {
@@ -146,19 +156,25 @@ export const useTTSAudio = (
         setCurrentAudio(audio);
         await audio.play();
         
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Error playing audio:', error);
-          toast.error('Failed to play audio');
-          // Make sure to stop background music on error
-          stopCurrentAudio();
+        } catch (error) {
+          if (error.name !== 'AbortError') {
+            console.error('Error playing audio:', error);
+            toast.error('Failed to play audio');
+            // Only clean up TTS on error, leave background music alone
+            if (currentAudio) {
+              if (currentAudio.src.startsWith('blob:')) {
+                URL.revokeObjectURL(currentAudio.src);
+              }
+              setCurrentAudio(null);
+            }
+            setIsPlaying(false);
+            audioLock.current = false;
+          }
+        } finally {
+          if (!audioAbort.current?.signal.aborted) {
+            setIsAudioProcessing(false);
+          }
         }
-      } finally {
-        if (!audioAbort.current?.signal.aborted) {
-          audioLock.current = false;
-          setIsAudioProcessing(false);
-        }
-      }
     });
   }, 300);
 
