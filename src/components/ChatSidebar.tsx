@@ -222,8 +222,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 musicName={musicName}
                 onMusicUpload={onMusicUpload}
                 onRemoveMusic={onRemoveMusic}
-                defaultSrc="https://obgbnrasiyozdnmoixxx.supabase.co/storage/v1/object/public/music/piano.mp3"
-                autoPlay={false}
               />
               <VolumeControl
                 volume={musicVolume}
