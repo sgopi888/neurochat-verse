@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Play, Pause, Settings, Volume2, Music } from 'lucide-react';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
+import { AISettings } from './AISettings';
 
 interface UserSettingsProps {
   isOpen: boolean;
@@ -57,6 +58,17 @@ const UserSettings: React.FC<UserSettingsProps> = ({
         </CardHeader>
         
         <CardContent className="space-y-6">
+          {/* AI Settings Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium flex items-center">
+              <Settings className="h-4 w-4 mr-2" />
+              AI Configuration
+            </h3>
+            <AISettings />
+          </div>
+
+          <Separator />
+
           {/* Audio Controls Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium flex items-center">

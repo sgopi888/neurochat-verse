@@ -13,17 +13,38 @@ interface GPTResponse {
   error?: string;
 }
 
+interface GPTConfig {
+  provider: 'aiml' | 'openai';
+  model: 'gpt-5' | 'gpt-5-nano';
+}
+
 export class GPTService {
+  private static getConfig(): GPTConfig {
+    // Get from localStorage or default to AIML + GPT-5 nano
+    const savedConfig = localStorage.getItem('gpt-config');
+    if (savedConfig) {
+      return JSON.parse(savedConfig);
+    }
+    return { provider: 'aiml', model: 'gpt-5-nano' };
+  }
+
+  static setConfig(config: GPTConfig): void {
+    localStorage.setItem('gpt-config', JSON.stringify(config));
+  }
+
   private static async callGPT(
     messages: Array<{ role: string; content: string }>,
     userId?: string
   ): Promise<GPTResponse> {
+    const config = this.getConfig();
+    
     try {
       const { data, error } = await supabase.functions.invoke('gpt-chat', {
         body: {
           messages,
           userId,
-          model: 'gpt-5-2025-08-07'
+          provider: config.provider,
+          model: config.model
         }
       });
 
@@ -40,17 +61,19 @@ export class GPTService {
   }
 
   static async probingChat(userMessage: string, chatHistory: Message[], userId?: string): Promise<GPTResponse> {
-    const systemPrompt = `You are a compassionate listener and gentle guide. Your role is to encourage the user to open up about their current struggles, worries, emotional pain, and challenges. 
+    const systemPrompt = `You are a warm, compassionate therapist having a gentle conversation with someone who may be struggling. Your goal is to create a safe space where they feel heard and understood, helping them explore what's weighing on their heart.
 
-Ask gentle, open-ended questions that help them reveal more details about what's troubling them. Be warm, empathetic, and patient. Do not give solutions, advice, or meditations yet - your only goal is to help them explore and articulate their emotional landscape.
+Respond naturally and conversationally, as if you're sitting together having tea. Listen deeply to what they share and reflect back what you hear. Ask one thoughtful follow-up question that helps them go a bit deeper - not to interrogate, but to show genuine curiosity about their experience.
 
-Some example approaches:
-- "Tell me more about what's been weighing on your mind lately..."
-- "How has that been affecting you day-to-day?"
-- "What feels most challenging about that situation?"
-- "Can you describe what that stress feels like for you?"
+Your tone should be:
+- Warm and present, like a caring friend
+- Curious without being intrusive  
+- Validating of their feelings
+- Focused on understanding, not fixing
 
-Keep your responses natural, conversational, and supportive. Focus on drawing out emotions, contexts, and details that will help create a personalized meditation later.`;
+For example, if they mention stress at work, you might say something like: "That sounds really overwhelming to carry all of that. I can hear how much it's weighing on you. What part of it feels the heaviest right now?"
+
+Keep responses conversational and flowing, avoiding bullet points or clinical language. One gentle question is enough - let them guide where the conversation goes.`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
