@@ -13,12 +13,12 @@ export const generateContextualQuestions = async (
   chatHistory: Message[] = []
 ): Promise<string[]> => {
   try {
-    console.log('Generating contextual questions for response:', lastResponse.substring(0, 100) + '...');
+    console.log('🤔 Generating contextual questions using GPT-5-nano...');
     
     const { data, error } = await supabase.functions.invoke('generate-contextual-questions', {
       body: {
         lastResponse,
-        chatHistory: chatHistory.slice(-6) // Send only recent messages for context
+        chatHistory: chatHistory.slice(-4) // Send only recent messages for context
       }
     });
 
@@ -28,10 +28,11 @@ export const generateContextualQuestions = async (
     }
 
     if (data?.questions && Array.isArray(data.questions)) {
-      console.log('Generated contextual questions:', data.questions);
+      console.log('✅ Generated contextual questions:', data.questions);
       return data.questions;
     }
 
+    console.log('⚠️ No questions in response, using fallback');
     return getFallbackQuestions(lastResponse);
   } catch (error) {
     console.error('Error in generateContextualQuestions:', error);

@@ -164,23 +164,46 @@ export const useBackgroundMusic = () => {
   const playBackgroundMusic = async () => {
     if (backgroundMusicRef.current) {
       try {
-        console.log('Attempting to play background music. Current volume:', backgroundMusicRef.current.volume);
-        console.log('Audio element ready state:', backgroundMusicRef.current.readyState);
-        console.log('Audio element source:', backgroundMusicRef.current.src);
+        console.log('🎵 Attempting to play background music. Current volume:', backgroundMusicRef.current.volume);
+        console.log('🎵 Audio element ready state:', backgroundMusicRef.current.readyState);
+        console.log('🎵 Audio element source:', backgroundMusicRef.current.src);
+        
+        // Force audio element to reload if necessary
+        if (backgroundMusicRef.current.readyState < 2) {
+          console.log('🎵 Audio not ready, forcing load...');
+          backgroundMusicRef.current.load();
+          await new Promise(resolve => {
+            backgroundMusicRef.current!.addEventListener('canplay', resolve, { once: true });
+          });
+        }
         
         await backgroundMusicRef.current.play();
-        console.log('Background music started playing successfully:', isDefaultMusic ? 'Default Piano' : musicName);
+        console.log('🎵 Background music started playing successfully:', isDefaultMusic ? 'Default Piano' : musicName);
       } catch (error) {
-        console.error('Error playing background music:', error);
+        console.error('🎵 Error playing background music:', error);
         
         if (error.name === 'NotAllowedError') {
-          console.log('Autoplay blocked by browser - this is normal until user interaction');
+          console.log('🎵 Autoplay blocked by browser - this is normal until user interaction');
         } else {
-          toast.error('Failed to play background music: ' + error.message);
+          console.error('🎵 Failed to play background music:', error.message);
+          // Don't show toast for autoplay errors, they're expected
+          if (error.name !== 'NotAllowedError') {
+            toast.error('Failed to play background music: ' + error.message);
+          }
         }
       }
     } else {
-      console.error('No background music audio element available');
+      console.error('🎵 No background music audio element available - calling loadDefaultMusic');
+      await loadDefaultMusic(musicVolume);
+      // Retry once after loading
+      if (backgroundMusicRef.current) {
+        try {
+          await backgroundMusicRef.current.play();
+          console.log('🎵 Background music started after reload');
+        } catch (retryError) {
+          console.error('🎵 Still failed after reload:', retryError);
+        }
+      }
     }
   };
 

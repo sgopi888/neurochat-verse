@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { GPTService } from '@/services/gptService';
+import { generateContextualQuestions } from '@/utils/contextualQuestions';
 import { toast } from 'sonner';
 
 interface Message {
@@ -120,13 +121,21 @@ export const useEnhancedChatManager = () => {
         probingMessages: [...updatedProbingMessages, aiMessage]
       }));
 
-      // Set contextual suggestions for probing
+    // Generate contextual questions after probing response
+    try {
+      const contextualQuestions = await generateContextualQuestions(response.data || '', chatMode.probingMessages);
+      setSuggestedQuestions(contextualQuestions);
+      setShowSuggestions(true);
+    } catch (questionError) {
+      console.error('Error generating contextual questions:', questionError);
+      // Fallback to static questions
       setSuggestedQuestions([
         "Can you tell me more about that?",
-        "How has this been affecting your daily life?",
-        "What would help you feel better about this situation?"
+        "How has this been affecting my daily life?",
+        "What would help me feel better about this situation?"
       ]);
       setShowSuggestions(true);
+    }
 
     } catch (error) {
       console.error('Error in probing chat:', error);
