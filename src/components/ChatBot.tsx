@@ -28,6 +28,11 @@ interface ChatBotProps {
   onFileContent: (content: string, filename: string, type: 'pdf' | 'image') => void;
   onClearFile: () => void;
   uploadedFile: { name: string; type: 'pdf' | 'image' } | null;
+  // Enhanced chat props
+  chatMode?: any;
+  canGenerateMeditation?: boolean;
+  isGeneratingMeditation?: boolean;
+  onGenerateMeditation?: () => void;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -44,7 +49,11 @@ const ChatBot: React.FC<ChatBotProps> = ({
   isMobileSidebarOpen = false,
   onFileContent,
   onClearFile,
-  uploadedFile
+  uploadedFile,
+  chatMode,
+  canGenerateMeditation,
+  isGeneratingMeditation,
+  onGenerateMeditation
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);

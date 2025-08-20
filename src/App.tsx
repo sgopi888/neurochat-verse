@@ -9,7 +9,7 @@ import DisclaimerModal from '@/components/DisclaimerModal';
 import ChatLayout from '@/components/ChatLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
-import { useChatManager } from '@/hooks/useChatManager';
+import { useEnhancedChatManager } from '@/hooks/useEnhancedChatManager';
 import { useAudioManager } from '@/hooks/useAudioManager';
 import { useAppEffects } from '@/hooks/useAppEffects';
 import { useMobileManager } from '@/hooks/useMobileManager';
@@ -24,22 +24,26 @@ function AppContent() {
   const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
   const [fileContent, setFileContent] = React.useState<string>('');
 
-  // Chat management
+  // Enhanced chat management with dual-mode support
   const {
-    messages,
+    allDisplayMessages,
     currentChatId,
     isLoading,
     suggestedQuestions,
     showSuggestions,
-    handleSendMessage,
+    handleProbingMessage,
+    generateMeditationScript,
     handleSuggestionClick,
     handleNewChat,
     handleChatSelect,
+    chatMode,
+    isGeneratingMeditation,
+    canGenerateMeditation,
     setShowSuggestions,
     setMessages,
     setCurrentChatId,
     setSuggestedQuestions
-  } = useChatManager();
+  } = useEnhancedChatManager();
 
   // Audio management with background music
   const {
@@ -55,7 +59,7 @@ function AppContent() {
     handleMusicUpload,
     handleRemoveMusic,
     handleVolumeChange
-  } = useAudioManager(messages);
+  } = useAudioManager(allDisplayMessages);
 
   // Mobile management
   const {
@@ -67,7 +71,7 @@ function AppContent() {
 
   // App effects and utilities
   const { handleCopy, handleSignOut } = useAppEffects(
-    messages,
+    allDisplayMessages,
     setMessages,
     setCurrentChatId,
     setSuggestedQuestions,
@@ -78,7 +82,7 @@ function AppContent() {
   // Enhanced handlers that include mobile sidebar management
   const enhancedSendMessage = (text: string) => {
     closeMobileSidebar();
-    handleSendMessage(text);
+    handleProbingMessage(text);
   };
 
   const enhancedChatSelect = (chatId: string) => {
@@ -137,9 +141,9 @@ function AppContent() {
 
   return (
     <ChatLayout
-      messages={messages}
+      messages={allDisplayMessages}
       currentChatId={currentChatId}
-      isLoading={isLoading}
+      isLoading={isLoading || isGeneratingMeditation}
       suggestedQuestions={suggestedQuestions}
       showSuggestions={showSuggestions}
       onSendMessage={enhancedSendMessage}
@@ -167,6 +171,11 @@ function AppContent() {
       onFileContent={handleFileContent}
       onClearFile={handleClearFile}
       uploadedFile={uploadedFile}
+      // Enhanced chat props
+      chatMode={chatMode}
+      canGenerateMeditation={canGenerateMeditation}
+      isGeneratingMeditation={isGeneratingMeditation}
+      onGenerateMeditation={generateMeditationScript}
     />
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import ChatBot from '@/components/ChatBot';
+import EnhancedChatBot from '@/components/EnhancedChatBot';
 import ChatSidebar from '@/components/ChatSidebar';
 import LoadingIndicator from '@/components/LoadingIndicator';
 import SuggestedQuestions from '@/components/SuggestedQuestions';
@@ -9,6 +9,11 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
+}
+
+interface ChatMode {
+  mode: 'probing' | 'generating';
+  probingMessages: Message[];
 }
 
 interface ChatLayoutProps {
@@ -55,6 +60,12 @@ interface ChatLayoutProps {
   onFileContent: (content: string, filename: string, type: 'pdf' | 'image') => void;
   onClearFile: () => void;
   uploadedFile: { name: string; type: 'pdf' | 'image' } | null;
+
+  // Enhanced chat props
+  chatMode?: ChatMode;
+  canGenerateMeditation?: boolean;
+  isGeneratingMeditation?: boolean;
+  onGenerateMeditation?: () => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -87,7 +98,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   userEmail,
   onFileContent,
   onClearFile,
-  uploadedFile
+  uploadedFile,
+  chatMode,
+  canGenerateMeditation,
+  isGeneratingMeditation,
+  onGenerateMeditation
 }) => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
@@ -148,7 +163,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
       )}
 
       <div className="flex-1 flex flex-col">
-        <ChatBot
+        <EnhancedChatBot
           messages={messages}
           onSendMessage={onSendMessage}
           onCopy={onCopy}
@@ -169,6 +184,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           onFileContent={onFileContent}
           onClearFile={onClearFile}
           uploadedFile={uploadedFile}
+          chatMode={chatMode}
+          canGenerateMeditation={canGenerateMeditation}
+          isGeneratingMeditation={isGeneratingMeditation}
+          onGenerateMeditation={onGenerateMeditation}
         />
       </div>
     </div>
