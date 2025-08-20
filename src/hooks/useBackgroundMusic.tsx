@@ -180,10 +180,18 @@ export const useBackgroundMusic = () => {
     }
   };
 
+  const pauseBackgroundMusic = () => {
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.pause();
+      console.log('Background music paused (not stopped)');
+    }
+  };
+
   const stopBackgroundMusic = () => {
     if (backgroundMusicRef.current) {
       backgroundMusicRef.current.pause();
-      console.log('Background music stopped');
+      backgroundMusicRef.current.currentTime = 0; // Reset to beginning
+      console.log('Background music stopped and reset');
     }
   };
 
@@ -195,6 +203,7 @@ export const useBackgroundMusic = () => {
     handleRemoveMusic,
     handleVolumeChange,
     playBackgroundMusic,
+    pauseBackgroundMusic,
     stopBackgroundMusic
   };
 };

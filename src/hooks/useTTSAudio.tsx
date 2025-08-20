@@ -15,6 +15,7 @@ interface Message {
 export const useTTSAudio = (
   messages: Message[],
   playBackgroundMusic: () => Promise<void>,
+  pauseBackgroundMusic: () => void,
   stopBackgroundMusic: () => void
 ) => {
   const { user } = useAuth();
@@ -63,12 +64,10 @@ export const useTTSAudio = (
     audioLock.current = true;
     setIsAudioProcessing(true);
 
-    // Start background music immediately when user clicks play
-    if (!backgroundMusicStarted.current) {
-      console.log('Starting background music immediately on play button click');
-      await playBackgroundMusic();
-      backgroundMusicStarted.current = true;
-    }
+    // Always try to play/resume background music when starting TTS
+    console.log('🎵 Starting/resuming background music with TTS');
+    await playBackgroundMusic();
+    backgroundMusicStarted.current = true;
 
     // Queue audio processing to ensure sequential execution
     await audioQueue.current;
@@ -183,7 +182,7 @@ export const useTTSAudio = (
   }, 300);
 
   const handlePlayLatestResponse = () => {
-    console.log('▶️ Play button clicked - starting both TTS and BGM together');
+    console.log('▶️ Play button clicked - starting/resuming both TTS and BGM');
     setIsPlaying(true); // Immediately update UI state
     debouncedPlayLatestResponse();
   };
@@ -193,7 +192,7 @@ export const useTTSAudio = (
     if (currentAudio) {
       currentAudio.pause();
     }
-    stopBackgroundMusic(); // Pause both TTS and BGM
+    pauseBackgroundMusic(); // Pause (don't stop) BGM so it can resume
     setIsPlaying(false);
   };
 
