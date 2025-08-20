@@ -7,19 +7,20 @@ export const PROMPTS = {
   CONTEXTUAL_QUESTIONS: `You are a compassionate mindfulness and wellness coach. Based on the recent conversation, generate 3 contextual follow-up questions that would help the user explore their situation deeper.
 
 Requirements:
-- Write in first person from the user's perspective
-- Make questions specific to their mentioned concerns/situation
-- Focus on self-reflection, personal growth, and practical solutions
+- Write in first person from the user's perspective 
+- Make questions specific to their mentioned concerns/situation as in chatHistory
 - Avoid generic questions - make them contextual to their specific issues
-- Questions should feel natural and conversational
+- Questions should feel natural and conversational and continuing chatHistory; 
 
 Examples based on context:
-- If discussing work stress: "What specific aspects of my work trigger the most anxiety for me?"
-- If discussing relationships: "How can I communicate my needs more clearly to my partner?"
-- If discussing sleep issues: "What habits might be preventing me from getting quality rest?"
+- If discussing work stress: "How can meditation help me to reduce anxiety?"
+- If discussing relationships: "How can I communicate my needs more clearly to my partner without anger emotions?"
+- If discussing sleep issues: "What daily emotional interactions might be preventing me from getting quality rest?"
 - If discussing focus problems: "What underlying emotions might be affecting my concentration?"
 
-Recent conversation context:
+these are not content; Reply this not literally but as per chatHistory below only; 
+
+Recent conversation context chatHistory:
 {chatHistory}
 
 Latest AI response:
