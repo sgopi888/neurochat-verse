@@ -88,7 +88,7 @@ export const useBackgroundMusic = () => {
     }
   };
 
-  const handleMusicUpload = (file: File) => {
+  const handleMusicUpload = (file: File, isCurrentlyPlaying?: boolean) => {
     try {
       console.log('Uploading new music file:', file.name);
       
@@ -114,6 +114,12 @@ export const useBackgroundMusic = () => {
       
       console.log('Background music uploaded:', file.name, 'with volume:', audio.volume);
       toast.success('Background music uploaded successfully');
+      
+      // 🔑 If currently playing, resume immediately with the new file
+      if (isCurrentlyPlaying) {
+        console.log('🎵 Resuming BGM with new track since TTS is currently playing');
+        setTimeout(() => playBackgroundMusic(), 100); // Small delay for audio element to be ready
+      }
     } catch (error) {
       console.error('Error uploading background music:', error);
       toast.error('Failed to upload background music');

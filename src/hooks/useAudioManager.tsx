@@ -36,6 +36,11 @@ export const useAudioManager = (messages: Message[]) => {
     stopCurrentAudio
   } = useTTSAudio(messages, playBackgroundMusic, stopBackgroundMusic);
 
+  // Enhanced music upload handler that syncs with TTS state
+  const handleMusicUploadWithSync = (file: File) => {
+    handleMusicUpload(file, isPlaying); // Pass current playing state
+  };
+
   return {
     // TTS audio exports
     isPlaying,
@@ -52,7 +57,7 @@ export const useAudioManager = (messages: Message[]) => {
     musicName,
     musicVolume,
     isDefaultMusic,
-    handleMusicUpload,
+    handleMusicUpload: handleMusicUploadWithSync,
     handleRemoveMusic,
     handleVolumeChange
   };

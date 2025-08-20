@@ -34,7 +34,7 @@ export const useTTSAudio = (
   const errListener = useRef<(e: Event) => void>();
   const backgroundMusicStarted = useRef(false);
 
-  // Clean up only TTS audio (never touch background music)
+  // Stop both TTS and BGM together (synchronized)
   const stopCurrentAudio = async () => {
     if (audioAbort.current) {
       audioAbort.current.abort();
@@ -52,6 +52,9 @@ export const useTTSAudio = (
     setIsPlaying(false);
     audioLock.current = false;
     setIsAudioProcessing(false);
+    
+    // Always stop BGM when TTS stops (synchronized behavior)
+    stopBackgroundMusic();
   };
 
   // Debounced play function with enhanced synchronization
@@ -131,8 +134,8 @@ export const useTTSAudio = (
         };
         
         endListener.current = () => {
-          console.log('TTS ended');
-          // Clean up only TTS audio, leave background music alone
+          console.log('⏹️ TTS ended - stopping both TTS and BGM together');
+          // Clean up TTS audio and stop BGM (synchronized)
           if (currentAudio) {
             if (currentAudio.src.startsWith('blob:')) {
               URL.revokeObjectURL(currentAudio.src);
@@ -141,6 +144,7 @@ export const useTTSAudio = (
           }
           setIsPlaying(false);
           audioLock.current = false;
+          stopBackgroundMusic(); // Stop BGM when TTS ends
         };
         
         errListener.current = () => {
@@ -179,18 +183,18 @@ export const useTTSAudio = (
   }, 300);
 
   const handlePlayLatestResponse = () => {
-    console.log('Play button clicked - starting background music immediately');
+    console.log('▶️ Play button clicked - starting both TTS and BGM together');
     setIsPlaying(true); // Immediately update UI state
     debouncedPlayLatestResponse();
   };
 
   const handlePauseAudio = () => {
-    console.log('Pause button pressed');
-    // Don't stop background music when pausing TTS, just stop TTS
+    console.log('⏸️ Pause button pressed - pausing both TTS and BGM');
     if (currentAudio) {
       currentAudio.pause();
-      setIsPlaying(false);
     }
+    stopBackgroundMusic(); // Pause both TTS and BGM
+    setIsPlaying(false);
   };
 
   return {
