@@ -62,7 +62,7 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     body: JSON.stringify({
       model: modelName,
       messages,
-      max_completion_tokens: 1000,
+      max_completion_tokens: 8000,
     }),
   });
 
@@ -103,9 +103,9 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
 
   // Use correct parameters for different model generations
   if (modelName.startsWith('gpt-5') || modelName.startsWith('gpt-4.1') || modelName.startsWith('o3') || modelName.startsWith('o4')) {
-    requestBody.max_completion_tokens = 1000;
+    requestBody.max_completion_tokens = 8000;
   } else {
-    requestBody.max_tokens = 1000;
+    requestBody.max_tokens = 8000;
     requestBody.temperature = 0.7;
   }
 

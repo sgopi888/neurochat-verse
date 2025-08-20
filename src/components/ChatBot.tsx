@@ -150,7 +150,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-background via-card to-accent/10">
       {/* Header */}
-      <div className="border-b border-border bg-card/80 backdrop-blur-sm">
+      <div className="border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -184,7 +184,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 min-h-0">
         {messages.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4">
@@ -231,7 +231,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
       </div>
 
       {/* Input */}
-      <div className="border-t border-border bg-card/80 backdrop-blur-sm p-4">
+      <div className="border-t border-border bg-card/80 backdrop-blur-sm p-4 flex-shrink-0">
         <form onSubmit={handleSubmit} className="flex items-end space-x-2">
           <div className="flex-1 relative">
             <Textarea

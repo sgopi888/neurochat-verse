@@ -85,11 +85,11 @@ serve(async (req) => {
       )
     }
 
-    // Validate text length for TTS
-    if (text.length > 2000) {
+    // Validate text length for TTS - increased limit for meditation scripts
+    if (text.length > 5000) {
       console.error(`Text too long for TTS: ${text.length} characters`)
       return new Response(
-        JSON.stringify({ error: 'Text too long for TTS conversion' }),
+        JSON.stringify({ error: 'Text too long for TTS conversion. Please try a shorter meditation script.' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
