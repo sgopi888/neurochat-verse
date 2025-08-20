@@ -182,6 +182,26 @@ export const useEnhancedChatManager = () => {
       probingMessages: updatedProbingMessages
     }));
 
+    // 🔧 IMMEDIATE PERSISTENCE: Save user message to database right away
+    try {
+      await supabase
+        .from('chat_messages')
+        .insert({
+          chat_session_id: chatId,
+          user_id: user.id,
+          content: userMessage.text,
+          is_user: true,
+          timestamp: userMessage.timestamp.toISOString()
+        });
+      console.log('✅ User message saved to database immediately');
+    } catch (dbError) {
+      console.error('❌ Error saving user message to database:', dbError);
+      toast.error('Failed to save message');
+      setIsLoading(false);
+      setCurrentAbortController(null);
+      return;
+    }
+
     try {
       // Check if operation was aborted
       if (abortController.signal.aborted) return;
@@ -205,20 +225,8 @@ export const useEnhancedChatManager = () => {
         probingMessages: [...updatedProbingMessages, aiMessage]
       }));
 
-      // Save both user and AI messages to database immediately (chatId is guaranteed to exist now)
+      // Save AI response to database (user message already saved)
       try {
-        // Save user message
-        await supabase
-          .from('chat_messages')
-          .insert({
-            chat_session_id: chatId,
-            user_id: user.id,
-            content: userMessage.text,
-            is_user: true,
-            timestamp: userMessage.timestamp.toISOString()
-          });
-
-        // Save AI response
         await supabase
           .from('chat_messages')
           .insert({
@@ -228,6 +236,7 @@ export const useEnhancedChatManager = () => {
             is_user: false,
             timestamp: aiMessage.timestamp.toISOString()
           });
+        console.log('✅ AI response saved to database');
 
         // Update chat session timestamp
         await supabase
@@ -259,7 +268,20 @@ export const useEnhancedChatManager = () => {
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Error in probing chat:', error);
-        toast.error(`Failed to get response: ${error.message}`);
+        // User message is already saved, just show error for AI response
+        toast.error(`AI response failed: ${error.message}`);
+        
+        // Show fallback message in UI to indicate AI failed
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: "I'm having trouble responding right now. Your message has been saved. Please try asking again.",
+          isUser: false,
+          timestamp: new Date()
+        };
+        setChatMode(prev => ({
+          ...prev,
+          probingMessages: [...updatedProbingMessages, errorMessage]
+        }));
       }
     } finally {
       setCurrentAbortController(null);
