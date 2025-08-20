@@ -16,7 +16,9 @@ export const useTTSAudio = (
   messages: Message[],
   playBackgroundMusic: () => Promise<void>,
   pauseBackgroundMusic: () => void,
-  stopBackgroundMusic: () => void
+  stopBackgroundMusic: () => void,
+  backgroundMusicRef: React.RefObject<HTMLAudioElement>,
+  musicVolume: number
 ) => {
   const { user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -127,10 +129,23 @@ export const useTTSAudio = (
         playListener.current = async () => {
           setIsPlaying(true);
           console.log('TTS audio started playing');
+          
+          // 🔑 Duck background music volume during TTS for better audio separation
+          if (backgroundMusicRef.current) {
+            backgroundMusicRef.current.volume = 0.1; // Lower BGM volume during TTS
+            console.log('🔇 Lowered BGM volume to 0.1 during TTS');
+          }
         };
         
         endListener.current = () => {
           console.log('⏹️ TTS ended - stopping both TTS and BGM together');
+          
+          // 🔑 Restore background music volume after TTS ends
+          if (backgroundMusicRef.current) {
+            backgroundMusicRef.current.volume = musicVolume; // Restore original volume
+            console.log('🔊 Restored BGM volume to', musicVolume);
+          }
+          
           // Clean up TTS audio and stop BGM (synchronized)
           if (currentAudio) {
             if (currentAudio.src.startsWith('blob:')) {
@@ -154,7 +169,16 @@ export const useTTSAudio = (
         audio.addEventListener('error', errListener.current);
 
         setCurrentAudio(audio);
-        await audio.play();
+        
+        // 🔑 Force TTS to play with better error handling
+        try {
+          await audio.play();
+          console.log('✅ TTS audio started successfully');
+        } catch (playError) {
+          console.error('❌ TTS playback failed:', playError);
+          toast.error('Failed to play narration');
+          throw playError;
+        }
         
         } catch (error) {
           if (error.name !== 'AbortError') {

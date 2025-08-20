@@ -107,6 +107,7 @@ export const useBackgroundMusic = () => {
       
       audio.loop = true;
       audio.volume = musicVolume; // Use current volume state
+      audio.preload = 'auto'; // 🔑 Ensure browser loads it early
       
       backgroundMusicRef.current = audio;
       setMusicName(file.name);
@@ -206,6 +207,7 @@ export const useBackgroundMusic = () => {
     handleVolumeChange,
     playBackgroundMusic,
     pauseBackgroundMusic,
-    stopBackgroundMusic
+    stopBackgroundMusic,
+    backgroundMusicRef // Export ref for volume ducking
   };
 };
