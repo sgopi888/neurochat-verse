@@ -35,28 +35,32 @@ serve(async (req) => {
     const prompt = `You are a compassionate mindfulness and wellness coach. Based on the recent conversation, generate 3 contextual follow-up questions that would help the user explore their situation deeper.
 
 Requirements:
-- Write in first person from the user's perspective
-- Make questions specific to their mentioned concerns/situation
-- Focus on self-reflection, personal growth, and practical solutions
+- Write in first person from the user's perspective 
+- Make questions specific to their mentioned concerns/situation as in chatHistory
 - Avoid generic questions - make them contextual to their specific issues
-- Questions should feel natural and conversational
+- Questions should feel natural and conversational and continuing chatHistory
 
 Examples based on context:
-- If discussing work stress: "What specific aspects of my work trigger the most anxiety for me?"
-- If discussing relationships: "How can I communicate my needs more clearly to my partner?"
-- If discussing sleep issues: "What habits might be preventing me from getting quality rest?"
+- If discussing work stress: "How can meditation help me to reduce anxiety?"
+- If discussing relationships: "How can I communicate my needs more clearly to my partner without anger emotions?"
+- If discussing sleep issues: "What daily emotional interactions might be preventing me from getting quality rest?"
 - If discussing focus problems: "What underlying emotions might be affecting my concentration?"
 
-Recent conversation context:
+These are not content; Reply this not literally but as per chatHistory below only
+
+Recent conversation context chatHistory:
 ${recentHistory}
 
 Latest AI response:
 ${lastResponse}
 
+Instructions: must generated as a following questions based on Recent conversation context above and not generic; These are likely question user may have in mind once this AI response is read.
 Generate exactly 3 follow-up questions in JSON format:
 {"questions": ["question 1", "question 2", "question 3"]}`;
 
     console.log('🚀 Calling AIML API with GPT-5-nano for contextual questions');
+    console.log('📝 Chat history length:', chatHistory.length);
+    console.log('📝 Recent history:', recentHistory);
 
     const response = await fetch('https://api.aimlapi.com/v1/chat/completions', {
       method: 'POST',
@@ -67,8 +71,7 @@ Generate exactly 3 follow-up questions in JSON format:
       body: JSON.stringify({
         model: 'gpt-5-nano-2025-08-07',
         messages: [{ role: 'user', content: prompt }],
-        max_completion_tokens: 500,
-        temperature: 0.7
+        max_completion_tokens: 500
       }),
     });
 

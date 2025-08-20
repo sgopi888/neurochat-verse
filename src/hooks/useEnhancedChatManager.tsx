@@ -74,8 +74,41 @@ export const useEnhancedChatManager = () => {
 
       setMessages(loadedMessages);
       
-      // Reset probing mode when loading an existing chat
-      setChatMode({ mode: 'probing', probingMessages: [] });
+      // Only reset probing messages if this is a different chat or if it's a completed meditation chat
+      const hasMeditationContent = loadedMessages.some(msg => 
+        !msg.isUser && msg.text.toLowerCase().includes('meditation script')
+      );
+      
+      if (hasMeditationContent) {
+        // This is a completed meditation chat, reset probing mode
+        setChatMode({ mode: 'probing', probingMessages: [] });
+      } else {
+        // This is an active probing chat, preserve any existing probing messages
+        // but clear them if we're switching to a different chat
+        if (currentChatId !== chatId) {
+          setChatMode({ mode: 'probing', probingMessages: [] });
+        }
+      }
+
+      // Generate contextual questions from the last AI message in loaded chat
+      if (loadedMessages.length > 0) {
+        const lastAiMessage = loadedMessages
+          .filter(msg => !msg.isUser)
+          .pop();
+        
+        if (lastAiMessage && !hasMeditationContent) {
+          try {
+            console.log('🔄 Generating contextual questions for loaded chat');
+            const questions = await generateContextualQuestions(lastAiMessage.text, loadedMessages);
+            setSuggestedQuestions(questions);
+            setShowSuggestions(true);
+          } catch (error) {
+            console.error('Error generating contextual questions for loaded chat:', error);
+            setSuggestedQuestions([]);
+            setShowSuggestions(false);
+          }
+        }
+      }
 
     } catch (error) {
       console.error('Error in loadChatMessages:', error);
@@ -362,12 +395,21 @@ export const useEnhancedChatManager = () => {
     setChatMode({ mode: 'probing', probingMessages: [] });
     setSuggestedQuestions([]);
     setShowSuggestions(false);
+    setIsGeneratingMeditation(false);
+    console.log('Started new chat');
   };
 
   const handleChatSelect = (chatId: string) => {
     if (chatId !== currentChatId) {
+      // Save current probing messages if switching from an active probing chat
+      if (currentChatId && chatMode.probingMessages.length > 0) {
+        console.log('Preserving probing messages for chat:', currentChatId);
+      }
+      
       setCurrentChatId(chatId);
       setShowSuggestions(false);
+      setIsGeneratingMeditation(false);
+      console.log('Selected chat:', chatId);
     }
   };
 
