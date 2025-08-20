@@ -90,7 +90,7 @@ export const useBackgroundMusic = () => {
 
   const handleMusicUpload = (file: File, isCurrentlyPlaying?: boolean) => {
     try {
-      console.log('Uploading new music file:', file.name);
+      console.log('Uploading new music file:', file.name, 'isCurrentlyPlaying:', isCurrentlyPlaying);
       
       // Clean up previous audio
       if (backgroundMusicRef.current) {
@@ -115,10 +115,12 @@ export const useBackgroundMusic = () => {
       console.log('Background music uploaded:', file.name, 'with volume:', audio.volume);
       toast.success('Background music uploaded successfully');
       
-      // 🔑 If currently playing, resume immediately with the new file
+      // 🔑 If currently playing, immediately play the new track
       if (isCurrentlyPlaying) {
-        console.log('🎵 Resuming BGM with new track since TTS is currently playing');
-        setTimeout(() => playBackgroundMusic(), 100); // Small delay for audio element to be ready
+        console.log('🎵 Immediately playing new BGM since TTS is active');
+        audio.play().catch(err => {
+          console.error('Error playing uploaded BGM:', err);
+        });
       }
     } catch (error) {
       console.error('Error uploading background music:', error);

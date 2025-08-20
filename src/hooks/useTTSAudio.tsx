@@ -64,10 +64,7 @@ export const useTTSAudio = (
     audioLock.current = true;
     setIsAudioProcessing(true);
 
-    // Always try to play/resume background music when starting TTS
-    console.log('🎵 Starting/resuming background music with TTS');
-    await playBackgroundMusic();
-    backgroundMusicStarted.current = true;
+    // BGM is already started by handlePlayLatestResponse, just continue with TTS
 
     // Queue audio processing to ensure sequential execution
     await audioQueue.current;
@@ -181,9 +178,13 @@ export const useTTSAudio = (
     });
   }, 300);
 
-  const handlePlayLatestResponse = () => {
+  const handlePlayLatestResponse = async () => {
     console.log('▶️ Play button clicked - starting/resuming both TTS and BGM');
     setIsPlaying(true); // Immediately update UI state
+    
+    // Always ensure BGM plays when clicking play (resume or restart)
+    await playBackgroundMusic();
+    
     debouncedPlayLatestResponse();
   };
 
