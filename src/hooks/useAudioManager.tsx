@@ -1,7 +1,6 @@
 
 import { useBackgroundMusic } from './useBackgroundMusic';
-import { useTTSAudio } from './useTTSAudio';
-import { useMessageAudio } from './useMessageAudio';
+import { useUnifiedAudio } from './useUnifiedAudio';
 
 interface Message {
   id: string;
@@ -25,31 +24,27 @@ export const useAudioManager = (messages: Message[]) => {
     backgroundMusicRef
   } = useBackgroundMusic();
 
-  // Legacy TTS audio functionality for backward compatibility
-  const {
-    isPlaying,
-    selectedVoice: legacySelectedVoice,
-    currentAudio,
-    isAudioProcessing,
-    lastGeneratedAudioBlob,
-    lastGeneratedText,
-    setSelectedVoice: setLegacySelectedVoice,
-    handlePlayLatestResponse,
-    handlePauseAudio,
-    stopCurrentAudio
-  } = useTTSAudio(messages, playBackgroundMusic, pauseBackgroundMusic, stopBackgroundMusic, backgroundMusicRef, musicVolume);
-
-  // New individual message audio functionality
+  // 🎵 Unified audio system - handles both play script and bubble audio with BGM sync
   const {
     selectedVoice,
     setSelectedVoice,
+    handlePlayLatestResponse,
     playMessageAudio,
     pauseMessageAudio,
-    stopCurrentAudio: stopCurrentMessageAudio,
+    pauseCurrentAudio,
+    resumeCurrentAudio,
+    stopCurrentAudio,
     isMessagePlaying,
     isMessageLoading,
-    currentPlayingMessageId
-  } = useMessageAudio(pauseBackgroundMusic, stopBackgroundMusic, backgroundMusicRef, musicVolume);
+    isGlobalPlaying,
+    isGlobalProcessing,
+    currentPlayingMessageId,
+    // Legacy compatibility
+    isPlaying,
+    isAudioProcessing,
+    currentAudio,
+    handlePauseAudio
+  } = useUnifiedAudio(messages, playBackgroundMusic, pauseBackgroundMusic, stopBackgroundMusic, backgroundMusicRef, musicVolume);
 
   // Enhanced music upload handler that syncs with TTS state
   const handleMusicUploadWithSync = (file: File) => {
@@ -57,27 +52,28 @@ export const useAudioManager = (messages: Message[]) => {
   };
 
   return {
-    // Legacy TTS audio exports (for backward compatibility)
+    // 🎵 Unified audio exports - all audio now synchronized with BGM
     isPlaying,
-    selectedVoice: legacySelectedVoice,
+    selectedVoice,
     currentAudio,
     isAudioProcessing,
-    lastGeneratedAudioBlob,
-    lastGeneratedText,
-    setSelectedVoice: setLegacySelectedVoice,
+    setSelectedVoice,
     handlePlayLatestResponse,
     handlePauseAudio,
+    pauseCurrentAudio,
+    resumeCurrentAudio,
     stopCurrentAudio,
     
-    // New individual message audio exports
-    messageSelectedVoice: selectedVoice,
-    setMessageSelectedVoice: setSelectedVoice,
+    // Individual message audio (now unified)
     playMessageAudio,
     pauseMessageAudio,
-    stopCurrentMessageAudio,
     isMessagePlaying,
     isMessageLoading,
     currentPlayingMessageId,
+    
+    // Global state queries
+    isGlobalPlaying,
+    isGlobalProcessing,
     
     // Background music exports
     musicName,

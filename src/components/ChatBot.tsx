@@ -36,6 +36,8 @@ interface ChatBotProps {
   canGenerateMeditation?: boolean;
   isGeneratingMeditation?: boolean;
   onGenerateMeditation?: () => void;
+  canStopOperation?: boolean;
+  onStopOperation?: () => void;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({

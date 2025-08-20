@@ -31,6 +31,9 @@ export const useEnhancedChatManager = () => {
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   
+  // Stop functionality
+  const [currentAbortController, setCurrentAbortController] = useState<AbortController | null>(null);
+  
   // Enhanced state for dual-mode chat
   const [chatMode, setChatMode] = useState<ChatMode>({
     mode: 'probing',
@@ -80,10 +83,24 @@ export const useEnhancedChatManager = () => {
     }
   };
 
+  // Stop current operation
+  const stopCurrentOperation = () => {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      setCurrentAbortController(null);
+    }
+    setIsLoading(false);
+    setIsGeneratingMeditation(false);
+    toast.info('Operation stopped');
+  };
+
   // Handle probing chat (UI-only, not persisted)
   const handleProbingMessage = async (text: string) => {
     if (!user || !hasAgreed) return;
 
+    // Create abort controller for this operation
+    const abortController = new AbortController();
+    setCurrentAbortController(abortController);
     setIsLoading(true);
     setShowSuggestions(false);
 
@@ -102,7 +119,10 @@ export const useEnhancedChatManager = () => {
     }));
 
     try {
-      // Get GPT-5 probing response
+      // Check if operation was aborted
+      if (abortController.signal.aborted) return;
+      
+      // Get GPT-5 probing response  
       const response = await GPTService.probingChat(text, chatMode.probingMessages, user.id);
       
       if (!response.success) {
@@ -138,9 +158,12 @@ export const useEnhancedChatManager = () => {
     }
 
     } catch (error) {
-      console.error('Error in probing chat:', error);
-      toast.error(`Failed to get response: ${error.message}`);
+      if (error.name !== 'AbortError') {
+        console.error('Error in probing chat:', error);
+        toast.error(`Failed to get response: ${error.message}`);
+      }
     } finally {
+      setCurrentAbortController(null);
       setIsLoading(false);
     }
   };
@@ -149,6 +172,9 @@ export const useEnhancedChatManager = () => {
   const generateMeditationScript = async () => {
     if (!user || !hasAgreed || chatMode.probingMessages.length === 0) return;
 
+    // Create abort controller for this operation
+    const abortController = new AbortController();
+    setCurrentAbortController(abortController);
     setIsGeneratingMeditation(true);
     setIsLoading(true);
 
@@ -263,9 +289,12 @@ export const useEnhancedChatManager = () => {
       toast.success('Your personalized meditation is ready!');
 
     } catch (error) {
-      console.error('Error generating meditation:', error);
-      toast.error(`Failed to generate meditation: ${error.message}`);
+      if (error.name !== 'AbortError') {
+        console.error('Error generating meditation:', error);
+        toast.error(`Failed to generate meditation: ${error.message}`);
+      }
     } finally {
+      setCurrentAbortController(null);
       setIsGeneratingMeditation(false);
       setIsLoading(false);
     }
@@ -293,7 +322,7 @@ export const useEnhancedChatManager = () => {
     }
   };
 
-  return {
+    return {
     // Persistent state
     messages,
     currentChatId,
@@ -313,10 +342,12 @@ export const useEnhancedChatManager = () => {
     handleSuggestionClick,
     handleNewChat,
     handleChatSelect,
+    stopCurrentOperation, // 🛑 New stop functionality
     
     // Computed values
     allDisplayMessages: [...messages, ...chatMode.probingMessages],
     canGenerateMeditation: chatMode.probingMessages.length > 0 && !isGeneratingMeditation,
+    canStopOperation: isLoading || isGeneratingMeditation, // 🛑 Can show stop button
     
     // Legacy compatibility
     handleSendMessage: handleProbingMessage,

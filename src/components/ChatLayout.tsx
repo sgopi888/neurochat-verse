@@ -69,6 +69,8 @@ interface ChatLayoutProps {
   canGenerateMeditation?: boolean;
   isGeneratingMeditation?: boolean;
   onGenerateMeditation?: () => void;
+  canStopOperation?: boolean;
+  onStopOperation?: () => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -108,7 +110,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   chatMode,
   canGenerateMeditation,
   isGeneratingMeditation,
-  onGenerateMeditation
+  onGenerateMeditation,
+  canStopOperation,
+  onStopOperation
 }) => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
@@ -197,6 +201,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           canGenerateMeditation={canGenerateMeditation}
           isGeneratingMeditation={isGeneratingMeditation}
           onGenerateMeditation={onGenerateMeditation}
+          canStopOperation={canStopOperation}
+          onStopOperation={onStopOperation}
         />
       </div>
     </div>

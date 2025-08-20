@@ -39,6 +39,8 @@ function AppContent() {
     chatMode,
     isGeneratingMeditation,
     canGenerateMeditation,
+    canStopOperation,
+    stopCurrentOperation,
     setShowSuggestions,
     setMessages,
     setCurrentChatId,
@@ -75,14 +77,14 @@ function AppContent() {
     closeMobileSidebar
   } = useMobileManager();
 
-  // App effects and utilities
+  // App effects and utilities  
   const { handleCopy, handleSignOut } = useAppEffects(
     allDisplayMessages,
     setMessages,
     setCurrentChatId,
     setSuggestedQuestions,
     setShowSuggestions,
-    stopCurrentAudio
+    async () => stopCurrentAudio()
   );
 
   // Enhanced handlers that include mobile sidebar management
@@ -186,9 +188,11 @@ function AppContent() {
       uploadedFile={uploadedFile}
       // Enhanced chat props
       chatMode={chatMode}
-      canGenerateMeditation={canGenerateMeditation}
-      isGeneratingMeditation={isGeneratingMeditation}
-      onGenerateMeditation={generateMeditationScript}
+          canGenerateMeditation={canGenerateMeditation}
+          isGeneratingMeditation={isGeneratingMeditation}
+          onGenerateMeditation={generateMeditationScript}
+          canStopOperation={canStopOperation}
+          onStopOperation={stopCurrentOperation}
     />
   );
 }

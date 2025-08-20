@@ -36,6 +36,8 @@ interface EnhancedChatBotProps {
   canGenerateMeditation?: boolean;
   isGeneratingMeditation?: boolean;
   onGenerateMeditation?: () => void;
+  canStopOperation?: boolean;
+  onStopOperation?: () => void;
 }
 
 const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
@@ -44,6 +46,8 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
     canGenerateMeditation, 
     isGeneratingMeditation, 
     onGenerateMeditation,
+    canStopOperation,
+    onStopOperation,
     onPauseMessageAudio,
     isMessagePlaying,
     isMessageLoading,
@@ -59,6 +63,8 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
           canGenerateMeditation={canGenerateMeditation}
           isGeneratingMeditation={isGeneratingMeditation}
           onGenerateMeditation={onGenerateMeditation}
+          canStopOperation={canStopOperation}
+          onStopOperation={onStopOperation}
           onPauseMessageAudio={onPauseMessageAudio}
           isMessagePlaying={isMessagePlaying}
           isMessageLoading={isMessageLoading}
