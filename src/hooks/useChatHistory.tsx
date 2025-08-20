@@ -10,7 +10,7 @@ interface ChatSession {
   created_at: string;
 }
 
-export const useChatHistory = (currentChatId: string | null, onChatSelect: (chatId: string) => void) => {
+export const useChatHistory = (currentChatId: string | null) => {
   const { user } = useAuth();
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,13 +20,12 @@ export const useChatHistory = (currentChatId: string | null, onChatSelect: (chat
 
     setIsLoading(true);
     try {
-      console.log('Loading chat history for user:', user.id);
       const { data, error } = await supabase
         .from('chat_sessions')
         .select('id, title, updated_at, created_at')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
-        .limit(50); // Increased limit to ensure all chats are fetched
+        .limit(20);
 
       if (error) {
         console.error('Error loading chat history:', error);
@@ -34,20 +33,7 @@ export const useChatHistory = (currentChatId: string | null, onChatSelect: (chat
         return;
       }
 
-      console.log('Loaded chat sessions:', data?.length || 0);
       setChatSessions(data || []);
-
-      // Restore currentChatId from localStorage if not set
-      if (!currentChatId && data?.length > 0) {
-        const savedChatId = localStorage.getItem('currentChatId');
-        if (savedChatId && data.find(chat => chat.id === savedChatId)) {
-          console.log('Restoring currentChatId from localStorage:', savedChatId);
-          onChatSelect(savedChatId);
-        } else if (data[0]) {
-          console.log('Setting default chatId to most recent:', data[0].id);
-          onChatSelect(data[0].id);
-        }
-      }
     } catch (error) {
       console.error('Error in loadChatHistory:', error);
       toast.error('Failed to load chat history');
@@ -60,7 +46,6 @@ export const useChatHistory = (currentChatId: string | null, onChatSelect: (chat
     if (!user) return;
 
     try {
-      console.log('Deleting chat:', chatId);
       // Delete messages first
       const { error: messagesError } = await supabase
         .from('chat_messages')
@@ -89,10 +74,6 @@ export const useChatHistory = (currentChatId: string | null, onChatSelect: (chat
 
       // Update local state
       setChatSessions(prev => prev.filter(chat => chat.id !== chatId));
-      if (currentChatId === chatId) {
-        onChatSelect(null); // Clear current chat if deleted
-        localStorage.removeItem('currentChatId');
-      }
       toast.success('Chat deleted successfully');
     } catch (error) {
       console.error('Error in deleteChat:', error);
@@ -100,31 +81,26 @@ export const useChatHistory = (currentChatId: string | null, onChatSelect: (chat
     }
   };
 
-  // Load chat history on user change
   useEffect(() => {
     if (user) {
       loadChatHistory();
-    } else {
-      setChatSessions([]);
     }
   }, [user]);
 
-  // Refresh when currentChatId changes (e.g., new chat created)
+  // Refresh when a new chat is created or when current chat changes
   useEffect(() => {
-    if (user && currentChatId && !chatSessions.find(chat => chat.id === currentChatId)) {
-      console.log('New chat detected, refreshing chat history');
+    if (currentChatId && !chatSessions.find(chat => chat.id === currentChatId)) {
       loadChatHistory();
     }
-  }, [user, currentChatId, chatSessions]);
+  }, [currentChatId]);
 
-  // Periodic refresh for active chatting
+  // Refresh chat history periodically to show updated timestamps
   useEffect(() => {
     if (user && currentChatId) {
       const interval = setInterval(() => {
-        console.log('Periodic chat history refresh');
         loadChatHistory();
-      }, 15000); // Refresh every 15 seconds
-
+      }, 10000); // Refresh every 10 seconds when actively chatting
+      
       return () => clearInterval(interval);
     }
   }, [user, currentChatId]);
@@ -133,6 +109,6 @@ export const useChatHistory = (currentChatId: string | null, onChatSelect: (chat
     chatSessions,
     isLoading,
     deleteChat,
-    refreshChatHistory: loadChatHistory,
+    refreshChatHistory: loadChatHistory
   };
 };
