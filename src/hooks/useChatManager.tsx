@@ -13,13 +13,6 @@ interface Message {
   timestamp: Date;
 }
 
-interface ChatSession {
-  id: string;
-  title: string;
-  updated_at: string;
-  created_at: string;
-}
-
 interface ChatMode {
   mode: 'probing' | 'generating';
   probingMessages?: Message[]; // Optional for backward compatibility
@@ -29,15 +22,9 @@ export const useChatManager = () => {
   const { user } = useAuth();
   const { hasAgreed } = useUserAgreement();
   
-  // Single source of truth - everything from database
+  // Local state - single source of truth for current session
   const [messages, setMessages] = useState<Message[]>([]);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined' && user) {
-      return localStorage.getItem(`currentChatId_${user.id}`) || null;
-    }
-    return null;
-  });
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -46,76 +33,6 @@ export const useChatManager = () => {
   const [currentAbortController, setCurrentAbortController] = useState<AbortController | null>(null);
   const [chatMode, setChatMode] = useState<ChatMode>({ mode: 'probing', probingMessages: [] });
   const [isGeneratingMeditation, setIsGeneratingMeditation] = useState(false);
-
-  // Real-time subscriptions for automatic updates
-  useEffect(() => {
-    if (!user) return;
-
-    // Subscribe to chat sessions changes
-    const sessionsChannel = supabase
-      .channel('chat-sessions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chat_sessions',
-          filter: `user_id=eq.${user.id}`
-        },
-        () => {
-          console.log('🔄 Chat sessions updated, refreshing...');
-          loadChatSessions();
-        }
-      )
-      .subscribe();
-
-    // Subscribe to messages changes for current chat
-    let messagesChannel: any = null;
-    if (currentChatId) {
-      messagesChannel = supabase
-        .channel('chat-messages-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'chat_messages',
-            filter: `chat_session_id=eq.${currentChatId}`
-          },
-          () => {
-            console.log('🔄 Messages updated, refreshing...');
-            loadChatMessages(currentChatId);
-          }
-        )
-        .subscribe();
-    }
-
-    return () => {
-      supabase.removeChannel(sessionsChannel);
-      if (messagesChannel) {
-        supabase.removeChannel(messagesChannel);
-      }
-    };
-  }, [user, currentChatId]);
-
-  // Load data on user change
-  useEffect(() => {
-    if (user) {
-      // Restore currentChatId from localStorage
-      const savedChatId = localStorage.getItem(`currentChatId_${user.id}`);
-      if (savedChatId && savedChatId !== currentChatId) {
-        setCurrentChatId(savedChatId);
-      }
-      loadChatSessions();
-    } else {
-      // Clear state when user logs out
-      setMessages([]);
-      setChatSessions([]);
-      setCurrentChatId(null);
-      setSuggestedQuestions([]);
-      setShowSuggestions(false);
-    }
-  }, [user]);
 
   // Load messages when chat changes
   useEffect(() => {
@@ -128,32 +45,12 @@ export const useChatManager = () => {
     }
   }, [currentChatId]);
 
-  const loadChatSessions = async () => {
-    if (!user) return;
-    
-    try {
-      console.log('🔄 Loading chat sessions...');
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select('id, title, updated_at, created_at')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-
-      setChatSessions(data || []);
-      console.log('✅ Loaded chat sessions:', data?.length || 0);
-    } catch (error) {
-      console.error('❌ Error loading chat sessions:', error);
-      toast.error('Failed to load chat sessions');
-    }
-  };
-
   const loadChatMessages = async (chatId: string) => {
     if (!user) return;
 
     try {
-      console.log('🔄 Loading messages for chat:', chatId);
+      console.log('Loading messages for chat:', chatId);
+      
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -161,52 +58,73 @@ export const useChatManager = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading chat messages:', error);
+        toast.error('Failed to load chat messages');
+        return;
+      }
 
-      const loadedMessages: Message[] = (data || []).map(msg => ({
+      const loadedMessages: Message[] = data.map(msg => ({
         id: msg.id,
         text: msg.content,
         isUser: msg.is_user,
         timestamp: new Date(msg.created_at)
       }));
 
+      console.log('Loaded messages:', loadedMessages);
       setMessages(loadedMessages);
-      console.log('✅ Loaded messages:', loadedMessages.length);
 
-      // Generate contextual questions if there are messages
-      const lastAiMessage = loadedMessages.filter(msg => !msg.isUser).pop();
-      if (lastAiMessage && !lastAiMessage.text.toLowerCase().includes('meditation script')) {
-        try {
-          const questions = await generateContextualQuestions(lastAiMessage.text, loadedMessages);
-          setSuggestedQuestions(questions);
-          setShowSuggestions(true);
-        } catch (error) {
-          console.error('❌ Error generating questions:', error);
-          setSuggestedQuestions([]);
-          setShowSuggestions(false);
+      if (loadedMessages.length > 0) {
+        const lastAiMessage = loadedMessages
+          .filter(msg => !msg.isUser)
+          .pop();
+        
+        if (lastAiMessage) {
+          try {
+            const questions = await generateContextualQuestions(lastAiMessage.text, loadedMessages);
+            setSuggestedQuestions(questions);
+            setShowSuggestions(true);
+          } catch (error) {
+            console.error('Error generating contextual questions:', error);
+            // Fallback to basic questions
+            setSuggestedQuestions([
+              "Can you tell me more about this topic?",
+              "How can I apply this in my daily life?",
+              "What other techniques might be helpful?"
+            ]);
+            setShowSuggestions(true);
+          }
         }
-      } else {
-        setSuggestedQuestions([]);
-        setShowSuggestions(false);
       }
+
     } catch (error) {
-      console.error('❌ Error loading messages:', error);
-      toast.error('Failed to load messages');
+      console.error('Error in loadChatMessages:', error);
+      toast.error('Failed to load chat messages');
     }
   };
 
   const handleSendMessage = async (text: string) => {
     if (!user || !hasAgreed) return;
 
-    const abortController = new AbortController();
-    setCurrentAbortController(abortController);
+    console.log('Sending message:', text);
     setIsLoading(true);
     setShowSuggestions(false);
 
-    // Create chat session if none exists
-    let chatId = currentChatId;
-    if (!chatId) {
-      try {
+    // Create and immediately show user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text,
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    // CRITICAL: Add user message to state immediately for instant UI feedback
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      let chatId = currentChatId;
+
+      if (!chatId) {
         const chatTitle = text.length > 50 ? text.substring(0, 50) + '...' : text;
         
         const { data: newChat, error: chatError } = await supabase
@@ -219,52 +137,34 @@ export const useChatManager = () => {
           .select()
           .single();
 
-        if (chatError) throw chatError;
+        if (chatError) {
+          console.error('Error creating chat session:', chatError);
+          toast.error('Failed to create chat session');
+          setIsLoading(false);
+          return;
+        }
 
         chatId = newChat.id;
         setCurrentChatId(chatId);
-        localStorage.setItem(`currentChatId_${user.id}`, chatId);
-        console.log('✅ Created new chat:', chatId);
-      } catch (error) {
-        console.error('❌ Error creating chat:', error);
-        toast.error('Failed to create chat session');
-        setIsLoading(false);
-        setCurrentAbortController(null);
-        return;
+        console.log('Created new chat session:', chatId);
       }
-    }
 
-    // Save user message immediately to database
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      isUser: true,
-      timestamp: new Date()
-    };
-
-    try {
-      await supabase
+      // Save user message to database in background
+      const { error: userMsgError } = await supabase
         .from('chat_messages')
         .insert({
           chat_session_id: chatId,
           user_id: user.id,
-          content: userMessage.text,
-          is_user: true,
-          timestamp: userMessage.timestamp.toISOString()
+          content: text,
+          is_user: true
         });
-      console.log('✅ User message saved to database');
-    } catch (error) {
-      console.error('❌ Error saving user message:', error);
-      toast.error('Failed to save message');
-      setIsLoading(false);
-      setCurrentAbortController(null);
-      return;
-    }
 
-    try {
+      if (userMsgError) {
+        console.error('Error saving user message:', userMsgError);
+        toast.error('Failed to save message');
+      }
+
       // Get AI response
-      if (abortController.signal.aborted) return;
-      
       const response = await GPTService.probingChat(text, messages, user.id);
       
       if (!response.success) {
@@ -278,16 +178,46 @@ export const useChatManager = () => {
         timestamp: new Date()
       };
 
-      // Save AI response to database
-      await supabase
-        .from('chat_messages')
-        .insert({
-          chat_session_id: chatId,
-          user_id: user.id,
-          content: aiMessage.text,
-          is_user: false,
-          timestamp: aiMessage.timestamp.toISOString()
-        });
+      // Add AI message to state immediately
+      setMessages(prev => [...prev, aiMessage]);
+
+      // Save AI message to database in background
+      try {
+        const { error: aiMsgError } = await supabase
+          .from('chat_messages')
+          .insert({
+            chat_session_id: chatId,
+            user_id: user.id,
+            content: aiMessage.text,
+            is_user: false
+          });
+
+        if (aiMsgError) {
+          console.error('Error saving AI message:', aiMsgError);
+          toast.error('Failed to save AI response');
+        } else {
+          console.log('AI message saved successfully');
+        }
+      } catch (saveError) {
+        console.error('Error in AI message save:', saveError);
+        toast.error('Failed to save AI response to history');
+      }
+
+      // Generate contextual questions
+      try {
+        const questions = await generateContextualQuestions(aiMessage.text, [...messages, userMessage]);
+        setSuggestedQuestions(questions);
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error('Error generating contextual questions:', error);
+        // Fallback to basic questions
+        setSuggestedQuestions([
+          "Can you tell me more about this topic?",
+          "How can I apply this in my daily life?",
+          "What other techniques might be helpful?"
+        ]);
+        setShowSuggestions(true);
+      }
 
       // Update chat session timestamp
       await supabase
@@ -295,31 +225,10 @@ export const useChatManager = () => {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', chatId);
 
-      console.log('✅ AI response saved to database');
-      
-      // Messages will be updated via real-time subscription
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('❌ Error getting AI response:', error);
-        toast.error(`AI response failed: ${error.message}`);
-        
-        // Save error message to database
-        try {
-          await supabase
-            .from('chat_messages')
-            .insert({
-              chat_session_id: chatId,
-              user_id: user.id,
-              content: "I'm having trouble responding right now. Please try asking again.",
-              is_user: false,
-              timestamp: new Date().toISOString()
-            });
-        } catch (dbError) {
-          console.error('❌ Error saving error message:', dbError);
-        }
-      }
+      console.error('Error handling message:', error);
+      toast.error(`Failed to send message: ${error.message}`);
     } finally {
-      setCurrentAbortController(null);
       setIsLoading(false);
     }
   };
@@ -327,8 +236,6 @@ export const useChatManager = () => {
   const generateMeditationScript = async () => {
     if (!user || !hasAgreed || messages.length === 0) return;
 
-    const abortController = new AbortController();
-    setCurrentAbortController(abortController);
     setIsGeneratingMeditation(true);
     setIsLoading(true);
 
@@ -342,7 +249,7 @@ export const useChatManager = () => {
       }
 
       const keywords = keywordResponse.data || '';
-      console.log('✅ Extracted keywords:', keywords);
+      console.log('Extracted keywords:', keywords);
 
       // Get relevant chunks
       toast.info('Finding relevant guidance...');
@@ -364,7 +271,7 @@ export const useChatManager = () => {
       }
 
       const retrievedChunks = webhookData.response || '';
-      console.log('✅ Retrieved chunks:', retrievedChunks.length, 'characters');
+      console.log('Retrieved chunks:', retrievedChunks.length, 'characters');
 
       // Generate meditation script
       toast.info('Creating your personalized meditation...');
@@ -381,15 +288,24 @@ export const useChatManager = () => {
 
       const meditationScript = meditationResponse.data || 'Your personalized meditation script.';
       
-      // Save meditation script to database
+      const meditationMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        text: meditationScript,
+        isUser: false,
+        timestamp: new Date()
+      };
+
+      // Add meditation script to state immediately
+      setMessages(prev => [...prev, meditationMessage]);
+      
+      // Save meditation script to database in background
       await supabase
         .from('chat_messages')
         .insert({
           chat_session_id: currentChatId,
           user_id: user.id,
           content: meditationScript,
-          is_user: false,
-          timestamp: new Date().toISOString()
+          is_user: false
         });
 
       // Update chat session timestamp
@@ -398,23 +314,20 @@ export const useChatManager = () => {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', currentChatId);
 
-      console.log('✅ Meditation script saved to database');
+      console.log('Meditation script saved to database');
       toast.success('Your personalized meditation is ready!');
 
-      // Messages will be updated via real-time subscription
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('❌ Error generating meditation:', error);
-        toast.error(`Failed to generate meditation: ${error.message}`);
-      }
+      console.error('Error generating meditation:', error);
+      toast.error(`Failed to generate meditation: ${error.message}`);
     } finally {
-      setCurrentAbortController(null);
       setIsGeneratingMeditation(false);
       setIsLoading(false);
     }
   };
 
   const handleSuggestionClick = (question: string) => {
+    console.log('Suggestion clicked:', question);
     setShowSuggestions(false);
     handleSendMessage(question);
   };
@@ -424,59 +337,14 @@ export const useChatManager = () => {
     setMessages([]);
     setSuggestedQuestions([]);
     setShowSuggestions(false);
-    setIsGeneratingMeditation(false);
-    
-    if (user) {
-      localStorage.removeItem(`currentChatId_${user.id}`);
-    }
-    
-    console.log('✅ Started new chat');
+    console.log('Started new chat');
   };
 
   const handleChatSelect = (chatId: string) => {
     if (chatId !== currentChatId) {
       setCurrentChatId(chatId);
       setShowSuggestions(false);
-      setIsGeneratingMeditation(false);
-      
-      if (user) {
-        localStorage.setItem(`currentChatId_${user.id}`, chatId);
-      }
-      
-      console.log('✅ Selected chat:', chatId);
-    }
-  };
-
-  const deleteChat = async (chatId: string) => {
-    if (!user) return;
-
-    try {
-      console.log('🗑️ Deleting chat:', chatId);
-      
-      // Delete messages first
-      await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('chat_session_id', chatId)
-        .eq('user_id', user.id);
-
-      // Delete chat session
-      await supabase
-        .from('chat_sessions')
-        .delete()
-        .eq('id', chatId)
-        .eq('user_id', user.id);
-
-      // If this was the current chat, clear it
-      if (chatId === currentChatId) {
-        handleNewChat();
-      }
-
-      toast.success('Chat deleted successfully');
-      console.log('✅ Chat deleted:', chatId);
-    } catch (error) {
-      console.error('❌ Error deleting chat:', error);
-      toast.error('Failed to delete chat');
+      console.log('Selected chat:', chatId);
     }
   };
 
@@ -491,12 +359,16 @@ export const useChatManager = () => {
   };
 
   // Computed values
+  const canGenerateMeditation = messages.length > 0 && !isLoading && !isGeneratingMeditation;
   const canStopOperation = isLoading || isGeneratingMeditation;
 
+  const deleteChat = () => {
+    // This will be handled by useChatHistory
+    console.log('Delete chat not implemented in useChatManager');
+  };
+
   return {
-    // State
     messages,
-    chatSessions,
     currentChatId,
     isLoading,
     suggestedQuestions,

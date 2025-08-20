@@ -10,6 +10,7 @@ import ChatLayout from '@/components/ChatLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { useChatManager } from '@/hooks/useChatManager';
+import { useChatHistory } from '@/hooks/useChatHistory';
 import { useAudioManager } from '@/hooks/useAudioManager';
 import { useAppEffects } from '@/hooks/useAppEffects';
 import { useMobileManager } from '@/hooks/useMobileManager';
@@ -24,14 +25,11 @@ function AppContent() {
   const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
   const [fileContent, setFileContent] = React.useState<string>('');
 
-  // Unified chat management with real-time database sync
+  // Chat message management
   const {
-    allDisplayMessages,
     messages,
-    chatSessions,
     currentChatId,
     isLoading,
-    isLoadingHistory,
     suggestedQuestions,
     showSuggestions,
     handleSendMessage,
@@ -39,7 +37,6 @@ function AppContent() {
     handleSuggestionClick,
     handleNewChat,
     handleChatSelect,
-    deleteChat,
     chatMode,
     isGeneratingMeditation,
     canGenerateMeditation,
@@ -48,8 +45,16 @@ function AppContent() {
     setShowSuggestions,
     setMessages,
     setCurrentChatId,
-    setSuggestedQuestions
+    setSuggestedQuestions,
+    allDisplayMessages
   } = useChatManager();
+
+  // Chat history management  
+  const {
+    chatSessions,
+    isLoading: isLoadingHistory,
+    deleteChat
+  } = useChatHistory(currentChatId);
 
   // Audio management with background music
   const {
