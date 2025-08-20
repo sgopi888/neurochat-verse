@@ -117,8 +117,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <Button
             onClick={() => setShowSettings(true)}
             variant="ghost"
-            size="sm"
-            className="p-2 hover:bg-primary/20"
+            size="icon"
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -127,7 +126,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <Button
           onClick={onNewChat}
           size="sm"
-          className="w-full h-9"
+          className="w-full"
         >
           <Plus className="h-4 w-4 mr-2" />
           New Chat
@@ -270,8 +269,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     </div>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
                       onClick={(e) => handleDeleteChat(chat.id, e)}
                       title="Delete chat"
                     >
@@ -297,8 +296,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <Button
             onClick={onSignOut}
             variant="ghost"
-            size="sm"
-            className="p-2"
+            size="icon"
           >
             <LogOut className="h-4 w-4" />
           </Button>
