@@ -126,8 +126,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         
         <Button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
           size="sm"
+          className="w-full"
         >
           <Plus className="h-4 w-4" />
           New Chat

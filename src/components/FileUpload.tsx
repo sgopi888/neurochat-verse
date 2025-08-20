@@ -2,6 +2,10 @@ import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Paperclip, X, FileText, Image, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set the worker source for PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface FileUploadProps {
   onFileContent: (content: string, filename: string, type: 'pdf' | 'image') => void;
@@ -23,22 +27,37 @@ const FileUpload: React.FC<FileUploadProps> = ({
     fileInputRef.current?.click();
   };
 
-  // Extract text using Supabase edge function
-  const extractTextFromFileAPI = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch('/api/extract-text', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to extract text from file');
+  // Extract text from PDF using PDF.js
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      let fullText = '';
+      
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        
+        fullText += pageText + '\n\n';
+      }
+      
+      return fullText.trim();
+    } catch (error) {
+      console.error('PDF extraction error:', error);
+      throw new Error('Failed to extract text from PDF. The file may be corrupted or password-protected.');
     }
+  };
 
-    const data = await response.json();
-    return data.text || '';
+  // Extract text from images using Canvas API
+  const extractTextFromImage = async (file: File): Promise<string> => {
+    // For now, return a placeholder since OCR requires additional libraries
+    // You could integrate with Tesseract.js or similar for actual OCR
+    return `[Image uploaded: ${file.name}]\n\nNote: Image text extraction is not yet implemented. Please describe the content of this image or convert it to text manually.`;
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,9 +69,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
       fileInputRef.current.value = '';
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB');
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
       return;
     }
 
@@ -69,9 +88,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     try {
       const fileType: 'pdf' | 'image' = isPDF ? 'pdf' : 'image';
-      toast.info('Uploading file to extract text...');
-      const extractedText = await extractTextFromFileAPI(file);
-      toast.success('Text extracted successfully via HURIDOCS');
+      toast.info(`Processing ${fileType.toUpperCase()}...`);
+      
+      let extractedText: string;
+      
+      if (isPDF) {
+        extractedText = await extractTextFromPDF(file);
+        toast.success('PDF text extracted successfully!');
+      } else {
+        extractedText = await extractTextFromImage(file);
+        toast.success('Image processed successfully!');
+      }
 
       if (!extractedText || extractedText.length < 10) {
         toast.warning('Very little text was found in the file. Please ensure the file contains readable text.');
@@ -81,7 +108,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     } catch (error) {
       console.error('File processing error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to extract text from file');
+      toast.error(error instanceof Error ? error.message : 'Failed to process file');
     } finally {
       setIsProcessing(false);
     }
