@@ -26,6 +26,9 @@ export const useEnhancedChatManager = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   
+  // Chat session management
+  const [chatSessions, setChatSessions] = useState<{ id: string; title: string; updated_at: string }[]>([]);
+  
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
@@ -41,10 +44,53 @@ export const useEnhancedChatManager = () => {
   });
   const [isGeneratingMeditation, setIsGeneratingMeditation] = useState(false);
 
+  // 🔧 PERSISTENCE: Restore currentChatId from localStorage on mount
+  useEffect(() => {
+    if (user) {
+      const savedChatId = localStorage.getItem(`currentChatId_${user.id}`);
+      if (savedChatId) {
+        console.log('📱 Restored currentChatId from localStorage:', savedChatId);
+        setCurrentChatId(savedChatId);
+      }
+      loadChatSessions();
+    }
+  }, [user]);
+
+  // Load chat sessions from database
+  const loadChatSessions = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('🔄 Loading chat sessions for user:', user.id);
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('id, title, updated_at, created_at')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error loading chat sessions:', error);
+        toast.error('Failed to load chat sessions');
+        return;
+      }
+
+      setChatSessions(data || []);
+      console.log('✅ Loaded chat sessions:', data?.length || 0, 'sessions');
+    } catch (error) {
+      console.error('❌ Error in loadChatSessions:', error);
+      toast.error('Failed to load chat sessions');
+    }
+  };
+
   // Load chat messages from database
   useEffect(() => {
     if (currentChatId) {
+      console.log('🔄 Loading messages for chatId:', currentChatId);
       loadChatMessages(currentChatId);
+    } else {
+      console.log('🔄 No currentChatId, clearing messages');
+      setMessages([]);
+      setChatMode({ mode: 'probing', probingMessages: [] });
     }
   }, [currentChatId]);
 
@@ -52,6 +98,7 @@ export const useEnhancedChatManager = () => {
     if (!user) return;
 
     try {
+      console.log('🔍 Loading messages for chatId:', chatId);
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
@@ -60,8 +107,15 @@ export const useEnhancedChatManager = () => {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error loading chat messages:', error);
+        console.error('❌ Error loading chat messages:', error);
         toast.error('Failed to load chat messages');
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('📝 No messages found for chatId:', chatId);
+        setMessages([]);
+        setChatMode({ mode: 'probing', probingMessages: [] });
         return;
       }
 
@@ -73,6 +127,7 @@ export const useEnhancedChatManager = () => {
       }));
 
       setMessages(loadedMessages);
+      console.log('✅ Loaded messages:', loadedMessages.length, 'messages');
       
       // Only reset probing messages if this is a different chat or if it's a completed meditation chat
       const hasMeditationContent = loadedMessages.some(msg => 
@@ -80,30 +135,28 @@ export const useEnhancedChatManager = () => {
       );
       
       if (hasMeditationContent) {
-        // This is a completed meditation chat, reset probing mode
+        console.log('🧘 Found meditation content, resetting probing mode');
         setChatMode({ mode: 'probing', probingMessages: [] });
+        setSuggestedQuestions([]);
+        setShowSuggestions(false);
       } else {
-        // This is an active probing chat, preserve any existing probing messages
-        // but clear them if we're switching to a different chat
-        if (currentChatId !== chatId) {
-          setChatMode({ mode: 'probing', probingMessages: [] });
-        }
-      }
+        // This is an active probing chat, clear probing messages for clean state
+        console.log('💬 Active probing chat, clearing probing messages');
+        setChatMode({ mode: 'probing', probingMessages: [] });
 
-      // Generate contextual questions from the last AI message in loaded chat
-      if (loadedMessages.length > 0) {
+        // Generate contextual questions from the last AI message in loaded chat
         const lastAiMessage = loadedMessages
           .filter(msg => !msg.isUser)
           .pop();
         
-        if (lastAiMessage && !hasMeditationContent) {
+        if (lastAiMessage) {
           try {
             console.log('🔄 Generating contextual questions for loaded chat');
             const questions = await generateContextualQuestions(lastAiMessage.text, loadedMessages);
             setSuggestedQuestions(questions);
             setShowSuggestions(true);
           } catch (error) {
-            console.error('Error generating contextual questions for loaded chat:', error);
+            console.error('❌ Error generating contextual questions for loaded chat:', error);
             setSuggestedQuestions([]);
             setShowSuggestions(false);
           }
@@ -111,7 +164,7 @@ export const useEnhancedChatManager = () => {
       }
 
     } catch (error) {
-      console.error('Error in loadChatMessages:', error);
+      console.error('❌ Error in loadChatMessages:', error);
       toast.error('Failed to load chat messages');
     }
   };
@@ -159,6 +212,15 @@ export const useEnhancedChatManager = () => {
 
         chatId = newChat.id;
         setCurrentChatId(chatId);
+        
+        // 🔧 PERSISTENCE: Save to localStorage
+        if (user) {
+          localStorage.setItem(`currentChatId_${user.id}`, chatId);
+          console.log('💾 Saved new chatId to localStorage:', chatId);
+        }
+        
+        // 🔄 Refresh chat sessions to show new chat
+        loadChatSessions();
       } catch (error) {
         console.error('Error creating chat session:', error);
         toast.error('Failed to create chat session');
@@ -418,20 +480,31 @@ export const useEnhancedChatManager = () => {
     setSuggestedQuestions([]);
     setShowSuggestions(false);
     setIsGeneratingMeditation(false);
-    console.log('Started new chat');
+    
+    // 🔧 PERSISTENCE: Clear from localStorage
+    if (user) {
+      localStorage.removeItem(`currentChatId_${user.id}`);
+      console.log('🗑️ Cleared currentChatId from localStorage');
+    }
+    
+    console.log('➕ Started new chat');
   };
 
   const handleChatSelect = (chatId: string) => {
     if (chatId !== currentChatId) {
-      // Save current probing messages if switching from an active probing chat
-      if (currentChatId && chatMode.probingMessages.length > 0) {
-        console.log('Preserving probing messages for chat:', currentChatId);
-      }
+      console.log('🔄 Selecting chat:', chatId, 'from current:', currentChatId);
       
       setCurrentChatId(chatId);
       setShowSuggestions(false);
       setIsGeneratingMeditation(false);
-      console.log('Selected chat:', chatId);
+      
+      // 🔧 PERSISTENCE: Save to localStorage
+      if (user) {
+        localStorage.setItem(`currentChatId_${user.id}`, chatId);
+        console.log('💾 Saved chatId to localStorage:', chatId);
+      }
+      
+      console.log('✅ Selected chat:', chatId);
     }
   };
 
@@ -439,6 +512,7 @@ export const useEnhancedChatManager = () => {
     // Persistent state
     messages,
     currentChatId,
+    chatSessions,
     
     // UI state
     isLoading,
@@ -455,12 +529,13 @@ export const useEnhancedChatManager = () => {
     handleSuggestionClick,
     handleNewChat,
     handleChatSelect,
-    stopCurrentOperation, // 🛑 New stop functionality
+    stopCurrentOperation,
+    loadChatSessions, // 🔄 Export for external refresh
     
     // Computed values
     allDisplayMessages: [...messages, ...chatMode.probingMessages],
     canGenerateMeditation: chatMode.probingMessages.length > 0 && !isGeneratingMeditation,
-    canStopOperation: isLoading || isGeneratingMeditation, // 🛑 Can show stop button
+    canStopOperation: isLoading || isGeneratingMeditation,
     
     // Legacy compatibility
     handleSendMessage: handleProbingMessage,
