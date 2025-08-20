@@ -87,12 +87,23 @@ export const useChatHistory = (currentChatId: string | null) => {
     }
   }, [user]);
 
-  // Refresh when a new chat is created
+  // Refresh when a new chat is created or when current chat changes
   useEffect(() => {
     if (currentChatId && !chatSessions.find(chat => chat.id === currentChatId)) {
       loadChatHistory();
     }
   }, [currentChatId]);
+
+  // Refresh chat history periodically to show updated timestamps
+  useEffect(() => {
+    if (user && currentChatId) {
+      const interval = setInterval(() => {
+        loadChatHistory();
+      }, 10000); // Refresh every 10 seconds when actively chatting
+      
+      return () => clearInterval(interval);
+    }
+  }, [user, currentChatId]);
 
   return {
     chatSessions,

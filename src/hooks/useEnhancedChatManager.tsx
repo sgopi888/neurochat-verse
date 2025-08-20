@@ -141,9 +141,46 @@ export const useEnhancedChatManager = () => {
         probingMessages: [...updatedProbingMessages, aiMessage]
       }));
 
-    // Generate contextual questions after probing response
+      // Save both user and AI messages to database immediately
+      if (currentChatId) {
+        try {
+          // Save user message
+          await supabase
+            .from('chat_messages')
+            .insert({
+              chat_session_id: currentChatId,
+              user_id: user.id,
+              content: userMessage.text,
+              is_user: true,
+              timestamp: userMessage.timestamp.toISOString()
+            });
+
+          // Save AI response
+          await supabase
+            .from('chat_messages')
+            .insert({
+              chat_session_id: currentChatId,
+              user_id: user.id,
+              content: aiMessage.text,
+              is_user: false,
+              timestamp: aiMessage.timestamp.toISOString()
+            });
+
+          // Update chat session timestamp
+          await supabase
+            .from('chat_sessions')
+            .update({ updated_at: new Date().toISOString() })
+            .eq('id', currentChatId);
+        } catch (dbError) {
+          console.error('Error saving messages to database:', dbError);
+        }
+      }
+
+      // Generate contextual questions after probing response
     try {
-      const contextualQuestions = await generateContextualQuestions(response.data || '', chatMode.probingMessages);
+      // Pass the full conversation context for better question generation
+      const allMessages = [...chatMode.probingMessages, aiMessage];
+      const contextualQuestions = await generateContextualQuestions(response.data || '', allMessages);
       setSuggestedQuestions(contextualQuestions);
       setShowSuggestions(true);
     } catch (questionError) {
