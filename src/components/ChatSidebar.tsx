@@ -139,15 +139,15 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <div className="p-3 pb-2">
           <Card className="bg-card/50 border-border/50 scale-90 transform origin-top">
             <CardHeader className="pb-2 px-3 pt-3">
-              <CardTitle className="text-xs flex items-center">
-                <Volume2 className="h-3 w-3 mr-2" />
+              <CardTitle className="text-sm font-medium flex items-center">
+                <Volume2 className="h-4 w-4 mr-2" />
                 Audio Controls
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Voice Selection */}
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Voice</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Voice</label>
                 <Select value={selectedVoice} onValueChange={onVoiceChange}>
                   <SelectTrigger className="h-8">
                     <SelectValue />
@@ -212,8 +212,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <div className="p-3 pt-0">
           <Card className="bg-card/50 border-border/50 scale-90 transform origin-top">
             <CardHeader className="pb-2 px-3 pt-3">
-              <CardTitle className="text-xs flex items-center">
-                <Music className="h-3 w-3 mr-2" />
+              <CardTitle className="text-sm font-medium flex items-center">
+                <Music className="h-4 w-4 mr-2" />
                 Background Music
               </CardTitle>
             </CardHeader>
@@ -237,16 +237,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <div className="p-3 pt-0 flex-1 min-h-0">
           <Card className="bg-card/50 border-border/50 h-full flex flex-col scale-90 transform origin-top">
             <CardHeader className="pb-2 flex-shrink-0 px-3 pt-3">
-              <CardTitle className="text-xs flex items-center">
-                <MessageSquare className="h-3 w-3 mr-2" />
+              <CardTitle className="text-sm font-medium flex items-center">
+                <MessageSquare className="h-4 w-4 mr-2" />
                 Chat History
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto space-y-1">
               {isLoadingHistory ? (
-                <div className="text-xs text-muted-foreground">Loading...</div>
+                <div className="text-sm text-muted-foreground">Loading...</div>
               ) : chatSessions.length === 0 ? (
-                <div className="text-xs text-muted-foreground">No chat history yet</div>
+                <div className="text-sm text-muted-foreground">No chat history yet</div>
               ) : (
                 chatSessions.map((chat) => (
                   <div
@@ -259,10 +259,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     onClick={() => onChatSelect(chat.id)}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate" title={chat.title}>
+                      <div className="text-sm font-medium truncate" title={chat.title}>
                         {chat.title}
                       </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {formatDate(chat.updated_at)}
                       </div>
