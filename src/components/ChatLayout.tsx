@@ -45,7 +45,10 @@ interface ChatLayoutProps {
 
   // UI props
   onCopy: (text: string) => void;
-  onSpeak: (text: string) => void;
+  onSpeak: (messageId: string, message: any) => void;
+  onPauseMessageAudio?: (messageId: string) => void;
+  isMessagePlaying?: (messageId: string) => boolean;
+  isMessageLoading?: (messageId: string) => boolean;
   onSignOut: () => void;
 
   // Mobile props
@@ -91,6 +94,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onVolumeChange,
   onCopy,
   onSpeak,
+  onPauseMessageAudio,
+  isMessagePlaying,
+  isMessageLoading,
   onSignOut,
   isMobile,
   isMobileSidebarOpen,
@@ -105,7 +111,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onGenerateMeditation
 }) => {
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {/* Desktop/Tablet Sidebar - Hidden on mobile */}
       <div className={`${isMobile ? 'hidden' : 'block w-[30%]'}`}>
         <ChatSidebar
@@ -162,12 +168,15 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
         </>
       )}
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         <EnhancedChatBot
           messages={messages}
           onSendMessage={onSendMessage}
           onCopy={onCopy}
           onSpeak={onSpeak}
+          onPauseMessageAudio={onPauseMessageAudio}
+          isMessagePlaying={isMessagePlaying}
+          isMessageLoading={isMessageLoading}
           isLoading={isLoading}
           loadingIndicator={<LoadingIndicator message="Processing with AI model..." />}
           suggestedQuestions={

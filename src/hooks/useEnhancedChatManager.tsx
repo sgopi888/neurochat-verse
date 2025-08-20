@@ -235,8 +235,14 @@ export const useEnhancedChatManager = () => {
           });
       }
 
-      // Update UI state
-      setMessages(allMessages);
+      // Update UI state - merge instead of replacing to prevent reload appearance
+      setMessages(prev => {
+        // If we already have messages, just add the new meditation script
+        if (prev.length > 0) {
+          return [...prev, allMessages[allMessages.length - 1]]; // Add just the meditation script
+        }
+        return allMessages; // First time, set all messages
+      });
       setChatMode({ mode: 'probing', probingMessages: [] }); // Reset for next conversation
       
       // Update chat session timestamp

@@ -1,6 +1,7 @@
 
 import { useBackgroundMusic } from './useBackgroundMusic';
 import { useTTSAudio } from './useTTSAudio';
+import { useMessageAudio } from './useMessageAudio';
 
 interface Message {
   id: string;
@@ -24,19 +25,31 @@ export const useAudioManager = (messages: Message[]) => {
     backgroundMusicRef
   } = useBackgroundMusic();
 
-  // TTS audio functionality
+  // Legacy TTS audio functionality for backward compatibility
   const {
     isPlaying,
-    selectedVoice,
+    selectedVoice: legacySelectedVoice,
     currentAudio,
     isAudioProcessing,
     lastGeneratedAudioBlob,
     lastGeneratedText,
-    setSelectedVoice,
+    setSelectedVoice: setLegacySelectedVoice,
     handlePlayLatestResponse,
     handlePauseAudio,
     stopCurrentAudio
   } = useTTSAudio(messages, playBackgroundMusic, pauseBackgroundMusic, stopBackgroundMusic, backgroundMusicRef, musicVolume);
+
+  // New individual message audio functionality
+  const {
+    selectedVoice,
+    setSelectedVoice,
+    playMessageAudio,
+    pauseMessageAudio,
+    stopCurrentAudio: stopCurrentMessageAudio,
+    isMessagePlaying,
+    isMessageLoading,
+    currentPlayingMessageId
+  } = useMessageAudio(pauseBackgroundMusic, stopBackgroundMusic, backgroundMusicRef, musicVolume);
 
   // Enhanced music upload handler that syncs with TTS state
   const handleMusicUploadWithSync = (file: File) => {
@@ -44,17 +57,28 @@ export const useAudioManager = (messages: Message[]) => {
   };
 
   return {
-    // TTS audio exports
+    // Legacy TTS audio exports (for backward compatibility)
     isPlaying,
-    selectedVoice,
+    selectedVoice: legacySelectedVoice,
     currentAudio,
     isAudioProcessing,
     lastGeneratedAudioBlob,
     lastGeneratedText,
-    setSelectedVoice,
+    setSelectedVoice: setLegacySelectedVoice,
     handlePlayLatestResponse,
     handlePauseAudio,
     stopCurrentAudio,
+    
+    // New individual message audio exports
+    messageSelectedVoice: selectedVoice,
+    setMessageSelectedVoice: setSelectedVoice,
+    playMessageAudio,
+    pauseMessageAudio,
+    stopCurrentMessageAudio,
+    isMessagePlaying,
+    isMessageLoading,
+    currentPlayingMessageId,
+    
     // Background music exports
     musicName,
     musicVolume,

@@ -16,7 +16,10 @@ interface ChatBotProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   onCopy: (text: string) => void;
-  onSpeak: (text: string) => void;
+  onSpeak: (messageId: string, message: any) => void;
+  onPauseMessageAudio?: (messageId: string) => void;
+  isMessagePlaying?: (messageId: string) => boolean;
+  isMessageLoading?: (messageId: string) => boolean;
   isLoading?: boolean;
   loadingIndicator?: React.ReactNode;
   suggestedQuestions?: React.ReactNode;
@@ -40,6 +43,9 @@ const ChatBot: React.FC<ChatBotProps> = ({
   onSendMessage,
   onCopy,
   onSpeak,
+  onPauseMessageAudio,
+  isMessagePlaying,
+  isMessageLoading,
   isLoading = false,
   loadingIndicator,
   suggestedQuestions,
@@ -183,7 +189,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages - Fixed height container with internal scrolling */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 min-h-0">
         {messages.length === 0 && !isLoading && (
           <div className="text-center py-12">
@@ -219,6 +225,9 @@ const ChatBot: React.FC<ChatBotProps> = ({
             message={message}
             onCopy={onCopy}
             onSpeak={onSpeak}
+            onPauseAudio={onPauseMessageAudio}
+            isPlaying={isMessagePlaying?.(message.id)}
+            isLoadingAudio={isMessageLoading?.(message.id)}
           />
         ))}
 
@@ -230,8 +239,27 @@ const ChatBot: React.FC<ChatBotProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {/* Input Area - Fixed at bottom */}
       <div className="border-t border-border bg-card/80 backdrop-blur-sm p-4 flex-shrink-0">
+        {/* Generate Meditation Button - Show when ready */}
+        {chatMode?.mode === 'probing' && chatMode.probingMessages.length > 0 && canGenerateMeditation && (
+          <div className="mb-4 p-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/20">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">Ready to create your meditation?</p>
+                <p className="text-xs text-muted-foreground">Based on our conversation, I can now generate a personalized meditation script for you.</p>
+              </div>
+              <Button
+                onClick={onGenerateMeditation}
+                disabled={isGeneratingMeditation}
+                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground border-0"
+              >
+                {isGeneratingMeditation ? 'Creating...' : 'Generate Meditation'}
+              </Button>
+            </div>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="flex items-end space-x-2">
           <div className="flex-1 relative">
             <Textarea

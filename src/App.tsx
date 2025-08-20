@@ -54,6 +54,12 @@ function AppContent() {
     handlePauseAudio,
     setSelectedVoice,
     stopCurrentAudio,
+    // New individual message audio
+    playMessageAudio,
+    pauseMessageAudio,
+    isMessagePlaying,
+    isMessageLoading,
+    // Background music
     musicName,
     musicVolume,
     handleMusicUpload,
@@ -106,10 +112,14 @@ function AppContent() {
     closeMobileSidebar();
   };
 
-  // Enhanced speak handler that uses TTS
-  const handleSpeak = (text: string) => {
-    // This will trigger the latest response audio play
-    handlePlayLatestResponse();
+  // Enhanced speak handler that uses individual message TTS
+  const handleSpeak = (messageId: string, message: any) => {
+    playMessageAudio(message);
+  };
+
+  // Handle pause for individual messages
+  const handlePauseMessageAudio = (messageId: string) => {
+    pauseMessageAudio(messageId);
   };
 
   // File upload handlers
@@ -163,6 +173,9 @@ function AppContent() {
       onVolumeChange={handleVolumeChange}
       onCopy={handleCopy}
       onSpeak={handleSpeak}
+      onPauseMessageAudio={handlePauseMessageAudio}
+      isMessagePlaying={isMessagePlaying}
+      isMessageLoading={isMessageLoading}
       onSignOut={enhancedSignOut}
       isMobile={isMobile}
       isMobileSidebarOpen={isMobileSidebarOpen}

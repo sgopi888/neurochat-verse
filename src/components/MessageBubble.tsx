@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy, Volume2, User, Bot } from 'lucide-react';
+import { Copy, Volume2, User, Bot, Pause, Loader2 } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: {
@@ -11,10 +11,20 @@ interface MessageBubbleProps {
     timestamp: Date;
   };
   onCopy: (text: string) => void;
-  onSpeak: (text: string) => void;
+  onSpeak: (messageId: string, message: any) => void;
+  isPlaying?: boolean;
+  isLoadingAudio?: boolean;
+  onPauseAudio?: (messageId: string) => void;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ 
+  message, 
+  onCopy, 
+  onSpeak, 
+  isPlaying = false, 
+  isLoadingAudio = false, 
+  onPauseAudio 
+}) => {
   const formatTimestamp = (date: Date) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -99,12 +109,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopy, onSpeak 
             
             {!message.isUser && (
               <Button
-                onClick={() => onSpeak(message.text)}
+                onClick={() => {
+                  if (isPlaying) {
+                    onPauseAudio?.(message.id);
+                  } else {
+                    onSpeak(message.id, message);
+                  }
+                }}
                 variant="ghost"
                 size="sm"
+                disabled={isLoadingAudio}
                 className="h-6 w-6 p-0 rounded-md transition-all duration-200 hover:scale-110 hover:bg-muted text-muted-foreground hover:text-primary"
               >
-                <Volume2 className="h-3 w-3" />
+                {isLoadingAudio ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : isPlaying ? (
+                  <Pause className="h-3 w-3" />
+                ) : (
+                  <Volume2 className="h-3 w-3" />
+                )}
               </Button>
             )}
           </div>

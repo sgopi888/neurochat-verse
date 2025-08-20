@@ -18,7 +18,10 @@ interface EnhancedChatBotProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   onCopy: (text: string) => void;
-  onSpeak: (text: string) => void;
+  onSpeak: (messageId: string, message: any) => void;
+  onPauseMessageAudio?: (messageId: string) => void;
+  isMessagePlaying?: (messageId: string) => boolean;
+  isMessageLoading?: (messageId: string) => boolean;
   isLoading?: boolean;
   loadingIndicator?: React.ReactNode;
   suggestedQuestions?: React.ReactNode;
@@ -36,25 +39,31 @@ interface EnhancedChatBotProps {
 }
 
 const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
-  const { chatMode, canGenerateMeditation, isGeneratingMeditation, onGenerateMeditation, ...chatBotProps } = props;
+  const { 
+    chatMode, 
+    canGenerateMeditation, 
+    isGeneratingMeditation, 
+    onGenerateMeditation,
+    onPauseMessageAudio,
+    isMessagePlaying,
+    isMessageLoading,
+    ...chatBotProps 
+  } = props;
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1">
-        <ChatBot {...chatBotProps} />
+      <div className="flex-1 min-h-0">
+        <ChatBot 
+          {...chatBotProps} 
+          chatMode={chatMode}
+          canGenerateMeditation={canGenerateMeditation}
+          isGeneratingMeditation={isGeneratingMeditation}
+          onGenerateMeditation={onGenerateMeditation}
+          onPauseMessageAudio={onPauseMessageAudio}
+          isMessagePlaying={isMessagePlaying}
+          isMessageLoading={isMessageLoading}
+        />
       </div>
-      
-      {/* Show meditation generator when in probing mode with messages */}
-      {chatMode?.mode === 'probing' && chatMode.probingMessages.length > 0 && (
-        <div className="border-t border-border bg-card/50 p-4">
-          <MeditationGenerator
-            canGenerate={canGenerateMeditation || false}
-            isGenerating={isGeneratingMeditation || false}
-            onGenerate={onGenerateMeditation || (() => {})}
-            probingMessageCount={chatMode.probingMessages.length}
-          />
-        </div>
-      )}
     </div>
   );
 };
