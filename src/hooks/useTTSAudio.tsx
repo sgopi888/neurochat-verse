@@ -36,10 +36,6 @@ export const useTTSAudio = (
 
   // Enhanced audio cleanup function
   const stopCurrentAudio = async () => {
-    // Stop background music when stopping TTS
-    stopBackgroundMusic();
-    backgroundMusicStarted.current = false;
-    
     if (audioAbort.current) {
       audioAbort.current.abort();
       audioAbort.current = null;
@@ -56,6 +52,14 @@ export const useTTSAudio = (
     setIsPlaying(false);
     audioLock.current = false;
     setIsAudioProcessing(false);
+    
+    // Restart background music after TTS ends
+    if (backgroundMusicStarted.current) {
+      console.log('TTS ended, restarting background music');
+      setTimeout(() => {
+        playBackgroundMusic();
+      }, 100); // Small delay to ensure clean transition
+    }
   };
 
   // Debounced play function with enhanced synchronization
@@ -120,10 +124,14 @@ export const useTTSAudio = (
         // Set up event listeners with refs for proper cleanup
         playListener.current = async () => {
           setIsPlaying(true);
-          console.log('TTS audio started playing, background music already running');
+          // Lower background music volume during TTS instead of stopping it
+          console.log('TTS audio started playing, lowering background music volume');
         };
         
-        endListener.current = () => stopCurrentAudio();
+        endListener.current = () => {
+          console.log('TTS audio ended, will restart background music');
+          stopCurrentAudio();
+        };
         
         errListener.current = () => {
           console.error('Audio playback error');
@@ -162,7 +170,11 @@ export const useTTSAudio = (
 
   const handlePauseAudio = () => {
     console.log('Pause button pressed');
-    stopCurrentAudio();
+    // Don't stop background music when pausing TTS, just stop TTS
+    if (currentAudio) {
+      currentAudio.pause();
+      setIsPlaying(false);
+    }
   };
 
   return {
