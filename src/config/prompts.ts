@@ -25,6 +25,7 @@ Recent conversation context:
 Latest AI response:
 {lastResponse}
 
+Instructions: must generated as a following questions based on Recent conversation context above and not generic; These are likely question user may have in mind once this AI response is read.
 Generate exactly 3 follow-up questions in JSON format:
 {"questions": ["question 1", "question 2", "question 3"]}`,
 
