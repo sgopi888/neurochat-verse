@@ -94,7 +94,7 @@ export const useEnhancedChatManager = () => {
     toast.info('Operation stopped');
   };
 
-  // Handle probing chat (UI-only, not persisted)
+  // Handle probing chat (now persisted to database)
   const handleProbingMessage = async (text: string) => {
     if (!user || !hasAgreed) return;
 
@@ -103,6 +103,37 @@ export const useEnhancedChatManager = () => {
     setCurrentAbortController(abortController);
     setIsLoading(true);
     setShowSuggestions(false);
+
+    // Create chat session on first probing message if none exists
+    let chatId = currentChatId;
+    if (!chatId) {
+      try {
+        const chatTitle = text.length > 50 ? text.substring(0, 50) + '...' : text;
+        
+        const { data: newChat, error: chatError } = await supabase
+          .from('chat_sessions')
+          .insert({
+            user_id: user.id,
+            title: chatTitle,
+            is_article: false
+          })
+          .select()
+          .single();
+
+        if (chatError) {
+          throw new Error('Failed to create chat session');
+        }
+
+        chatId = newChat.id;
+        setCurrentChatId(chatId);
+      } catch (error) {
+        console.error('Error creating chat session:', error);
+        toast.error('Failed to create chat session');
+        setIsLoading(false);
+        setCurrentAbortController(null);
+        return;
+      }
+    }
 
     // Add user message to probing conversation
     const userMessage: Message = {
@@ -141,39 +172,37 @@ export const useEnhancedChatManager = () => {
         probingMessages: [...updatedProbingMessages, aiMessage]
       }));
 
-      // Save both user and AI messages to database immediately
-      if (currentChatId) {
-        try {
-          // Save user message
-          await supabase
-            .from('chat_messages')
-            .insert({
-              chat_session_id: currentChatId,
-              user_id: user.id,
-              content: userMessage.text,
-              is_user: true,
-              timestamp: userMessage.timestamp.toISOString()
-            });
+      // Save both user and AI messages to database immediately (chatId is guaranteed to exist now)
+      try {
+        // Save user message
+        await supabase
+          .from('chat_messages')
+          .insert({
+            chat_session_id: chatId,
+            user_id: user.id,
+            content: userMessage.text,
+            is_user: true,
+            timestamp: userMessage.timestamp.toISOString()
+          });
 
-          // Save AI response
-          await supabase
-            .from('chat_messages')
-            .insert({
-              chat_session_id: currentChatId,
-              user_id: user.id,
-              content: aiMessage.text,
-              is_user: false,
-              timestamp: aiMessage.timestamp.toISOString()
-            });
+        // Save AI response
+        await supabase
+          .from('chat_messages')
+          .insert({
+            chat_session_id: chatId,
+            user_id: user.id,
+            content: aiMessage.text,
+            is_user: false,
+            timestamp: aiMessage.timestamp.toISOString()
+          });
 
-          // Update chat session timestamp
-          await supabase
-            .from('chat_sessions')
-            .update({ updated_at: new Date().toISOString() })
-            .eq('id', currentChatId);
-        } catch (dbError) {
-          console.error('Error saving messages to database:', dbError);
-        }
+        // Update chat session timestamp
+        await supabase
+          .from('chat_sessions')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', chatId);
+      } catch (dbError) {
+        console.error('Error saving messages to database:', dbError);
       }
 
       // Generate contextual questions after probing response
@@ -230,27 +259,10 @@ export const useEnhancedChatManager = () => {
       // Step 2: Get relevant chunks from N8N using existing webhook
       toast.info('Finding relevant guidance...');
       
+      // Chat session should already exist from probing, but check just in case
       let chatId = currentChatId;
       if (!chatId) {
-        // Create new chat session for meditation
-        const chatTitle = keywords.length > 50 ? keywords.substring(0, 50) + '...' : keywords;
-        
-        const { data: newChat, error: chatError } = await supabase
-          .from('chat_sessions')
-          .insert({
-            user_id: user.id,
-            title: chatTitle,
-            is_article: false
-          })
-          .select()
-          .single();
-
-        if (chatError) {
-          throw new Error('Failed to create chat session');
-        }
-
-        chatId = newChat.id;
-        setCurrentChatId(chatId);
+        throw new Error('No chat session found. Please start a conversation first.');
       }
 
       // Call existing webhook with keywords as question
