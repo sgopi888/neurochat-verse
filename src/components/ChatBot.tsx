@@ -5,6 +5,7 @@ import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import FileUpload from './FileUpload';
 import WebSearchToggle from './WebSearchToggle';
+import CodeInterpreterToggle from './CodeInterpreterToggle';
 
 interface Message {
   id: string;
