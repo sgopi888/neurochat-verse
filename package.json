@@ -62,6 +62,7 @@
     "tailwind-merge": "^2.5.2",
     "tailwind-scrollbar": "^4.0.2",
     "tailwindcss-animate": "^1.0.7",
+    "tiktoken": "^1.0.22",
     "vaul": "^0.9.3",
     "zod": "^3.23.8"
   },

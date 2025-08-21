@@ -5,13 +5,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Token counting function for managing context
+function estimateTokens(text: string): number {
+  // Rough estimation: ~4 characters per token
+  return Math.ceil(text.length / 4);
+}
+
+function truncateToTokenLimit(content: string, maxTokens: number = 180000): string {
+  const tokens = estimateTokens(content);
+  if (tokens <= maxTokens) return content;
+  
+  // Truncate to approximately maxTokens worth of characters
+  const maxChars = maxTokens * 4;
+  return content.slice(0, maxChars) + "\n\n[Content truncated to fit token limit]";
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano', verbosity = 'low', reasoning = 'minimal', webSearch = false, codeInterpreter = false, onProgress } = await req.json();
+    const { messages, userId, provider = 'openai', model = 'gpt-5-nano-2025-08-07', verbosity = 'low', reasoning = 'medium', webSearch = false, codeInterpreter = false, onProgress } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -143,9 +158,15 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     tools.push({ type: "code_interpreter" });
   }
 
+  // Truncate input if too long to fit within token limits
+  const truncatedInput = input.map(msg => ({
+    ...msg,
+    content: truncateToTokenLimit(msg.content, 40000) // Leave room for response
+  }));
+
   const requestBody: any = {
-    model: 'gpt-5-nano',
-    input,
+    model: 'gpt-5-nano-2025-08-07',
+    input: truncatedInput,
     text: { verbosity },
     reasoning: { effort: reasoning },
   };
@@ -295,7 +316,7 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
   // Convert messages to OpenAI GPT-5 format (similar to AIML)
   const input = messages.map(msg => ({
     role: msg.role,
-    content: msg.content
+    content: truncateToTokenLimit(msg.content, 40000) // Manage token limits
   }));
 
   // Add follow-up questions generation and BMP/HRV analysis instructions  

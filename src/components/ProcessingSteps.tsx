@@ -23,15 +23,15 @@ const ProcessingSteps: React.FC<ProcessingStepsProps> = ({
   // Enhanced steps with better descriptions
   const steps = [
     { icon: Brain, text: 'Analyzing your message...', color: 'text-blue-500' },
-    { icon: Sparkles, text: 'Searching knowledge base...', color: 'text-orange-500' },
+    { icon: Sparkles, text: 'RAG Retrieval in progress...', color: 'text-orange-500' },
     { icon: Volume2, text: 'Generating thoughtful response...', color: 'text-purple-500' },
   ];
   
   // Determine step based on current activity or progress
   const getActiveStep = () => {
     if (currentStep?.includes('Analyzing')) return 0;
-    if (currentStep?.includes('knowledge base') || currentStep?.includes('reference') || currentStep?.includes('chunks')) return 1;
-    if (currentStep?.includes('response') || currentStep?.includes('Processing')) return 2;
+    if (currentStep?.includes('RAG') || currentStep?.includes('knowledge') || currentStep?.includes('reference') || currentStep?.includes('chunks') || currentStep?.includes('Retrieval')) return 1;
+    if (currentStep?.includes('response') || currentStep?.includes('Generating') || currentStep?.includes('Processing')) return 2;
     
     // Fallback based on progress
     if (progress < 30) return 0;

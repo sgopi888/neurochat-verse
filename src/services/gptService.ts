@@ -19,7 +19,7 @@ interface GPTResponse {
 
 interface GPTConfig {
   provider: 'aiml' | 'openai';
-  model: 'gpt-5-nano';
+  model: string;
   verbosity: 'low' | 'medium' | 'high';
   reasoning: 'low' | 'medium' | 'high';
   webSearch: boolean;
@@ -33,7 +33,7 @@ export class GPTService {
     if (savedConfig) {
       return JSON.parse(savedConfig);
     }
-    return { provider: 'openai', model: 'gpt-5-nano', verbosity: 'low', reasoning: 'medium', webSearch: false, codeInterpreter: false };
+    return { provider: 'openai', model: 'gpt-5-nano-2025-08-07', verbosity: 'low', reasoning: 'medium', webSearch: false, codeInterpreter: false };
   }
 
   static setConfig(config: GPTConfig): void {

@@ -182,7 +182,7 @@ export const useChatManager = () => {
       }
 
       // Update progress
-      setProcessingStep('Finding relevant knowledge...');
+      setProcessingStep('RAG Retrieval in progress...');
       setProgress(30);
       
       // Try to retrieve relevant chunks first
@@ -202,7 +202,17 @@ export const useChatManager = () => {
           retrievedChunks = chunksData.chunks;
           setChunksRetrieved(retrievedChunks.length);
           console.log('Retrieved chunks for conversation:', retrievedChunks.length);
-          setProcessingStep(`Using ${retrievedChunks.length} knowledge chunks...`);
+          
+          // Create 20-30 word excerpt from first chunk for display
+          const chunksExcerpt = retrievedChunks.length > 0 
+            ? retrievedChunks[0].split(' ').slice(0, 25).join(' ') + (retrievedChunks[0].split(' ').length > 25 ? '...' : '')
+            : '';
+          
+          if (chunksExcerpt) {
+            setProcessingStep(`RAG Retrieved: "${chunksExcerpt}"`);
+          } else {
+            setProcessingStep(`Using ${retrievedChunks.length} knowledge chunks...`);
+          }
         } else {
           console.log('No chunks retrieved, proceeding with conversation only');
           setProcessingStep('No relevant knowledge found, using conversation context...');
