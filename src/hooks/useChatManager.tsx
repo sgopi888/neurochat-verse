@@ -182,11 +182,47 @@ export const useChatManager = () => {
       }
 
       // Update progress
-      setProcessingStep('Getting AI response...');
-      setProgress(50);
+      setProcessingStep('Finding relevant knowledge...');
+      setProgress(30);
       
-      // Get AI response
-      const response = await GPTService.probingChat(text, messages, user.id);
+      // Try to retrieve relevant chunks first
+      let retrievedChunks: string[] = [];
+      try {
+        const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
+          body: {
+            chatHistory: messages.map(msg => ({
+              role: msg.isUser ? 'user' : 'assistant',
+              content: msg.text
+            })),
+            userMessage: text
+          }
+        });
+
+        if (!chunksError && chunksData?.success && chunksData.chunks) {
+          retrievedChunks = chunksData.chunks;
+          setChunksRetrieved(retrievedChunks.length);
+          console.log('Retrieved chunks for conversation:', retrievedChunks.length);
+          setProcessingStep(`Using ${retrievedChunks.length} knowledge chunks...`);
+        } else {
+          console.log('No chunks retrieved, proceeding with conversation only');
+          setProcessingStep('No relevant knowledge found, using conversation context...');
+        }
+      } catch (error) {
+        console.warn('Chunks retrieval failed, proceeding without:', error);
+        setProcessingStep('Knowledge retrieval unavailable, continuing...');
+      }
+
+      // Update progress
+      setProcessingStep('Getting AI response...');
+      setProgress(60);
+      
+      // Get AI response with or without chunks
+      let response;
+      if (retrievedChunks.length > 0) {
+        response = await GPTService.probingChatWithChunks(text, messages, retrievedChunks, user.id);
+      } else {
+        response = await GPTService.probingChat(text, messages, user.id);
+      }
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to get AI response');

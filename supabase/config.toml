@@ -1,1 +1,34 @@
 project_id = "obgbnrasiyozdnmoixxx"
+
+[functions.gpt-chat]
+verify_jwt = false
+
+[functions.chunks-retrieval]
+verify_jwt = false
+
+[functions.webhook-handler]
+verify_jwt = false
+
+[functions.generate-contextual-questions]
+verify_jwt = false
+
+[functions.extract-text]
+verify_jwt = false
+
+[functions.text-to-speech]
+verify_jwt = false
+
+[functions.process-bmp-data]
+verify_jwt = false
+
+[functions.generate-tavus-video]
+verify_jwt = false
+
+[functions.poll-tavus-video]
+verify_jwt = false
+
+[functions.cleanup-old-chats]
+verify_jwt = false
+
+[functions.chat-proxy]
+verify_jwt = false
