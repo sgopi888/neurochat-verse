@@ -16,12 +16,12 @@ interface GPTResponse {
 
 interface GPTConfig {
   provider: 'aiml' | 'openai';
-  model: 'gpt-5' | 'gpt-5-nano';
+  model: 'gpt-5' | 'gpt-5-nano' | 'gpt-4o-mini';
 }
 
 export class GPTService {
   private static getConfig(): GPTConfig {
-    // Get from localStorage or default to AIML + GPT-5 nano
+    // Get from localStorage or default to AIML + GPT-5 nano  
     const savedConfig = localStorage.getItem('gpt-config');
     if (savedConfig) {
       return JSON.parse(savedConfig);
@@ -62,6 +62,16 @@ export class GPTService {
   }
 
   static async probingChat(userMessage: string, chatHistory: Message[], userId?: string): Promise<GPTResponse> {
+    // Check if advanced mode is enabled
+    const advancedSettings = JSON.parse(localStorage.getItem('advanced-settings') || '{"useAdvancedMode": true}');
+    
+    if (advancedSettings.useAdvancedMode) {
+      // Use advanced GPT-5-nano service
+      const { AdvancedGPTService } = await import('@/services/advancedGptService');
+      return AdvancedGPTService.enhancedMeditationGeneration(userMessage, chatHistory, advancedSettings, userId);
+    }
+
+    // Fallback to basic prompts
     const systemPrompt = PROMPTS.PROBING_CHAT;
 
     const messages = [

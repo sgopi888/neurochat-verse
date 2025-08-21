@@ -1,6 +1,8 @@
 import React from 'react';
 import ChatBot from './ChatBot';
-import MeditationGenerator from './MeditationGenerator';
+import { useAdvancedSettings } from '@/hooks/useAdvancedSettings';
+import { AdvancedGPTService } from '@/services/advancedGptService';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -54,6 +56,61 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
     ...chatBotProps 
   } = props;
 
+  const { settings } = useAdvancedSettings();
+
+  const handleWebSearch = async () => {
+    if (!settings.enableWeb) {
+      toast.error('Web search is not enabled');
+      return;
+    }
+    
+    try {
+      // Trigger web-enhanced meditation generation
+      const lastUserMessage = props.messages.filter(m => m.isUser).pop();
+      if (lastUserMessage) {
+        const response = await AdvancedGPTService.webEnhancedMeditation(
+          lastUserMessage.text,
+          props.messages,
+          settings
+        );
+        
+        if (response.success) {
+          toast.success('Found fresh insights from web search');
+          // Handle structured response here
+          const structured = AdvancedGPTService.parseStructuredResponse(response.data);
+          if (structured) {
+            console.log('Web search results:', structured);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Web search error:', error);
+      toast.error('Web search failed');
+    }
+  };
+
+  const handleCodeAnalysis = async (bpmData?: number[]) => {
+    if (!settings.enableCode) {
+      toast.error('Code interpreter is not enabled');
+      return;
+    }
+
+    // If no BPM data provided, use sample data for demonstration
+    const sampleBpm = bpmData || [72, 75, 73, 76, 74, 72, 77, 75, 73, 74];
+    
+    try {
+      const response = await AdvancedGPTService.bpmAnalysis(sampleBpm, settings);
+      
+      if (response.success) {
+        toast.success('BPM analysis completed');
+        console.log('BPM analysis results:', response.data);
+      }
+    } catch (error) {
+      console.error('Code analysis error:', error);
+      toast.error('Code analysis failed');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0">
@@ -68,6 +125,10 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
           onPauseMessageAudio={onPauseMessageAudio}
           isMessagePlaying={isMessagePlaying}
           isMessageLoading={isMessageLoading}
+          enableWeb={settings.enableWeb && settings.useAdvancedMode}
+          enableCode={settings.enableCode && settings.useAdvancedMode}
+          onWebSearch={handleWebSearch}
+          onCodeAnalysis={handleCodeAnalysis}
         />
       </div>
     </div>

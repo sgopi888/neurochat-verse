@@ -8,6 +8,7 @@ import { Play, Pause, Settings, Volume2, Music } from 'lucide-react';
 import BackgroundMusicUpload from './BackgroundMusicUpload';
 import VolumeControl from './VolumeControl';
 import { AISettings } from './AISettings';
+import AdvancedSettings from './AdvancedSettings';
 
 interface UserSettingsProps {
   isOpen: boolean;
@@ -65,6 +66,18 @@ const UserSettings: React.FC<UserSettingsProps> = ({
               AI Configuration
             </h3>
             <AISettings />
+          </div>
+
+          <Separator />
+
+          {/* Advanced Features Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium flex items-center">
+              <Settings className="h-4 w-4 mr-2" />
+              Advanced Features
+            </h3>
+            
+            <AdvancedSettings />
           </div>
 
           <Separator />
