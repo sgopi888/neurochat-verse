@@ -20,11 +20,24 @@ const ProcessingSteps: React.FC<ProcessingStepsProps> = ({
   const [step, setStep] = useState(0);
   const [displayText, setDisplayText] = useState('');
 
+  // Enhanced steps with better descriptions
   const steps = [
-    { icon: Brain, text: 'Analyzing your question...', color: 'text-blue-500' },
+    { icon: Brain, text: 'Analyzing your message...', color: 'text-blue-500' },
     { icon: Sparkles, text: 'Searching knowledge base...', color: 'text-orange-500' },
     { icon: Volume2, text: 'Generating thoughtful response...', color: 'text-purple-500' },
   ];
+  
+  // Determine step based on current activity or progress
+  const getActiveStep = () => {
+    if (currentStep?.includes('Analyzing')) return 0;
+    if (currentStep?.includes('knowledge base') || currentStep?.includes('reference') || currentStep?.includes('chunks')) return 1;
+    if (currentStep?.includes('response') || currentStep?.includes('Processing')) return 2;
+    
+    // Fallback based on progress
+    if (progress < 30) return 0;
+    if (progress < 70) return 1;
+    return 2;
+  };
 
   useEffect(() => {
     if (!isVisible) {
@@ -33,19 +46,20 @@ const ProcessingSteps: React.FC<ProcessingStepsProps> = ({
       return;
     }
 
-    // Override with specific step if provided
+    // Use specific step if provided, otherwise use progress-based step
     if (currentStep) {
       setDisplayText(currentStep);
+      setStep(getActiveStep());
       return;
     }
 
-    // Auto-cycle through steps
+    // Auto-cycle through steps if no specific step provided
     const interval = setInterval(() => {
       setStep(prev => (prev + 1) % steps.length);
-    }, 2000);
+    }, 2500); // Slightly slower for better readability
 
     return () => clearInterval(interval);
-  }, [isVisible, currentStep]);
+  }, [isVisible, currentStep, progress]);
 
   useEffect(() => {
     if (isVisible && !currentStep) {
@@ -55,8 +69,9 @@ const ProcessingSteps: React.FC<ProcessingStepsProps> = ({
 
   if (!isVisible) return null;
 
-  const CurrentIcon = currentStep ? Brain : steps[step].icon;
-  const iconColor = currentStep ? 'text-blue-500' : steps[step].color;
+  const activeStep = currentStep ? getActiveStep() : step;
+  const CurrentIcon = steps[activeStep].icon;
+  const iconColor = steps[activeStep].color;
 
   return (
     <div className="flex items-center justify-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800 animate-pulse">
@@ -84,7 +99,9 @@ const ProcessingSteps: React.FC<ProcessingStepsProps> = ({
               <div
                 key={index}
                 className={`h-1 w-4 rounded-full transition-all duration-300 ${
-                  index === step ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+                  index === activeStep ? 'bg-blue-500' : 
+                  index < activeStep ? 'bg-green-500' : 
+                  'bg-gray-300 dark:bg-gray-600'
                 }`}
               />
             ))}

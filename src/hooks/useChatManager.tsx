@@ -116,6 +116,12 @@ export const useChatManager = () => {
     console.log('Sending message:', text);
     setIsLoading(true);
     setShowSuggestions(false);
+    
+    // Reset progress tracking
+    setProcessingStep('');
+    setChunksRetrieved(0);
+    setTotalTokens(0);
+    setProgress(0);
 
     // Create and immediately show user message
     const userMessage: Message = {
@@ -127,6 +133,10 @@ export const useChatManager = () => {
 
     // CRITICAL: Add user message to state immediately for instant UI feedback
     setMessages(prev => [...prev, userMessage]);
+    
+    // Start progress tracking
+    setProcessingStep('Analyzing your message...');
+    setProgress(10);
 
     try {
       let chatId = currentChatId;
@@ -171,12 +181,20 @@ export const useChatManager = () => {
         toast.error('Failed to save message');
       }
 
+      // Update progress
+      setProcessingStep('Getting AI response...');
+      setProgress(50);
+      
       // Get AI response
       const response = await GPTService.probingChat(text, messages, user.id);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to get AI response');
       }
+      
+      // Update progress
+      setProcessingStep('Processing response...');
+      setProgress(80);
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -212,18 +230,31 @@ export const useChatManager = () => {
         toast.error('Failed to save AI response to history');
       }
 
+      // Complete progress
+      setProgress(100);
+      setProcessingStep('');
+      
+      // Clear old suggested questions before setting new ones
+      setSuggestedQuestions([]);
+      setShowSuggestions(false);
+      
       // Use integrated follow-up questions from the response
       if (response.followUpQuestions && response.followUpQuestions.length > 0) {
-        setSuggestedQuestions(response.followUpQuestions);
-        setShowSuggestions(true);
+        // Small delay to ensure clean state transition
+        setTimeout(() => {
+          setSuggestedQuestions(response.followUpQuestions);
+          setShowSuggestions(true);
+        }, 100);
       } else {
         // Fallback to basic questions if none were generated
-        setSuggestedQuestions([
-          "Can you tell me more about this topic?",
-          "How can I apply this in my daily life?",
-          "What other techniques might be helpful?"
-        ]);
-        setShowSuggestions(true);
+        setTimeout(() => {
+          setSuggestedQuestions([
+            "Can you tell me more about this topic?",
+            "How can I apply this in my daily life?",
+            "What other techniques might be helpful?"
+          ]);
+          setShowSuggestions(true);
+        }, 100);
       }
 
       // Update chat session timestamp
@@ -237,6 +268,8 @@ export const useChatManager = () => {
       toast.error(`Failed to send message: ${error.message}`);
     } finally {
       setIsLoading(false);
+      setProcessingStep('');
+      setProgress(0);
     }
   };
 
@@ -245,6 +278,8 @@ export const useChatManager = () => {
 
     setIsGeneratingMeditation(true);
     setIsLoading(true);
+    setProcessingStep('Analyzing your conversation...');
+    setProgress(10);
 
     try {
       // Extract keywords from conversation
@@ -257,6 +292,10 @@ export const useChatManager = () => {
 
       const keywords = keywordResponse.data || '';
       console.log('Extracted keywords:', keywords);
+
+      // Update progress
+      setProcessingStep('Finding relevant guidance...');
+      setProgress(40);
 
       // Get relevant chunks
       toast.info('Finding relevant guidance...');
@@ -282,6 +321,10 @@ export const useChatManager = () => {
       setChunksRetrieved(chunkCount);
       console.log('Retrieved chunks:', retrievedChunks.length, 'characters', chunkCount, 'chunks');
 
+      // Update progress
+      setProcessingStep(`Processing ${chunkCount} guidance chunks...`);
+      setProgress(70);
+
       // Generate meditation script
       toast.info('Creating your personalized meditation...');
       
@@ -295,13 +338,18 @@ export const useChatManager = () => {
         throw new Error(meditationResponse.error || 'Failed to generate meditation');
       }
 
+      // Complete progress
+      setProcessingStep('Finalizing your meditation...');
+      setProgress(90);
+
       const meditationScript = meditationResponse.data || 'Your personalized meditation script.';
       
       const meditationMessage: Message = {
         id: (Date.now() + 2).toString(),
         text: meditationScript,
         isUser: false,
-        timestamp: new Date()
+        timestamp: new Date(),
+        responseTime: meditationResponse.responseTime
       };
 
       // Add meditation script to state immediately
@@ -324,6 +372,7 @@ export const useChatManager = () => {
         .eq('id', currentChatId);
 
       console.log('Meditation script saved to database');
+      setProgress(100);
       toast.success('Your personalized meditation is ready!');
 
     } catch (error) {
@@ -332,11 +381,15 @@ export const useChatManager = () => {
     } finally {
       setIsGeneratingMeditation(false);
       setIsLoading(false);
+      setProcessingStep('');
+      setProgress(0);
     }
   };
 
   const handleSuggestionClick = (question: string) => {
     console.log('Suggestion clicked:', question);
+    // Clear suggestions immediately to prevent old ones from showing
+    setSuggestedQuestions([]);
     setShowSuggestions(false);
     handleSendMessage(question);
   };

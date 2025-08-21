@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano', verbosity = 'low', reasoning = 'minimal', webSearch = false, codeInterpreter = false } = await req.json();
+    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano', verbosity = 'low', reasoning = 'minimal', webSearch = false, codeInterpreter = false, onProgress } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -23,6 +23,9 @@ serve(async (req) => {
     console.log(`Making GPT request with provider: ${provider}, model: ${model}`);
     console.log('Processing request with:', { provider, model, verbosity, reasoning, webSearch, codeInterpreter });
     
+    // Auto-activate web search if enabled and not explicitly disabled
+    const shouldUseWebSearch = webSearch || (webSearch !== false && checkShouldUseWebSearch(messages));
+    
     const startTime = Date.now();
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -31,20 +34,20 @@ serve(async (req) => {
       const aimlApiKey = Deno.env.get('AIMLAPI_KEY');
       if (!aimlApiKey) {
         console.error('AIMLAPI key not found, falling back to OpenAI');
-        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
       }
 
       try {
-        const response = await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+        const response = await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
         return response; // AIML response already includes response time
       } catch (aimlError) {
         console.error('AIMLAPI error, falling back to OpenAI:', aimlError);
         const fallbackStartTime = Date.now();
-        const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+        const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
         return response; // OpenAI response already includes its own response time
       }
     } else {
-      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
     }
 
   } catch (error) {
@@ -55,6 +58,21 @@ serve(async (req) => {
     );
   }
 });
+
+// Check if web search should be auto-activated based on message content
+function checkShouldUseWebSearch(messages: any[]): boolean {
+  const lastMessage = messages[messages.length - 1];
+  if (!lastMessage || !lastMessage.content) return false;
+  
+  const searchTriggers = [
+    'search online', 'web search', 'latest', 'recent', 'current', 'update this',
+    'what\'s new', 'news', 'today', '2024', '2025', 'recently'
+  ];
+  
+  return searchTriggers.some(trigger => 
+    lastMessage.content.toLowerCase().includes(trigger)
+  );
+}
 
 async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string, webSearch: boolean, codeInterpreter: boolean): Promise<Response> {
   const startTime = Date.now();
@@ -161,23 +179,45 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     }
   }
 
-  // Parse follow-up questions from the response - improved regex
+  // Parse follow-up questions from the response - comprehensive regex patterns
   const followUpQuestions: string[] = [];
-  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/);
   
-  if (followUpMatch) {
-    const questionsText = followUpMatch[1];
-    const questions = questionsText.split('\n')
-      .filter(line => line.trim().match(/^\d+\.\s/))
-      .map(line => line.replace(/^\d+\.\s/, '').trim())
-      .filter(q => q.length > 0)
-      .slice(0, 3); // Ensure exactly 3 questions
-    
-    followUpQuestions.push(...questions);
-    
-    // Remove follow-up questions section from main response - improved regex
-    outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/g, '').trim();
+  // Multiple patterns to catch different formats
+  const patterns = [
+    /\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /Follow-up Questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /\*\*Follow-up questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /Follow-up questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /\*\*Suggested Questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /Suggested Questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/
+  ];
+  
+  let questionsFound = false;
+  for (const pattern of patterns) {
+    const match = outputText.match(pattern);
+    if (match && match[1]) {
+      const questionsText = match[1];
+      const questions = questionsText.split('\n')
+        .filter(line => line.trim().match(/^\d+\.\s/))
+        .map(line => line.replace(/^\d+\.\s/, '').trim())
+        .filter(q => q.length > 0 && q.length < 200) // Filter reasonable length
+        .slice(0, 3); // Ensure exactly 3 questions
+      
+      if (questions.length > 0) {
+        followUpQuestions.push(...questions);
+        // Remove the entire section from main response
+        outputText = outputText.replace(pattern, '').trim();
+        questionsFound = true;
+        break;
+      }
+    }
   }
+  
+  // Additional cleanup for any remaining follow-up question traces
+  outputText = outputText.replace(/\*\*Follow-?[Uu]p [Qq]uestions?:\*\*.*$/gms, '').trim();
+  outputText = outputText.replace(/Follow-?[Uu]p [Qq]uestions?:.*$/gms, '').trim();
+  outputText = outputText.replace(/\*\*Suggested [Qq]uestions?:\*\*.*$/gms, '').trim();
+  outputText = outputText.replace(/Suggested [Qq]uestions?:.*$/gms, '').trim();
 
 const endTime = Date.now();
 const responseTime = endTime - startTime;
@@ -322,18 +362,46 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     );
   }
 
-  // Parse follow-up questions from OpenAI response - improved regex with multiple patterns
+  // Parse follow-up questions from OpenAI response - comprehensive patterns
   const followUpQuestions: string[] = [];
   
-  // Look for multiple possible follow-up question patterns
+  // Multiple patterns to catch different formats
   const patterns = [
     /\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
     /Follow-up Questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
     /\*\*Follow-up questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
-    /Follow-up questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/
+    /Follow-up questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /\*\*Suggested Questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /Suggested Questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/
   ];
   
   let questionsFound = false;
+  let codeInterpreterResults = '';
+  
+  // Extract code interpreter results for context preservation
+  if (data.output && Array.isArray(data.output)) {
+    for (const item of data.output) {
+      if (item.type === "code_interpreter_call") {
+        codeInterpreterResults += `\n\nCode Analysis Results:\n`;
+        if (item.code) {
+          codeInterpreterResults += `Code executed: ${item.code}\n`;
+        }
+        if (item.outputs && Array.isArray(item.outputs)) {
+          item.outputs.forEach((output, idx) => {
+            if (output.text) {
+              codeInterpreterResults += `Output ${idx + 1}: ${output.text}\n`;
+            }
+          });
+        }
+      }
+    }
+  }
+  
+  // Append code interpreter results to preserve context
+  if (codeInterpreterResults) {
+    outputText += codeInterpreterResults;
+  }
+  
   for (const pattern of patterns) {
     const match = outputText.match(pattern);
     if (match && match[1]) {
@@ -341,7 +409,7 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
       const questions = questionsText.split('\n')
         .filter(line => line.trim().match(/^\d+\.\s/))
         .map(line => line.replace(/^\d+\.\s/, '').trim())
-        .filter(q => q.length > 0)
+        .filter(q => q.length > 0 && q.length < 200) // Filter reasonable length
         .slice(0, 3); // Ensure exactly 3 questions
       
       if (questions.length > 0) {
@@ -354,9 +422,11 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     }
   }
   
-  // Also remove any remaining follow-up question patterns
-  outputText = outputText.replace(/\*\*Follow-up [Qq]uestions:\*\*.*$/gms, '').trim();
-  outputText = outputText.replace(/Follow-up [Qq]uestions:.*$/gms, '').trim();
+  // Additional cleanup for any remaining follow-up question traces
+  outputText = outputText.replace(/\*\*Follow-?[Uu]p [Qq]uestions?:\*\*.*$/gms, '').trim();
+  outputText = outputText.replace(/Follow-?[Uu]p [Qq]uestions?:.*$/gms, '').trim();
+  outputText = outputText.replace(/\*\*Suggested [Qq]uestions?:\*\*.*$/gms, '').trim();
+  outputText = outputText.replace(/Suggested [Qq]uestions?:.*$/gms, '').trim();
 
   const endTime = Date.now();
   const responseTime = endTime - startTime;
