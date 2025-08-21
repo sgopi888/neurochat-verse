@@ -37,7 +37,7 @@ export const CodeInterpreterToggle = ({ disabled = false }: CodeInterpreterToggl
           : 'text-muted-foreground hover:text-foreground'
       }`}
       disabled={disabled}
-      title={isEnabled ? "Code interpreter enabled" : "Enable code interpreter for BPM data analysis"}
+      title={isEnabled ? "BPM data analysis enabled" : "Enable BPM data analysis for HRV insights"}
     >
       {isEnabled ? <Code2 className="h-4 w-4" /> : <Code className="h-4 w-4" />}
     </Button>

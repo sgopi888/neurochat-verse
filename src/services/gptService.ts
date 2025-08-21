@@ -11,7 +11,8 @@ interface Message {
 interface GPTResponse {
   success: boolean;
   data?: string;
-  sources?: { url: string; title: string }[];
+  sources?: Array<{ url: string; title: string }>;
+  followUpQuestions?: string[];
   responseTime?: number;
   error?: string;
 }
@@ -64,7 +65,13 @@ export class GPTService {
         return { success: false, error: error.message };
       }
 
-      return { success: true, data: data.response, sources: data.sources, responseTime: data.responseTime };
+      return { 
+        success: true, 
+        data: data.response, 
+        sources: data.sources, 
+        followUpQuestions: data.followUpQuestions || [],
+        responseTime: data.responseTime 
+      };
     } catch (error) {
       console.error('GPT service error:', error);
       return { success: false, error: 'Failed to connect to AI service' };

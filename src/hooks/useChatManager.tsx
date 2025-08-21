@@ -179,7 +179,8 @@ export const useChatManager = () => {
         text: response.data || 'I understand. Please tell me more.',
         isUser: false,
         timestamp: new Date(),
-        sources: response.sources
+        sources: response.sources,
+        responseTime: response.responseTime
       };
 
       // Add AI message to state immediately
@@ -207,14 +208,12 @@ export const useChatManager = () => {
         toast.error('Failed to save AI response to history');
       }
 
-      // Generate contextual questions
-      try {
-        const questions = await generateContextualQuestions(aiMessage.text, [...messages, userMessage]);
-        setSuggestedQuestions(questions);
+      // Use integrated follow-up questions from the response
+      if (response.followUpQuestions && response.followUpQuestions.length > 0) {
+        setSuggestedQuestions(response.followUpQuestions);
         setShowSuggestions(true);
-      } catch (error) {
-        console.error('Error generating contextual questions:', error);
-        // Fallback to basic questions
+      } else {
+        // Fallback to basic questions if none were generated
         setSuggestedQuestions([
           "Can you tell me more about this topic?",
           "How can I apply this in my daily life?",

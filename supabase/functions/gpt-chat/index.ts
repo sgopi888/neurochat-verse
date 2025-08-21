@@ -31,7 +31,7 @@ serve(async (req) => {
       const aimlApiKey = Deno.env.get('AIMLAPI_KEY');
       if (!aimlApiKey) {
         console.error('AIMLAPI key not found, falling back to OpenAI');
-        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning);
+        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
       }
 
       try {
@@ -48,30 +48,10 @@ serve(async (req) => {
         });
       } catch (aimlError) {
         console.error('AIMLAPI error, falling back to OpenAI:', aimlError);
-        const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
-        const endTime = Date.now();
-        const responseTime = endTime - startTime;
-        
-        // Add response time to the response
-        const responseData = await response.json();
-        responseData.responseTime = responseTime;
-        
-        return new Response(JSON.stringify(responseData), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
       }
     } else {
-      const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
-      const endTime = Date.now();
-      const responseTime = endTime - startTime;
-      
-      // Add response time to the response
-      const responseData = await response.json();
-      responseData.responseTime = responseTime;
-      
-      return new Response(JSON.stringify(responseData), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
     }
 
   } catch (error) {
@@ -84,11 +64,23 @@ serve(async (req) => {
 });
 
 async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string, webSearch: boolean, codeInterpreter: boolean): Promise<Response> {
+  const startTime = Date.now();
   // Convert messages to GPT-5 format
   const input = messages.map(msg => ({
     role: msg.role === 'system' ? 'developer' : msg.role,
     content: msg.content
   }));
+  
+  // Add follow-up questions generation to the system message
+  const lastMessage = input[input.length - 1];
+  if (lastMessage && lastMessage.role === 'user') {
+    input.push({
+      role: 'user',
+      content: `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up reflective questions based on our conversation so far. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`
+    });
+    // Remove the duplicate user message
+    input.splice(-2, 1);
+  }
   
   // Build tools array for web search and code interpreter
   const tools = [];
@@ -155,34 +147,55 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     }
   }
 
-  return new Response(
-    JSON.stringify({ 
-      response: outputText,
-      sources: sources.length > 0 ? sources : undefined
-    }),
-    { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    }
-  );
+  // Parse follow-up questions from the response
+  const followUpQuestions: string[] = [];
+  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/);
+  
+  if (followUpMatch) {
+    const questionsText = followUpMatch[1];
+    const questions = questionsText.split('\n')
+      .filter(line => line.trim().match(/^\d+\.\s/))
+      .map(line => line.replace(/^\d+\.\s/, '').trim())
+      .filter(q => q.length > 0);
+    
+    followUpQuestions.push(...questions);
+    
+  // Remove follow-up questions section from main response
+  outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/, '').trim();
+}
+
+const endTime = Date.now();
+const responseTime = endTime - startTime;
+
+return new Response(
+  JSON.stringify({ 
+    response: outputText,
+    sources,
+    followUpQuestions,
+    responseTime
+  }),
+  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+);
 }
 
 async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: string | undefined, verbosity: string, reasoning: string, webSearch: boolean, codeInterpreter: boolean): Promise<Response> {
+  const startTime = Date.now();
+  
   if (!openAIApiKey) {
-    console.error('OpenAI API key not found');
-    return new Response(
-      JSON.stringify({ error: 'OpenAI API key not configured' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    throw new Error('OpenAI API key not configured');
   }
 
-  // Convert messages to GPT-5 format
-  const input = messages.map(msg => ({
-    role: msg.role === 'system' ? 'developer' : msg.role,
+  // Convert messages to OpenAI format and add follow-up questions generation
+  const openaiMessages = messages.map(msg => ({
+    role: msg.role,
     content: msg.content
   }));
+
+  // Add follow-up questions instruction to the last user message
+  if (openaiMessages.length > 0 && openaiMessages[openaiMessages.length - 1].role === 'user') {
+    const lastMessage = openaiMessages[openaiMessages.length - 1];
+    lastMessage.content = `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up reflective questions based on our conversation so far. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`;
+  }
 
   // Build tools array for web search and code interpreter
   const tools = [];
@@ -194,19 +207,27 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
   }
 
   const requestBody: any = {
-    model: 'gpt-5-nano-2025-08-07',
-    input,
-    text: { verbosity },
-    reasoning: { effort: reasoning },
+    model: model,
+    messages: openaiMessages,
+    max_completion_tokens: 1000,
+    stream: false
   };
 
-  // Add tools if enabled
+  // Add tools if enabled (OpenAI format)
   if (tools.length > 0) {
-    requestBody.tools = tools;
+    requestBody.tools = tools.map(tool => {
+      if (tool.type === "web_search_preview") {
+        return { type: "web_search" };
+      }
+      if (tool.type === "code_interpreter") {
+        return { type: "code_interpreter" };
+      }
+      return tool;
+    });
   }
 
-  // Use GPT-5 responses API for gpt-5-nano
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  // Use OpenAI Chat Completions API
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openAIApiKey}`,
@@ -228,51 +249,49 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
   }
 
   const data = await response.json();
-  console.log('OpenAI GPT-5 response received successfully');
+  console.log('OpenAI response received successfully');
 
-  // Extract text from GPT-5 response format and handle web search results
-  let outputText = "";
+  // Extract text content from OpenAI Chat Completions response
+  let outputText = data.choices[0]?.message?.content || "";
   const sources: any[] = [];
-  
-  if (data.output && Array.isArray(data.output)) {
-    for (const item of data.output) {
-      if (item.content && Array.isArray(item.content)) {
-        for (const content of item.content) {
-          if (content.text) {
-            outputText += content.text;
-          }
-        }
-        
-        // Extract citations if present
-        if (item.content[0]?.annotations) {
-          for (const annotation of item.content[0].annotations) {
-            if (annotation.type === 'url_citation') {
-              sources.push({
-                url: annotation.url,
-                title: annotation.title || annotation.url
-              });
-            }
-          }
-        }
-      }
-    }
-  }
 
   if (!outputText) {
-    console.error('No response content from OpenAI GPT-5:', data);
+    console.error('No response content from OpenAI:', data);
     return new Response(
       JSON.stringify({ error: 'No response generated' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  return new Response(
-    JSON.stringify({ 
-      response: outputText,
-      sources: sources.length > 0 ? sources : undefined
-    }),
-    { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    }
-  );
+  // Parse follow-up questions from OpenAI response
+  const followUpQuestions: string[] = [];
+  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/);
+  
+  if (followUpMatch) {
+    const questionsText = followUpMatch[1];
+    const questions = questionsText.split('\n')
+      .filter(line => line.trim().match(/^\d+\.\s/))
+      .map(line => line.replace(/^\d+\.\s/, '').trim())
+      .filter(q => q.length > 0);
+    
+    followUpQuestions.push(...questions);
+    
+  // Remove follow-up questions section from main response
+  outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/, '').trim();
+}
+
+const endTime = Date.now();
+const responseTime = endTime - startTime;
+
+return new Response(
+  JSON.stringify({ 
+    response: outputText,
+    sources,
+    followUpQuestions,
+    responseTime
+  }),
+  { 
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  }
+);
 }
