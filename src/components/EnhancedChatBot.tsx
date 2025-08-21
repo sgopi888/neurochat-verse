@@ -56,58 +56,23 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
     ...chatBotProps 
   } = props;
 
-  const { settings } = useAdvancedSettings();
+  const { settings, updateSettings } = useAdvancedSettings();
 
-  const handleWebSearch = async () => {
+  const handleWebToggle = () => {
+    updateSettings({ enableWeb: !settings.enableWeb });
     if (!settings.enableWeb) {
-      toast.error('Web search is not enabled');
-      return;
-    }
-    
-    try {
-      // Trigger web-enhanced meditation generation
-      const lastUserMessage = props.messages.filter(m => m.isUser).pop();
-      if (lastUserMessage) {
-        const response = await AdvancedGPTService.webEnhancedMeditation(
-          lastUserMessage.text,
-          props.messages,
-          settings
-        );
-        
-        if (response.success) {
-          toast.success('Found fresh insights from web search');
-          // Handle structured response here
-          const structured = AdvancedGPTService.parseStructuredResponse(response.data);
-          if (structured) {
-            console.log('Web search results:', structured);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Web search error:', error);
-      toast.error('Web search failed');
+      toast.success('Web search enabled');
+    } else {
+      toast.info('Web search disabled');
     }
   };
 
-  const handleCodeAnalysis = async (bpmData?: number[]) => {
+  const handleCodeToggle = () => {
+    updateSettings({ enableCode: !settings.enableCode });
     if (!settings.enableCode) {
-      toast.error('Code interpreter is not enabled');
-      return;
-    }
-
-    // If no BPM data provided, use sample data for demonstration
-    const sampleBpm = bpmData || [72, 75, 73, 76, 74, 72, 77, 75, 73, 74];
-    
-    try {
-      const response = await AdvancedGPTService.bpmAnalysis(sampleBpm, settings);
-      
-      if (response.success) {
-        toast.success('BPM analysis completed');
-        console.log('BPM analysis results:', response.data);
-      }
-    } catch (error) {
-      console.error('Code analysis error:', error);
-      toast.error('Code analysis failed');
+      toast.success('Code interpreter enabled');
+    } else {
+      toast.info('Code interpreter disabled');
     }
   };
 
@@ -127,8 +92,8 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
           isMessageLoading={isMessageLoading}
           enableWeb={settings.enableWeb && settings.useAdvancedMode}
           enableCode={settings.enableCode && settings.useAdvancedMode}
-          onWebSearch={handleWebSearch}
-          onCodeAnalysis={handleCodeAnalysis}
+          onWebToggle={handleWebToggle}
+          onCodeToggle={handleCodeToggle}
         />
       </div>
     </div>

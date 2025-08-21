@@ -59,11 +59,14 @@ serve(async (req) => {
       requestBody.reasoning_effort = reasoning.effort;
     }
 
-    // Add tools if provided
+    // Add tools if provided - Note: code_interpreter is a native OpenAI tool
     if (tools && tools.length > 0) {
-      requestBody.tools = tools.map((tool: any) => {
+      const processedTools = [];
+      let hasCodeInterpreter = false;
+      
+      for (const tool of tools) {
         if (tool.type === 'web_search_preview') {
-          return {
+          processedTools.push({
             type: 'function',
             function: {
               name: 'web_search',
@@ -75,14 +78,21 @@ serve(async (req) => {
                 }
               }
             }
-          };
+          });
         } else if (tool.type === 'code_interpreter') {
-          return {
-            type: 'code_interpreter'
-          };
+          hasCodeInterpreter = true;
         }
-        return tool;
-      });
+      }
+      
+      if (processedTools.length > 0) {
+        requestBody.tools = processedTools;
+      }
+      
+      // Code interpreter is a separate parameter for GPT-5
+      if (hasCodeInterpreter) {
+        requestBody.tools = requestBody.tools || [];
+        requestBody.tools.push({ type: 'code_interpreter' });
+      }
       
       if (tool_choice) {
         requestBody.tool_choice = tool_choice;
