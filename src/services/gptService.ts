@@ -16,7 +16,9 @@ interface GPTResponse {
 
 interface GPTConfig {
   provider: 'aiml' | 'openai';
-  model: 'gpt-5' | 'gpt-5-nano';
+  model: 'gpt-5-nano';
+  verbosity: 'low' | 'medium' | 'high';
+  reasoning: 'minimal' | 'low' | 'medium' | 'high';
 }
 
 export class GPTService {
@@ -26,7 +28,7 @@ export class GPTService {
     if (savedConfig) {
       return JSON.parse(savedConfig);
     }
-    return { provider: 'aiml', model: 'gpt-5-nano' };
+    return { provider: 'aiml', model: 'gpt-5-nano', verbosity: 'low', reasoning: 'minimal' };
   }
 
   static setConfig(config: GPTConfig): void {
@@ -45,7 +47,9 @@ export class GPTService {
           messages,
           userId,
           provider: config.provider,
-          model: config.model
+          model: config.model,
+          verbosity: config.verbosity,
+          reasoning: config.reasoning
         }
       });
 

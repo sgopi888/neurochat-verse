@@ -6,11 +6,18 @@ import { GPTService } from '@/services/gptService';
 
 interface AIConfig {
   provider: 'aiml' | 'openai';
-  model: 'gpt-5' | 'gpt-5-nano';
+  model: 'gpt-5-nano';
+  verbosity: 'low' | 'medium' | 'high';
+  reasoning: 'minimal' | 'low' | 'medium' | 'high';
 }
 
 export const AISettings = () => {
-  const [config, setConfig] = useState<AIConfig>({ provider: 'aiml', model: 'gpt-5-nano' });
+  const [config, setConfig] = useState<AIConfig>({ 
+    provider: 'aiml', 
+    model: 'gpt-5-nano',
+    verbosity: 'low',
+    reasoning: 'minimal'
+  });
 
   useEffect(() => {
     // Load saved config on mount
@@ -26,8 +33,14 @@ export const AISettings = () => {
     GPTService.setConfig(newConfig);
   };
 
-  const handleModelChange = (model: 'gpt-5' | 'gpt-5-nano') => {
-    const newConfig = { ...config, model };
+  const handleVerbosityChange = (verbosity: 'low' | 'medium' | 'high') => {
+    const newConfig = { ...config, verbosity };
+    setConfig(newConfig);
+    GPTService.setConfig(newConfig);
+  };
+
+  const handleReasoningChange = (reasoning: 'minimal' | 'low' | 'medium' | 'high') => {
+    const newConfig = { ...config, reasoning };
     setConfig(newConfig);
     GPTService.setConfig(newConfig);
   };
@@ -55,14 +68,30 @@ export const AISettings = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="model-select">AI Model</Label>
-          <Select value={config.model} onValueChange={handleModelChange}>
-            <SelectTrigger id="model-select">
-              <SelectValue placeholder="Select model" />
+          <Label htmlFor="verbosity-select">Verbosity Level</Label>
+          <Select value={config.verbosity} onValueChange={handleVerbosityChange}>
+            <SelectTrigger id="verbosity-select">
+              <SelectValue placeholder="Select verbosity" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="gpt-5-nano">GPT-5 Nano (Fast & Efficient)</SelectItem>
-              <SelectItem value="gpt-5">GPT-5 (Full Model)</SelectItem>
+              <SelectItem value="low">Low (Concise)</SelectItem>
+              <SelectItem value="medium">Medium (Balanced)</SelectItem>
+              <SelectItem value="high">High (Detailed)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="reasoning-select">Reasoning Effort</Label>
+          <Select value={config.reasoning} onValueChange={handleReasoningChange}>
+            <SelectTrigger id="reasoning-select">
+              <SelectValue placeholder="Select reasoning" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="minimal">Minimal (Fastest)</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High (Most Thorough)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -70,8 +99,11 @@ export const AISettings = () => {
         <div className="text-sm text-muted-foreground">
           <p><strong>AIML API:</strong> Faster, more cost-effective access to GPT models</p>
           <p><strong>OpenAI Direct:</strong> Direct connection to OpenAI (fallback option)</p>
-          <p><strong>GPT-5 Nano:</strong> Optimized for quick, conversational responses</p>
-          <p><strong>GPT-5:</strong> Full-featured model for complex tasks</p>
+          <p><strong>GPT-5 Nano:</strong> Fast, efficient model optimized for conversations</p>
+          <p><strong>Low Verbosity:</strong> Short, concise responses</p>
+          <p><strong>High Verbosity:</strong> Detailed, comprehensive responses</p>
+          <p><strong>Minimal Reasoning:</strong> Quick responses with basic reasoning</p>
+          <p><strong>High Reasoning:</strong> Deep analysis with thorough reasoning</p>
         </div>
       </CardContent>
     </Card>
