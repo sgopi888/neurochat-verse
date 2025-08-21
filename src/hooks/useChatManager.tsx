@@ -189,11 +189,19 @@ export const useChatManager = () => {
       const config = JSON.parse(localStorage.getItem('gpt-config') || '{}');
       const ragEnabled = config.ragEnabled !== false; // Default to true
       
+      console.log('🔍 Chat config check:', {
+        fullConfig: config,
+        ragEnabled,
+        webSearch: config.webSearch,
+        codeInterpreter: config.codeInterpreter
+      });
+      
       // Try to retrieve relevant chunks first (only if RAG is enabled)
       let retrievedChunks: string[] = [];
       if (ragEnabled) {
         try {
           setProcessingStep('RAG Retrieval in progress...');
+          console.log('🎯 RAG: Starting chunks retrieval...');
           
           const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
             body: {
@@ -205,10 +213,12 @@ export const useChatManager = () => {
             }
           });
 
+          console.log('🎯 RAG: chunks response:', { chunksData, chunksError });
+          
           if (!chunksError && chunksData?.success && chunksData.chunks) {
             retrievedChunks = chunksData.chunks;
             setChunksRetrieved(retrievedChunks.length);
-            console.log('Retrieved chunks for conversation:', retrievedChunks.length);
+            console.log('✅ RAG: Retrieved chunks for conversation:', retrievedChunks.length);
             
             // Create 20-30 word excerpt from first chunk for display
             const chunksExcerpt = retrievedChunks.length > 0 
@@ -221,16 +231,16 @@ export const useChatManager = () => {
               setProcessingStep(`Using ${retrievedChunks.length} knowledge chunks...`);
             }
           } else {
-            console.log('No chunks retrieved, proceeding with conversation only');
+            console.log('❌ RAG: No chunks retrieved, proceeding with conversation only');
             setProcessingStep('No relevant knowledge found, using conversation context...');
           }
         } catch (error) {
-          console.warn('Chunks retrieval failed, proceeding without:', error);
+          console.error('❌ RAG: Chunks retrieval failed, proceeding without:', error);
           setProcessingStep('Knowledge retrieval unavailable, continuing...');
         }
       } else {
         setProcessingStep('RAG disabled, using conversation context only...');
-        console.log('RAG disabled in settings, skipping chunks retrieval');
+        console.log('⚠️ RAG: Disabled in settings, skipping chunks retrieval');
       }
 
       // Update progress

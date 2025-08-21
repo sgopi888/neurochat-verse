@@ -47,6 +47,8 @@ export class GPTService {
   ): Promise<GPTResponse> {
     const config = this.getConfig();
     
+    console.log('🤖 GPT Service: Using config', config);
+    
     try {
       const { data, error } = await supabase.functions.invoke('gpt-chat', {
         body: {
