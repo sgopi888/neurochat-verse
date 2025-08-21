@@ -22,10 +22,10 @@ const WebSearchToggle: React.FC<WebSearchToggleProps> = ({ disabled = false }) =
   const toggleWebSearch = () => {
     const savedConfig = localStorage.getItem('gpt-config');
     const config = savedConfig ? JSON.parse(savedConfig) : {
-      provider: 'aiml',
+      provider: 'openai',
       model: 'gpt-5-nano',
       verbosity: 'low',
-      reasoning: 'minimal',
+      reasoning: 'medium',
       webSearch: false
     };
     

@@ -9,17 +9,17 @@ interface AIConfig {
   provider: 'aiml' | 'openai';
   model: 'gpt-5-nano';
   verbosity: 'low' | 'medium' | 'high';
-  reasoning: 'minimal' | 'low' | 'medium' | 'high';
+  reasoning: 'low' | 'medium' | 'high';
   webSearch: boolean;
   codeInterpreter: boolean;
 }
 
 export const AISettings = () => {
   const [config, setConfig] = useState<AIConfig>({ 
-    provider: 'aiml', 
+    provider: 'openai', 
     model: 'gpt-5-nano',
     verbosity: 'low',
-    reasoning: 'minimal',
+    reasoning: 'medium',
     webSearch: false,
     codeInterpreter: false
   });
@@ -44,7 +44,7 @@ export const AISettings = () => {
     GPTService.setConfig(newConfig);
   };
 
-  const handleReasoningChange = (reasoning: 'minimal' | 'low' | 'medium' | 'high') => {
+  const handleReasoningChange = (reasoning: 'low' | 'medium' | 'high') => {
     const newConfig = { ...config, reasoning };
     setConfig(newConfig);
     GPTService.setConfig(newConfig);
@@ -78,8 +78,8 @@ export const AISettings = () => {
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="aiml">AIML API (Recommended)</SelectItem>
-              <SelectItem value="openai">OpenAI Direct</SelectItem>
+              <SelectItem value="openai">OpenAI Direct (Default)</SelectItem>
+              <SelectItem value="aiml">AIML API</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -105,9 +105,8 @@ export const AISettings = () => {
               <SelectValue placeholder="Select reasoning" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="minimal">Minimal (Fastest)</SelectItem>
               <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="medium">Medium (Default)</SelectItem>
               <SelectItem value="high">High (Most Thorough)</SelectItem>
             </SelectContent>
           </Select>

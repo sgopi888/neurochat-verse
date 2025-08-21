@@ -21,19 +21,19 @@ interface GPTConfig {
   provider: 'aiml' | 'openai';
   model: 'gpt-5-nano';
   verbosity: 'low' | 'medium' | 'high';
-  reasoning: 'minimal' | 'low' | 'medium' | 'high';
+  reasoning: 'low' | 'medium' | 'high';
   webSearch: boolean;
   codeInterpreter: boolean;
 }
 
 export class GPTService {
   private static getConfig(): GPTConfig {
-    // Get from localStorage or default to AIML + GPT-5 nano
+    // Get from localStorage or default to OpenAI + GPT-5 nano
     const savedConfig = localStorage.getItem('gpt-config');
     if (savedConfig) {
       return JSON.parse(savedConfig);
     }
-    return { provider: 'aiml', model: 'gpt-5-nano', verbosity: 'low', reasoning: 'minimal', webSearch: false, codeInterpreter: false };
+    return { provider: 'openai', model: 'gpt-5-nano', verbosity: 'low', reasoning: 'medium', webSearch: false, codeInterpreter: false };
   }
 
   static setConfig(config: GPTConfig): void {
