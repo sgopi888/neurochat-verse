@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano', verbosity = 'low', reasoning = 'minimal', webSearch = false } = await req.json();
+    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano', verbosity = 'low', reasoning = 'minimal', webSearch = false, codeInterpreter = false } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -21,6 +21,9 @@ serve(async (req) => {
     }
 
     console.log(`Making GPT request with provider: ${provider}, model: ${model}`);
+    console.log('Processing request with:', { provider, model, verbosity, reasoning, webSearch, codeInterpreter });
+    
+    const startTime = Date.now();
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     
@@ -32,13 +35,43 @@ serve(async (req) => {
       }
 
       try {
-        return await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, webSearch);
+        const response = await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+        const endTime = Date.now();
+        const responseTime = endTime - startTime;
+        
+        // Add response time to the response
+        const responseData = await response.json();
+        responseData.responseTime = responseTime;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
       } catch (aimlError) {
         console.error('AIMLAPI error, falling back to OpenAI:', aimlError);
-        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch);
+        const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+        const endTime = Date.now();
+        const responseTime = endTime - startTime;
+        
+        // Add response time to the response
+        const responseData = await response.json();
+        responseData.responseTime = responseTime;
+        
+        return new Response(JSON.stringify(responseData), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
       }
     } else {
-      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch);
+      const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
+      
+      // Add response time to the response
+      const responseData = await response.json();
+      responseData.responseTime = responseTime;
+      
+      return new Response(JSON.stringify(responseData), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
     }
 
   } catch (error) {
@@ -50,13 +83,22 @@ serve(async (req) => {
   }
 });
 
-async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string, webSearch: boolean): Promise<Response> {
+async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string, webSearch: boolean, codeInterpreter: boolean): Promise<Response> {
   // Convert messages to GPT-5 format
   const input = messages.map(msg => ({
     role: msg.role === 'system' ? 'developer' : msg.role,
     content: msg.content
   }));
   
+  // Build tools array for web search and code interpreter
+  const tools = [];
+  if (webSearch) {
+    tools.push({ type: "web_search_preview" });
+  }
+  if (codeInterpreter) {
+    tools.push({ type: "code_interpreter" });
+  }
+
   const requestBody: any = {
     model: 'gpt-5-nano',
     input,
@@ -64,9 +106,9 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     reasoning: { effort: reasoning },
   };
 
-  // Add web search tools if enabled
-  if (webSearch) {
-    requestBody.tools = [{ type: "web_search_preview" }];
+  // Add tools if enabled
+  if (tools.length > 0) {
+    requestBody.tools = tools;
   }
 
   const response = await fetch('https://api.aimlapi.com/v1/responses', {
@@ -124,7 +166,7 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
   );
 }
 
-async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: string | undefined, verbosity: string, reasoning: string, webSearch: boolean): Promise<Response> {
+async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: string | undefined, verbosity: string, reasoning: string, webSearch: boolean, codeInterpreter: boolean): Promise<Response> {
   if (!openAIApiKey) {
     console.error('OpenAI API key not found');
     return new Response(
@@ -142,6 +184,15 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     content: msg.content
   }));
 
+  // Build tools array for web search and code interpreter
+  const tools = [];
+  if (webSearch) {
+    tools.push({ type: "web_search_preview" });
+  }
+  if (codeInterpreter) {
+    tools.push({ type: "code_interpreter" });
+  }
+
   const requestBody: any = {
     model: 'gpt-5-nano-2025-08-07',
     input,
@@ -149,9 +200,9 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     reasoning: { effort: reasoning },
   };
 
-  // Add web search tools if enabled
-  if (webSearch) {
-    requestBody.tools = [{ type: "web_search_preview" }];
+  // Add tools if enabled
+  if (tools.length > 0) {
+    requestBody.tools = tools;
   }
 
   // Use GPT-5 responses API for gpt-5-nano

@@ -12,6 +12,7 @@ interface GPTResponse {
   success: boolean;
   data?: string;
   sources?: { url: string; title: string }[];
+  responseTime?: number;
   error?: string;
 }
 
@@ -21,6 +22,7 @@ interface GPTConfig {
   verbosity: 'low' | 'medium' | 'high';
   reasoning: 'minimal' | 'low' | 'medium' | 'high';
   webSearch: boolean;
+  codeInterpreter: boolean;
 }
 
 export class GPTService {
@@ -30,7 +32,7 @@ export class GPTService {
     if (savedConfig) {
       return JSON.parse(savedConfig);
     }
-    return { provider: 'aiml', model: 'gpt-5-nano', verbosity: 'low', reasoning: 'minimal', webSearch: false };
+    return { provider: 'aiml', model: 'gpt-5-nano', verbosity: 'low', reasoning: 'minimal', webSearch: false, codeInterpreter: false };
   }
 
   static setConfig(config: GPTConfig): void {
@@ -52,7 +54,8 @@ export class GPTService {
           model: config.model,
           verbosity: config.verbosity,
           reasoning: config.reasoning,
-          webSearch: config.webSearch
+          webSearch: config.webSearch,
+          codeInterpreter: config.codeInterpreter
         }
       });
 
@@ -61,7 +64,7 @@ export class GPTService {
         return { success: false, error: error.message };
       }
 
-      return { success: true, data: data.response, sources: data.sources };
+      return { success: true, data: data.response, sources: data.sources, responseTime: data.responseTime };
     } catch (error) {
       console.error('GPT service error:', error);
       return { success: false, error: 'Failed to connect to AI service' };

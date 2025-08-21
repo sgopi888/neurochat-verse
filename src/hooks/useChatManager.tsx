@@ -12,6 +12,8 @@ interface Message {
   isUser: boolean;
   timestamp: Date;
   sources?: { url: string; title: string }[];
+  responseTime?: number;
+  progress?: Array<{ step: string; status: 'pending' | 'processing' | 'completed'; details?: string }>;
 }
 
 interface ChatMode {

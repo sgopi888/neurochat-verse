@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy, Volume2, User, Bot, Pause, Loader2, ExternalLink } from 'lucide-react';
+import { Copy, Volume2, User, Bot, Pause, Loader2, ExternalLink, Clock, CheckCircle2, Circle } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: {
@@ -9,7 +9,9 @@ interface MessageBubbleProps {
     text: string;
     isUser: boolean;
     timestamp: Date;
+    responseTime?: number;
     sources?: { url: string; title: string }[];
+    progress?: Array<{ step: string; status: 'pending' | 'processing' | 'completed'; details?: string }>;
   };
   onCopy: (text: string) => void;
   onSpeak: (messageId: string, message: any) => void;
@@ -75,12 +77,44 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             : 'bg-card border border-border rounded-2xl rounded-tl-md shadow-sm hover:shadow-md hover:border-primary/50'
         } px-4 py-3 relative`}>
           
-          {/* Timestamp - Always visible at top */}
-          <div className={`text-xs mb-2 ${
+          {/* Timestamp and Response Time */}
+          <div className={`text-xs mb-2 flex items-center gap-2 ${
             message.isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
           }`}>
-            {formatTimestamp(message.timestamp)}
+            <span>{formatTimestamp(message.timestamp)}</span>
+            {!message.isUser && message.responseTime && (
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {message.responseTime}ms
+              </span>
+            )}
           </div>
+
+          {/* Progress Indicators - Show if available and not user message */}
+          {!message.isUser && message.progress && message.progress.length > 0 && (
+            <div className="mb-3 p-3 bg-muted/30 rounded-lg border">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Processing Steps:</p>
+              <div className="space-y-2">
+                {message.progress.map((step, index) => (
+                  <div key={index} className="flex items-center gap-2 text-xs">
+                    {step.status === 'completed' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                    {step.status === 'processing' && <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />}
+                    {step.status === 'pending' && <Circle className="h-3 w-3 text-muted-foreground" />}
+                    <span className={
+                      step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
+                      step.status === 'processing' ? 'text-blue-700 dark:text-blue-400' :
+                      'text-muted-foreground'
+                    }>
+                      {step.step}
+                      {step.details && (
+                        <span className="text-muted-foreground ml-1">({step.details})</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Message Text */}
           <div className="mb-2">

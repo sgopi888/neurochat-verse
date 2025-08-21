@@ -11,6 +11,7 @@ interface AIConfig {
   verbosity: 'low' | 'medium' | 'high';
   reasoning: 'minimal' | 'low' | 'medium' | 'high';
   webSearch: boolean;
+  codeInterpreter: boolean;
 }
 
 export const AISettings = () => {
@@ -19,7 +20,8 @@ export const AISettings = () => {
     model: 'gpt-5-nano',
     verbosity: 'low',
     reasoning: 'minimal',
-    webSearch: false
+    webSearch: false,
+    codeInterpreter: false
   });
 
   useEffect(() => {
@@ -50,6 +52,12 @@ export const AISettings = () => {
 
   const handleWebSearchChange = (webSearch: boolean) => {
     const newConfig = { ...config, webSearch };
+    setConfig(newConfig);
+    GPTService.setConfig(newConfig);
+  };
+
+  const handleCodeInterpreterChange = (codeInterpreter: boolean) => {
+    const newConfig = { ...config, codeInterpreter };
     setConfig(newConfig);
     GPTService.setConfig(newConfig);
   };
@@ -121,14 +129,20 @@ export const AISettings = () => {
           </p>
         </div>
 
-        <div className="text-sm text-muted-foreground">
-          <p><strong>AIML API:</strong> Faster, more cost-effective access to GPT models</p>
-          <p><strong>OpenAI Direct:</strong> Direct connection to OpenAI (fallback option)</p>
-          <p><strong>GPT-5 Nano:</strong> Fast, efficient model optimized for conversations</p>
-          <p><strong>Low Verbosity:</strong> Short, concise responses</p>
-          <p><strong>High Verbosity:</strong> Detailed, comprehensive responses</p>
-          <p><strong>Minimal Reasoning:</strong> Quick responses with basic reasoning</p>
-          <p><strong>High Reasoning:</strong> Deep analysis with thorough reasoning</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="code-interpreter-toggle" className="text-sm font-medium">
+              Smartwatch Data Analysis
+            </Label>
+            <Switch
+              id="code-interpreter-toggle"
+              checked={config.codeInterpreter}
+              onCheckedChange={handleCodeInterpreterChange}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Analyze BPM data with HRV calculations and health insights
+          </p>
         </div>
       </CardContent>
     </Card>

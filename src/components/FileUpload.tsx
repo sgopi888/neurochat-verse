@@ -1,13 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Paperclip, X, FileText, Image, Loader2 } from 'lucide-react';
+import { Paperclip, X, FileText, Image, Loader2, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FileUploadProps {
-  onFileContent: (content: string, filename: string, type: 'pdf' | 'image') => void;
+  onFileContent: (content: string, filename: string, type: 'pdf' | 'image' | 'csv' | 'excel') => void;
   onClearFile: () => void;
-  uploadedFile: { name: string; type: 'pdf' | 'image' } | null;
+  uploadedFile: { name: string; type: 'pdf' | 'image' | 'csv' | 'excel' } | null;
   disabled?: boolean;
 }
 
@@ -25,6 +25,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   // Extract text using Supabase edge function
+  // Process BMP data for code interpreter
+  const processBMPData = async (content: string, fileType: 'csv' | 'excel'): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke('process-bmp-data', {
+      body: { content, fileType }
+    });
+
+    if (error) {
+      console.error('BMP processing error:', error);
+      throw new Error(error.message || 'Failed to process BMP data');
+    }
+
+    return data.processedData;
+  };
+
   const extractTextFromFileAPI = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -63,25 +77,40 @@ const FileUpload: React.FC<FileUploadProps> = ({
     // Determine file type
     const isPDF = file.type === 'application/pdf';
     const isImage = file.type.startsWith('image/');
+    const isCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+    const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                   file.type === 'application/vnd.ms-excel' ||
+                   file.name.toLowerCase().endsWith('.xlsx') ||
+                   file.name.toLowerCase().endsWith('.xls');
 
-    if (!isPDF && !isImage) {
-      toast.error('Please select a PDF file or image (PNG, JPG, JPEG, GIF, BMP, WEBP)');
+    if (!isPDF && !isImage && !isCSV && !isExcel) {
+      toast.error('Please select a PDF, image, CSV, or Excel file');
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      const fileType: 'pdf' | 'image' = isPDF ? 'pdf' : 'image';
-      toast.info('Processing file...');
-      const extractedText = await extractTextFromFileAPI(file);
-      toast.success('Text extracted successfully!');
+      const fileType: 'pdf' | 'image' | 'csv' | 'excel' = isPDF ? 'pdf' : isImage ? 'image' : isCSV ? 'csv' : 'excel';
+      
+      // Handle CSV/Excel files differently
+      if (isCSV || isExcel) {
+        toast.info('Processing BMP data file...');
+        const text = await file.text();
+        const processedData = await processBMPData(text, isCSV ? 'csv' : 'excel');
+        toast.success('BMP data processed successfully!');
+        onFileContent(processedData, file.name, fileType);
+      } else {
+        toast.info('Processing file...');
+        const extractedText = await extractTextFromFileAPI(file);
+        toast.success('Text extracted successfully!');
 
-      if (!extractedText || extractedText.length < 10) {
-        toast.warning('Very little text was found in the file. Please ensure the file contains readable text.');
+        if (!extractedText || extractedText.length < 10) {
+          toast.warning('Very little text was found in the file. Please ensure the file contains readable text.');
+        }
+
+        onFileContent(extractedText, file.name, fileType);
       }
-
-      onFileContent(extractedText, file.name, fileType);
 
     } catch (error) {
       console.error('File processing error:', error);
@@ -98,14 +127,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const getFileIcon = () => {
     if (!uploadedFile) return <Paperclip className="h-4 w-4" />;
-    return uploadedFile.type === 'pdf' ? 
-      <FileText className="h-4 w-4" /> : 
-      <Image className="h-4 w-4" />;
+    if (uploadedFile.type === 'pdf') return <FileText className="h-4 w-4" />;
+    if (uploadedFile.type === 'image') return <Image className="h-4 w-4" />;
+    return <BarChart3 className="h-4 w-4" />; // For CSV/Excel
   };
 
   const getFileTypeLabel = () => {
     if (!uploadedFile) return '';
-    return uploadedFile.type === 'pdf' ? 'PDF' : 'Image';
+    if (uploadedFile.type === 'pdf') return 'PDF';
+    if (uploadedFile.type === 'image') return 'Image';
+    if (uploadedFile.type === 'csv') return 'CSV Data';
+    return 'Excel Data';
   };
 
   const truncateFileName = (name: string, maxLength: number = 20) => {
@@ -162,7 +194,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         size="sm"
         className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         disabled={disabled}
-        title="Upload PDF or Image"
+        title="Upload PDF, image, or BMP data (CSV/Excel)"
       >
         <Paperclip className="h-4 w-4" />
       </Button>
@@ -170,7 +202,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,image/*"
+        accept=".pdf,image/*,.csv,.xlsx,.xls"
         onChange={handleFileUpload}
         className="hidden"
       />
