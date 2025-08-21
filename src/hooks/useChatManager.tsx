@@ -182,44 +182,55 @@ export const useChatManager = () => {
       }
 
       // Update progress
-      setProcessingStep('RAG Retrieval in progress...');
+      setProcessingStep('Checking configuration...');
       setProgress(30);
       
-      // Try to retrieve relevant chunks first
+      // Check if RAG is enabled
+      const config = JSON.parse(localStorage.getItem('gpt-config') || '{}');
+      const ragEnabled = config.ragEnabled !== false; // Default to true
+      
+      // Try to retrieve relevant chunks first (only if RAG is enabled)
       let retrievedChunks: string[] = [];
-      try {
-        const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
-          body: {
-            chatHistory: messages.map(msg => ({
-              role: msg.isUser ? 'user' : 'assistant',
-              content: msg.text
-            })),
-            userMessage: text
-          }
-        });
+      if (ragEnabled) {
+        try {
+          setProcessingStep('RAG Retrieval in progress...');
+          
+          const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
+            body: {
+              chatHistory: messages.map(msg => ({
+                role: msg.isUser ? 'user' : 'assistant',
+                content: msg.text
+              })),
+              userMessage: text
+            }
+          });
 
-        if (!chunksError && chunksData?.success && chunksData.chunks) {
-          retrievedChunks = chunksData.chunks;
-          setChunksRetrieved(retrievedChunks.length);
-          console.log('Retrieved chunks for conversation:', retrievedChunks.length);
-          
-          // Create 20-30 word excerpt from first chunk for display
-          const chunksExcerpt = retrievedChunks.length > 0 
-            ? retrievedChunks[0].split(' ').slice(0, 25).join(' ') + (retrievedChunks[0].split(' ').length > 25 ? '...' : '')
-            : '';
-          
-          if (chunksExcerpt) {
-            setProcessingStep(`RAG Retrieved: "${chunksExcerpt}"`);
+          if (!chunksError && chunksData?.success && chunksData.chunks) {
+            retrievedChunks = chunksData.chunks;
+            setChunksRetrieved(retrievedChunks.length);
+            console.log('Retrieved chunks for conversation:', retrievedChunks.length);
+            
+            // Create 20-30 word excerpt from first chunk for display
+            const chunksExcerpt = retrievedChunks.length > 0 
+              ? retrievedChunks[0].split(' ').slice(0, 25).join(' ') + (retrievedChunks[0].split(' ').length > 25 ? '...' : '')
+              : '';
+            
+            if (chunksExcerpt) {
+              setProcessingStep(`RAG Retrieved: "${chunksExcerpt}"`);
+            } else {
+              setProcessingStep(`Using ${retrievedChunks.length} knowledge chunks...`);
+            }
           } else {
-            setProcessingStep(`Using ${retrievedChunks.length} knowledge chunks...`);
+            console.log('No chunks retrieved, proceeding with conversation only');
+            setProcessingStep('No relevant knowledge found, using conversation context...');
           }
-        } else {
-          console.log('No chunks retrieved, proceeding with conversation only');
-          setProcessingStep('No relevant knowledge found, using conversation context...');
+        } catch (error) {
+          console.warn('Chunks retrieval failed, proceeding without:', error);
+          setProcessingStep('Knowledge retrieval unavailable, continuing...');
         }
-      } catch (error) {
-        console.warn('Chunks retrieval failed, proceeding without:', error);
-        setProcessingStep('Knowledge retrieval unavailable, continuing...');
+      } else {
+        setProcessingStep('RAG disabled, using conversation context only...');
+        console.log('RAG disabled in settings, skipping chunks retrieval');
       }
 
       // Update progress

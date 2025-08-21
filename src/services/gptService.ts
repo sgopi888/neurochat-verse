@@ -24,6 +24,7 @@ interface GPTConfig {
   reasoning: 'low' | 'medium' | 'high';
   webSearch: boolean;
   codeInterpreter: boolean;
+  ragEnabled: boolean;
 }
 
 export class GPTService {
@@ -33,7 +34,7 @@ export class GPTService {
     if (savedConfig) {
       return JSON.parse(savedConfig);
     }
-    return { provider: 'openai', model: 'gpt-5-nano-2025-08-07', verbosity: 'low', reasoning: 'medium', webSearch: false, codeInterpreter: false };
+    return { provider: 'openai', model: 'gpt-5-nano-2025-08-07', verbosity: 'low', reasoning: 'medium', webSearch: false, codeInterpreter: false, ragEnabled: true };
   }
 
   static setConfig(config: GPTConfig): void {

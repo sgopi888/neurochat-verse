@@ -12,6 +12,7 @@ interface AIConfig {
   reasoning: 'low' | 'medium' | 'high';
   webSearch: boolean;
   codeInterpreter: boolean;
+  ragEnabled: boolean;
 }
 
 export const AISettings = () => {
@@ -21,7 +22,8 @@ export const AISettings = () => {
     verbosity: 'low',
     reasoning: 'medium',
     webSearch: false,
-    codeInterpreter: false
+    codeInterpreter: false,
+    ragEnabled: true
   });
 
   useEffect(() => {
@@ -58,6 +60,12 @@ export const AISettings = () => {
 
   const handleCodeInterpreterChange = (codeInterpreter: boolean) => {
     const newConfig = { ...config, codeInterpreter };
+    setConfig(newConfig);
+    GPTService.setConfig(newConfig);
+  };
+
+  const handleRAGChange = (ragEnabled: boolean) => {
+    const newConfig = { ...config, ragEnabled };
     setConfig(newConfig);
     GPTService.setConfig(newConfig);
   };
@@ -141,6 +149,22 @@ export const AISettings = () => {
           </div>
           <p className="text-xs text-muted-foreground">
             Analyze BPM data with HRV calculations and health insights
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="rag-toggle" className="text-sm font-medium">
+              Knowledge Retrieval (RAG)
+            </Label>
+            <Switch
+              id="rag-toggle"
+              checked={config.ragEnabled}
+              onCheckedChange={handleRAGChange}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Retrieve relevant information from knowledge base to enhance responses
           </p>
         </div>
       </CardContent>
