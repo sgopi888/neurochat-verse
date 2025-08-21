@@ -3,8 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { GPTService } from '@/services/gptService';
-import { AdvancedGPTService } from '@/services/advancedGptService';
-import { useAdvancedSettings } from '@/hooks/useAdvancedSettings';
 import { generateContextualQuestions } from '@/utils/contextualQuestions';
 import { toast } from 'sonner';
 
@@ -21,7 +19,6 @@ interface ChatMode {
 }
 
 export const useChatManager = () => {
-  const { settings } = useAdvancedSettings();
   const { user } = useAuth();
   const { hasAgreed } = useUserAgreement();
   
@@ -167,36 +164,16 @@ export const useChatManager = () => {
         toast.error('Failed to save message');
       }
 
-      // Get AI response using advanced service if enabled
-      const { settings } = useAdvancedSettings();
-      let response;
-      if (settings.useAdvancedMode) {
-        response = await AdvancedGPTService.enhancedMeditationGeneration(
-          text, 
-          messages, 
-          settings,
-          user.id
-        );
-      } else {
-        // Fallback to basic GPT service
-        response = await GPTService.probingChat(text, messages, user.id);
-      }
+      // Get AI response
+      const response = await GPTService.probingChat(text, messages, user.id);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to get AI response');
       }
 
-      // Handle structured vs regular response
-      let aiResponseText;
-      if (response.structured && typeof response.data === 'object') {
-        aiResponseText = response.data.meditation || response.data.response || 'I understand. Please tell me more.';
-      } else {
-        aiResponseText = response.data || 'I understand. Please tell me more.';
-      }
-
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: aiResponseText,
+        text: response.data || 'I understand. Please tell me more.',
         isUser: false,
         timestamp: new Date()
       };
@@ -299,11 +276,9 @@ export const useChatManager = () => {
       // Generate meditation script
       toast.info('Creating your personalized meditation...');
       
-      const { settings } = useAdvancedSettings();
-      const meditationResponse = await AdvancedGPTService.enhancedMeditationGeneration(
-        keywords, 
+      const meditationResponse = await GPTService.generateMeditationScript(
         messages, 
-        settings,
+        retrievedChunks, 
         user.id
       );
 
@@ -311,17 +286,7 @@ export const useChatManager = () => {
         throw new Error(meditationResponse.error || 'Failed to generate meditation');
       }
 
-      // Handle structured response for message display
-      let messageText = meditationResponse.data;
-      
-      if (meditationResponse.structured && typeof meditationResponse.data === 'object') {
-        // If it's a structured response, use the meditation field
-        messageText = meditationResponse.data.meditation || 
-                     JSON.stringify(meditationResponse.data, null, 2) ||
-                     'Your personalized meditation script.';
-      }
-
-      const meditationScript = messageText;
+      const meditationScript = meditationResponse.data || 'Your personalized meditation script.';
       
       const meditationMessage: Message = {
         id: (Date.now() + 2).toString(),

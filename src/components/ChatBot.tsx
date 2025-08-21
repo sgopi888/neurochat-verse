@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Mic, MicOff, Menu, Settings, Globe, Code } from 'lucide-react';
+import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import FileUpload from './FileUpload';
 
@@ -38,10 +38,6 @@ interface ChatBotProps {
   onGenerateMeditation?: () => void;
   canStopOperation?: boolean;
   onStopOperation?: () => void;
-  enableWeb?: boolean;
-  enableCode?: boolean;
-  onWebToggle?: () => void;
-  onCodeToggle?: () => void;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -65,11 +61,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
   chatMode,
   canGenerateMeditation,
   isGeneratingMeditation,
-  onGenerateMeditation,
-  enableWeb = false,
-  enableCode = false,
-  onWebToggle,
-  onCodeToggle,
+  onGenerateMeditation
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -282,47 +274,12 @@ const ChatBot: React.FC<ChatBotProps> = ({
               disabled={isLoading}
             />
             <div className="absolute right-2 top-2 flex items-center gap-1">
-              {/* Web Search Button */}
-              <Button
-                type="button"
-                onClick={onWebToggle}
-                size="sm"
-                variant={enableWeb ? "default" : "ghost"}
-                className={`h-8 w-8 p-0 ${
-                  enableWeb 
-                    ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                    : 'text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                }`}
-                disabled={isLoading}
-                title={enableWeb ? "Web Search Enabled" : "Enable Web Search"}
-              >
-                <Globe className="h-4 w-4" />
-              </Button>
-              
-              {/* Code Analysis Button */}
-              <Button
-                type="button"
-                onClick={onCodeToggle}
-                size="sm"
-                variant={enableCode ? "default" : "ghost"}
-                className={`h-8 w-8 p-0 ${
-                  enableCode 
-                    ? 'bg-green-500 text-white hover:bg-green-600' 
-                    : 'text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
-                }`}
-                disabled={isLoading}
-                title={enableCode ? "Code Interpreter Enabled" : "Enable Code Interpreter"}
-              >
-                <Code className="h-4 w-4" />
-              </Button>
-
               <FileUpload
                 onFileContent={onFileContent}
                 onClearFile={onClearFile}
                 uploadedFile={uploadedFile}
                 disabled={isLoading}
               />
-              
               <Button
                 type="button"
                 onClick={toggleVoiceRecognition}

@@ -1,8 +1,6 @@
 import React from 'react';
 import ChatBot from './ChatBot';
-import { useAdvancedSettings } from '@/hooks/useAdvancedSettings';
-import { AdvancedGPTService } from '@/services/advancedGptService';
-import { toast } from 'sonner';
+import MeditationGenerator from './MeditationGenerator';
 
 interface Message {
   id: string;
@@ -56,26 +54,6 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
     ...chatBotProps 
   } = props;
 
-  const { settings, updateSettings } = useAdvancedSettings();
-
-  const handleWebToggle = () => {
-    updateSettings({ enableWeb: !settings.enableWeb });
-    if (!settings.enableWeb) {
-      toast.success('Web search enabled');
-    } else {
-      toast.info('Web search disabled');
-    }
-  };
-
-  const handleCodeToggle = () => {
-    updateSettings({ enableCode: !settings.enableCode });
-    if (!settings.enableCode) {
-      toast.success('Code interpreter enabled');
-    } else {
-      toast.info('Code interpreter disabled');
-    }
-  };
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0">
@@ -90,10 +68,6 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
           onPauseMessageAudio={onPauseMessageAudio}
           isMessagePlaying={isMessagePlaying}
           isMessageLoading={isMessageLoading}
-          enableWeb={settings.enableWeb && settings.useAdvancedMode}
-          enableCode={settings.enableCode && settings.useAdvancedMode}
-          onWebToggle={handleWebToggle}
-          onCodeToggle={handleCodeToggle}
         />
       </div>
     </div>
