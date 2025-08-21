@@ -19,11 +19,11 @@ const SleekSuggestedQuestions: React.FC<SleekSuggestedQuestionsProps> = ({
   }
 
   return (
-    <Card className="mx-4 mb-3 p-3 bg-gradient-to-br from-primary/5 to-purple-500/5 border-primary/20 shadow-sm">
-      <div className="flex items-center gap-2 mb-2">
+    <Card className="w-1/4 ml-4 mb-3 p-2 bg-gradient-to-br from-primary/5 to-purple-500/5 border-primary/20 shadow-sm">
+      <div className="flex items-center gap-1 mb-1">
         <Sparkles className="h-3 w-3 text-primary" />
         <span className="text-xs font-medium text-muted-foreground">
-          Continue exploring:
+          Query suggestions:
         </span>
       </div>
       
@@ -33,12 +33,11 @@ const SleekSuggestedQuestions: React.FC<SleekSuggestedQuestionsProps> = ({
             key={index}
             variant="ghost"
             onClick={() => onQuestionClick(question)}
-            className="w-full justify-between text-left h-auto p-2 hover:bg-primary/10 transition-colors group text-xs"
+            className="w-full justify-start text-left h-auto p-1.5 hover:bg-primary/10 transition-colors group text-xs"
           >
-            <span className="text-xs text-foreground/80 group-hover:text-foreground line-clamp-2">
+            <span className="text-[10px] text-foreground/80 group-hover:text-foreground line-clamp-2">
               {question}
             </span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 ml-1" />
           </Button>
         ))}
       </div>

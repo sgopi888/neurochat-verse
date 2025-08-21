@@ -23,8 +23,8 @@ serve(async (req) => {
     console.log(`Making GPT request with provider: ${provider}, model: ${model}`);
     console.log('Processing request with:', { provider, model, verbosity, reasoning, webSearch, codeInterpreter });
     
-    // Check if web search should be used
-    const useWebSearch = webSearch && checkShouldUseWebSearch(messages, webSearch);
+    // Check if web search should be used (either enabled or auto-triggered)
+    const useWebSearch = checkShouldUseWebSearch(messages, webSearch);
     
     const startTime = Date.now();
 
@@ -61,8 +61,23 @@ serve(async (req) => {
 
 // Check if web search should be auto-activated based on message content
 function checkShouldUseWebSearch(messages: any[], webSearchEnabled: boolean): boolean {
-  // Simply return the webSearch parameter value - no keyword triggers needed
-  return webSearchEnabled;
+  // If web search is explicitly enabled, use it
+  if (webSearchEnabled) return true;
+  
+  // Check for keywords that should trigger automatic web search
+  const lastMessage = messages[messages.length - 1];
+  if (!lastMessage || lastMessage.role !== 'user') return false;
+  
+  const content = lastMessage.content.toLowerCase();
+  
+  // Trigger search for current events, recent information, specific queries
+  const searchTriggers = [
+    'latest', 'recent', 'current', 'news', 'today', 'now', 'update',
+    'research', 'study', 'statistics', 'data', 'trend', 'breakthrough',
+    'what is happening', 'what\'s new', 'recent developments'
+  ];
+  
+  return searchTriggers.some(trigger => content.includes(trigger));
 }
 
 async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string, webSearch: boolean, codeInterpreter: boolean): Promise<Response> {
@@ -75,8 +90,12 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
   
   // Add web search status and follow-up questions generation to system prompt
   let systemPrompt = '';
-  if (webSearch) {
-    systemPrompt += 'Web search is enabled - you can search for current information when needed. ';
+  
+  // Check if web search should be used (either enabled or auto-triggered)
+  const shouldUseWebSearch = checkShouldUseWebSearch(messages, webSearch);
+  
+  if (shouldUseWebSearch) {
+    systemPrompt += 'Web search is enabled - you can search for current information when needed. PRIORITY: First check if chunks are available from knowledge base, then search online to supplement with current information. Amalgamate all sources into one comprehensive answer. ';
   }
   if (codeInterpreter) {
     systemPrompt += 'Code interpreter is available - use it to analyze data and perform calculations when appropriate. ';
@@ -115,7 +134,9 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
   
   // Build tools array for web search and code interpreter
   const tools = [];
-  if (webSearch) {
+  
+  // Use shouldUseWebSearch for tool selection
+  if (shouldUseWebSearch) {
     tools.push({ type: "web_search_preview" });
   }
   if (codeInterpreter) {
@@ -279,6 +300,10 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
 
   // Add follow-up questions generation and BMP/HRV analysis instructions  
   const lastMessage = input[input.length - 1];
+  
+  // Check if web search should be used (either enabled or auto-triggered)
+  const shouldUseWebSearch = checkShouldUseWebSearch(messages, webSearch);
+  
   if (lastMessage && lastMessage.role === 'user') {
     let additionalInstructions = `\n\nAfter your main response, also suggest 3 follow-up questions that the user might want to ask next based on our conversation. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`;
     
@@ -293,6 +318,11 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
       additionalInstructions = `\n\nI notice you've shared heart rate or BMP data. Please use the code interpreter tool to analyze this data. Calculate HRV metrics like SDNN, RMSSD, and provide insights about stress and recovery patterns. Show your Python analysis code and explain the results in simple terms.` + additionalInstructions;
     }
     
+    // Add web search priority instructions if search is enabled
+    if (shouldUseWebSearch) {
+      additionalInstructions = `\n\nPRIORITY: First check if chunks are available from knowledge base, then search online to supplement with current information. Amalgamate all sources into one comprehensive answer.` + additionalInstructions;
+    }
+    
     input.push({
       role: 'user',
       content: `${lastMessage.content}${additionalInstructions}`
@@ -303,7 +333,7 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
 
   // Build tools array for web search and code interpreter
   const tools = [];
-  if (webSearch) {
+  if (shouldUseWebSearch) {
     tools.push({ type: "web_search_preview", search_context_size: "low" });
   }
   if (codeInterpreter) {
