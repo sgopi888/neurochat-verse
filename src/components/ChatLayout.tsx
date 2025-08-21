@@ -72,10 +72,16 @@ interface ChatLayoutProps {
   canStopOperation?: boolean;
   onStopOperation?: () => void;
 
-  // Chat data props (now required for unified management)
+  // Chat history props
   chatSessions: { id: string; title: string; updated_at: string; created_at: string; }[];
   isLoadingHistory: boolean;
   onDeleteChat: (chatId: string) => void;
+
+  // Processing progress props  
+  processingStep?: string;
+  chunksRetrieved?: number;
+  totalTokens?: number;
+  progress?: number;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -120,7 +126,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   onStopOperation,
   chatSessions,
   isLoadingHistory,
-  onDeleteChat
+  onDeleteChat,
+  processingStep,
+  chunksRetrieved,
+  totalTokens,
+  progress
 }) => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
@@ -217,6 +227,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           onGenerateMeditation={onGenerateMeditation}
           canStopOperation={canStopOperation}
           onStopOperation={onStopOperation}
+          processingStep={processingStep}
+          chunksRetrieved={chunksRetrieved}
+          totalTokens={totalTokens}
+          progress={progress}
         />
       </div>
     </div>

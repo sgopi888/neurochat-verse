@@ -38,6 +38,10 @@ interface EnhancedChatBotProps {
   onGenerateMeditation?: () => void;
   canStopOperation?: boolean;
   onStopOperation?: () => void;
+  processingStep?: string;
+  chunksRetrieved?: number;
+  totalTokens?: number;
+  progress?: number;
 }
 
 const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
@@ -51,6 +55,10 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
     onPauseMessageAudio,
     isMessagePlaying,
     isMessageLoading,
+    processingStep,
+    chunksRetrieved,
+    totalTokens,
+    progress,
     ...chatBotProps 
   } = props;
 
@@ -68,6 +76,10 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
           onPauseMessageAudio={onPauseMessageAudio}
           isMessagePlaying={isMessagePlaying}
           isMessageLoading={isMessageLoading}
+          processingStep={processingStep}
+          chunksRetrieved={chunksRetrieved}
+          totalTokens={totalTokens}
+          progress={progress}
         />
       </div>
     </div>

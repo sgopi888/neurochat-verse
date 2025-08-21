@@ -36,6 +36,10 @@ export const useChatManager = () => {
   const [currentAbortController, setCurrentAbortController] = useState<AbortController | null>(null);
   const [chatMode, setChatMode] = useState<ChatMode>({ mode: 'probing', probingMessages: [] });
   const [isGeneratingMeditation, setIsGeneratingMeditation] = useState(false);
+  const [processingStep, setProcessingStep] = useState<string>('');
+  const [chunksRetrieved, setChunksRetrieved] = useState(0);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   // Load messages when chat changes
   useEffect(() => {
@@ -274,7 +278,9 @@ export const useChatManager = () => {
       }
 
       const retrievedChunks = webhookData.response || '';
-      console.log('Retrieved chunks:', retrievedChunks.length, 'characters');
+      const chunkCount = retrievedChunks.split('\n\n').filter(chunk => chunk.trim().length > 0).length;
+      setChunksRetrieved(chunkCount);
+      console.log('Retrieved chunks:', retrievedChunks.length, 'characters', chunkCount, 'chunks');
 
       // Generate meditation script
       toast.info('Creating your personalized meditation...');
@@ -378,6 +384,10 @@ export const useChatManager = () => {
     showSuggestions,
     chatMode,
     isGeneratingMeditation,
+    processingStep,
+    chunksRetrieved,
+    totalTokens,
+    progress,
     
     // Actions
     handleSendMessage,

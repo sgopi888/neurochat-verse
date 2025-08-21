@@ -322,23 +322,41 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     );
   }
 
-  // Parse follow-up questions from OpenAI response - improved regex
+  // Parse follow-up questions from OpenAI response - improved regex with multiple patterns
   const followUpQuestions: string[] = [];
-  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/);
   
-  if (followUpMatch) {
-    const questionsText = followUpMatch[1];
-    const questions = questionsText.split('\n')
-      .filter(line => line.trim().match(/^\d+\.\s/))
-      .map(line => line.replace(/^\d+\.\s/, '').trim())
-      .filter(q => q.length > 0)
-      .slice(0, 3); // Ensure exactly 3 questions
-    
-    followUpQuestions.push(...questions);
-    
-    // Remove follow-up questions section from main response - improved regex
-    outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/g, '').trim();
+  // Look for multiple possible follow-up question patterns
+  const patterns = [
+    /\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /Follow-up Questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /\*\*Follow-up questions:\*\*\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/,
+    /Follow-up questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/
+  ];
+  
+  let questionsFound = false;
+  for (const pattern of patterns) {
+    const match = outputText.match(pattern);
+    if (match && match[1]) {
+      const questionsText = match[1];
+      const questions = questionsText.split('\n')
+        .filter(line => line.trim().match(/^\d+\.\s/))
+        .map(line => line.replace(/^\d+\.\s/, '').trim())
+        .filter(q => q.length > 0)
+        .slice(0, 3); // Ensure exactly 3 questions
+      
+      if (questions.length > 0) {
+        followUpQuestions.push(...questions);
+        // Remove the entire follow-up questions section from main response
+        outputText = outputText.replace(pattern, '').trim();
+        questionsFound = true;
+        break;
+      }
+    }
   }
+  
+  // Also remove any remaining follow-up question patterns
+  outputText = outputText.replace(/\*\*Follow-up [Qq]uestions:\*\*.*$/gms, '').trim();
+  outputText = outputText.replace(/Follow-up [Qq]uestions:.*$/gms, '').trim();
 
   const endTime = Date.now();
   const responseTime = endTime - startTime;

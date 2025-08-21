@@ -5,16 +5,25 @@ import { Loader2, Brain, Sparkles, Volume2 } from 'lucide-react';
 interface ProcessingStepsProps {
   isVisible: boolean;
   currentStep?: string;
+  chunksRetrieved?: number;
+  totalTokens?: number;
+  progress?: number;
 }
 
-const ProcessingSteps: React.FC<ProcessingStepsProps> = ({ isVisible, currentStep }) => {
+const ProcessingSteps: React.FC<ProcessingStepsProps> = ({ 
+  isVisible, 
+  currentStep, 
+  chunksRetrieved = 0, 
+  totalTokens = 0, 
+  progress = 0 
+}) => {
   const [step, setStep] = useState(0);
   const [displayText, setDisplayText] = useState('');
 
   const steps = [
     { icon: Brain, text: 'Analyzing your question...', color: 'text-blue-500' },
-    { icon: Sparkles, text: 'Generating thoughtful response...', color: 'text-purple-500' },
-    { icon: Volume2, text: 'Preparing audio narration...', color: 'text-green-500' }
+    { icon: Sparkles, text: 'Searching knowledge base...', color: 'text-orange-500' },
+    { icon: Volume2, text: 'Generating thoughtful response...', color: 'text-purple-500' },
   ];
 
   useEffect(() => {
@@ -62,7 +71,15 @@ const ProcessingSteps: React.FC<ProcessingStepsProps> = ({ isVisible, currentSte
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             {displayText}
           </span>
-          <div className="flex space-x-1 mt-1">
+          {(chunksRetrieved > 0 || totalTokens > 0) && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {chunksRetrieved > 0 && `${chunksRetrieved} guidance chunks`}
+              {chunksRetrieved > 0 && totalTokens > 0 && ' • '}
+              {totalTokens > 0 && `~${totalTokens} tokens`}
+              {progress > 0 && ` • ${Math.round(progress)}% complete`}
+            </div>
+          )}
+          <div className="flex space-x-1 mt-2">
             {steps.map((_, index) => (
               <div
                 key={index}
@@ -72,6 +89,14 @@ const ProcessingSteps: React.FC<ProcessingStepsProps> = ({ isVisible, currentSte
               />
             ))}
           </div>
+          {progress > 0 && (
+            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1 mt-1">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-purple-500 h-1 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(progress, 100)}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

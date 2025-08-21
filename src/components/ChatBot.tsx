@@ -6,6 +6,7 @@ import MessageBubble from './MessageBubble';
 import FileUpload from './FileUpload';
 import WebSearchToggle from './WebSearchToggle';
 import CodeInterpreterToggle from './CodeInterpreterToggle';
+import ProcessingSteps from './ProcessingSteps';
 
 interface Message {
   id: string;
@@ -40,6 +41,10 @@ interface ChatBotProps {
   onGenerateMeditation?: () => void;
   canStopOperation?: boolean;
   onStopOperation?: () => void;
+  processingStep?: string;
+  chunksRetrieved?: number;
+  totalTokens?: number;
+  progress?: number;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -61,9 +66,15 @@ const ChatBot: React.FC<ChatBotProps> = ({
   onClearFile,
   uploadedFile,
   chatMode,
-  canGenerateMeditation,
-  isGeneratingMeditation,
-  onGenerateMeditation
+  canGenerateMeditation = false,
+  isGeneratingMeditation = false,
+  onGenerateMeditation,
+  canStopOperation = false,
+  onStopOperation,
+  processingStep,
+  chunksRetrieved,
+  totalTokens,
+  progress
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -235,7 +246,15 @@ const ChatBot: React.FC<ChatBotProps> = ({
           />
         ))}
 
-        {isLoading && loadingIndicator}
+        {isLoading && (
+          <ProcessingSteps 
+            isVisible={true} 
+            currentStep={processingStep}
+            chunksRetrieved={chunksRetrieved}
+            totalTokens={totalTokens}
+            progress={progress}
+          />
+        )}
 
         {/* Only show suggestions when not loading and not on mobile with sidebar open */}
         {!isLoading && (!isMobile || !isMobileSidebarOpen) && clonedSuggestedQuestions}

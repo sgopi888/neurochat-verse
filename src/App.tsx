@@ -46,7 +46,11 @@ function AppContent() {
     setMessages,
     setCurrentChatId,
     setSuggestedQuestions,
-    allDisplayMessages
+    allDisplayMessages,
+    processingStep,
+    chunksRetrieved,
+    totalTokens,
+    progress
   } = useChatManager();
 
   // Chat history management  
@@ -206,6 +210,11 @@ function AppContent() {
       chatSessions={chatSessions}
       isLoadingHistory={isLoadingHistory}
       onDeleteChat={deleteChat}
+      // Processing progress props
+      processingStep={processingStep}
+      chunksRetrieved={chunksRetrieved}
+      totalTokens={totalTokens}
+      progress={progress}
     />
   );
 }
