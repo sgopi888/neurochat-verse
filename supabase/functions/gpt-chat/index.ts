@@ -322,6 +322,7 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
   // Extract text from GPT-5 response format (same as AIML)
   let outputText = "";
   const sources: any[] = [];
+  let codeInterpreterResults = '';
   
   if (data.output && Array.isArray(data.output)) {
     for (const item of data.output) {
@@ -347,11 +348,29 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
       // Handle code interpreter outputs
       else if (item.type === "code_interpreter_call") {
         console.log('Code executed:', item.code);
-        if (item.outputs) {
+        if (item.outputs && item.outputs.length > 0) {
           console.log('Code outputs:', item.outputs);
+          // Preserve code interpreter results in the response
+          const codeResults = item.outputs
+            .map(output => {
+              if (output.type === 'text') return output.text;
+              if (output.type === 'image') return '[Chart/Graph Generated]';
+              return output.content || '';
+            })
+            .filter(Boolean)
+            .join('\n\n');
+          
+          if (codeResults) {
+            codeInterpreterResults += '\n\nCode Analysis Results:\n' + codeResults + '\n';
+          }
         }
       }
     }
+  }
+
+  // Append code interpreter results to preserve context
+  if (codeInterpreterResults) {
+    outputText += codeInterpreterResults;
   }
 
   if (!outputText) {
@@ -375,32 +394,7 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     /Suggested Questions:\s*\n((?:\s*\d+\.\s*.+(?:\n|$))*)/
   ];
   
-  let questionsFound = false;
-  let codeInterpreterResults = '';
-  
-  // Extract code interpreter results for context preservation
-  if (data.output && Array.isArray(data.output)) {
-    for (const item of data.output) {
-      if (item.type === "code_interpreter_call") {
-        codeInterpreterResults += `\n\nCode Analysis Results:\n`;
-        if (item.code) {
-          codeInterpreterResults += `Code executed: ${item.code}\n`;
-        }
-        if (item.outputs && Array.isArray(item.outputs)) {
-          item.outputs.forEach((output, idx) => {
-            if (output.text) {
-              codeInterpreterResults += `Output ${idx + 1}: ${output.text}\n`;
-            }
-          });
-        }
-      }
-    }
-  }
-  
-  // Append code interpreter results to preserve context
-  if (codeInterpreterResults) {
-    outputText += codeInterpreterResults;
-  }
+   let questionsFound = false;
   
   for (const pattern of patterns) {
     const match = outputText.match(pattern);

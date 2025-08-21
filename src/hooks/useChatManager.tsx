@@ -304,25 +304,35 @@ export const useChatManager = () => {
         throw new Error('No chat session found');
       }
 
-      const { data: webhookData, error: webhookError } = await supabase.functions.invoke('webhook-handler', {
-        body: {
-          question: keywords,
-          chatId: currentChatId,
-          userId: user.id
-        }
-      });
+      let retrievedChunks = '';
+      let chunkCount = 0;
 
-      if (webhookError) {
-        throw new Error(`Failed to retrieve guidance: ${webhookError.message}`);
+      try {
+        const { data: webhookData, error: webhookError } = await supabase.functions.invoke('webhook-handler', {
+          body: {
+            question: keywords,
+            chatId: currentChatId,
+            userId: user.id
+          }
+        });
+
+        if (webhookError) {
+          console.warn('Webhook failed, continuing without reference documents:', webhookError.message);
+          toast.info('Generating from conversation history (reference service unavailable)');
+          setProcessingStep('Skipping reference documents (service unavailable)');
+        } else {
+          retrievedChunks = webhookData.response || '';
+          chunkCount = retrievedChunks.split('\n\n').filter(chunk => chunk.trim().length > 0).length;
+          console.log('Retrieved chunks:', retrievedChunks.length, 'characters', chunkCount, 'chunks');
+          setProcessingStep(`Processing ${chunkCount} guidance chunks...`);
+        }
+      } catch (error) {
+        console.warn('Webhook error, continuing without reference documents:', error);
+        toast.info('Generating from conversation history (reference service unavailable)');
+        setProcessingStep('Skipping reference documents (service unavailable)');
       }
 
-      const retrievedChunks = webhookData.response || '';
-      const chunkCount = retrievedChunks.split('\n\n').filter(chunk => chunk.trim().length > 0).length;
       setChunksRetrieved(chunkCount);
-      console.log('Retrieved chunks:', retrievedChunks.length, 'characters', chunkCount, 'chunks');
-
-      // Update progress
-      setProcessingStep(`Processing ${chunkCount} guidance chunks...`);
       setProgress(70);
 
       // Generate meditation script
