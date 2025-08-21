@@ -28,6 +28,7 @@ export const RAGToggle = ({ disabled = false }: RAGToggleProps) => {
 
   return (
     <Button
+      type="button"
       onClick={toggleRAG}
       variant="ghost"
       size="sm"

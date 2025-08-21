@@ -28,6 +28,7 @@ export const CodeInterpreterToggle = ({ disabled = false }: CodeInterpreterToggl
 
   return (
     <Button
+      type="button"
       onClick={toggleCodeInterpreter}
       variant="ghost"
       size="sm"

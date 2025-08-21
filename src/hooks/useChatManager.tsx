@@ -365,26 +365,42 @@ export const useChatManager = () => {
       let chunkCount = 0;
 
       try {
-        const { data: webhookData, error: webhookError } = await supabase.functions.invoke('webhook-handler', {
-          body: {
-            question: keywords,
-            chatId: currentChatId,
-            userId: user.id
-          }
-        });
+        // Check if RAG is enabled
+        const config = JSON.parse(localStorage.getItem('gpt-config') || '{}');
+        
+        if (config.ragEnabled !== false) {
+          const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
+            body: {
+              chatHistory: messages,
+              userMessage: `${messages[messages.length - 1]?.text || ''} Keywords: ${keywords}`
+            }
+          });
 
-        if (webhookError) {
-          console.warn('Webhook failed, continuing without reference documents:', webhookError.message);
-          toast.info('Generating from conversation history (reference service unavailable)');
-          setProcessingStep('Skipping reference documents (service unavailable)');
+          if (chunksError) {
+            console.warn('Chunks retrieval failed, continuing without reference documents:', chunksError.message);
+            toast.info('Generating from conversation history (reference service unavailable)');
+            setProcessingStep('Skipping reference documents (service unavailable)');
+          } else if (chunksData?.chunks && chunksData.chunks.length > 0) {
+            retrievedChunks = chunksData.chunks.join('\n\n---\n\n');
+            chunkCount = chunksData.chunks.length;
+            
+            // Show excerpt from chunks
+            const firstChunk = chunksData.chunks[0];
+            const excerpt = firstChunk.length > 150 ? 
+              firstChunk.substring(0, 150) + '...' : firstChunk;
+            
+            toast.success(`Found ${chunkCount} relevant references: "${excerpt}"`);
+            console.log(`Retrieved ${chunkCount} chunks for meditation generation`);
+          } else {
+            console.log('No chunks retrieved, generating from conversation only');
+            toast.info('No specific references found, generating from conversation');
+          }
         } else {
-          retrievedChunks = webhookData.response || '';
-          chunkCount = retrievedChunks.split('\n\n').filter(chunk => chunk.trim().length > 0).length;
-          console.log('Retrieved chunks:', retrievedChunks.length, 'characters', chunkCount, 'chunks');
-          setProcessingStep(`Processing ${chunkCount} guidance chunks...`);
+          console.log('RAG is disabled, generating from conversation only');
+          toast.info('Generating from conversation history (RAG disabled)');
         }
       } catch (error) {
-        console.warn('Webhook error, continuing without reference documents:', error);
+        console.error('Error retrieving chunks:', error);
         toast.info('Generating from conversation history (reference service unavailable)');
         setProcessingStep('Skipping reference documents (service unavailable)');
       }
