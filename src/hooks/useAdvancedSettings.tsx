@@ -5,9 +5,9 @@ export interface AdvancedSettings {
   enableWeb: boolean;
   enableCode: boolean;
   
-  // AI Settings
-  verbosityLevel: 'low' | 'high';
-  reasoningEffort: 'low' | 'medium' | 'high';
+  // AI Settings - matching GPT-5 API
+  verbosityLevel: 'low' | 'medium' | 'high';
+  reasoningEffort: 'minimal' | 'low' | 'medium' | 'high';
   
   // Rollback option
   useAdvancedMode: boolean;
@@ -15,7 +15,7 @@ export interface AdvancedSettings {
 
 const DEFAULT_SETTINGS: AdvancedSettings = {
   enableWeb: true,
-  enableCode: true,
+  enableCode: false, // Code interpreter not supported in GPT-5-nano
   verbosityLevel: 'low',
   reasoningEffort: 'medium',
   useAdvancedMode: true,
@@ -59,6 +59,8 @@ export const useAdvancedSettings = () => {
     if (!settings.useAdvancedMode) return '';
     
     switch (settings.reasoningEffort) {
+      case 'minimal':
+        return "Style: very brief, essential points only, minimal explanation.";
       case 'low':
         return "Style: practical, non-esoteric, concrete steps, short cues. Avoid metaphysical/Scripture terms. Keep language plain and actionable.";
       case 'medium':
@@ -98,9 +100,7 @@ export const useAdvancedSettings = () => {
     if (settings.enableWeb) {
       tools.push({ type: "web_search_preview", search_context_size: "low" });
     }
-    if (settings.enableCode) {
-      tools.push({ type: "code_interpreter", container: { type: "auto" } });
-    }
+    // Code interpreter not supported in GPT-5-nano, so we skip it
     return tools;
   };
 

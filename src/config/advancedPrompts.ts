@@ -5,8 +5,8 @@
 export interface AdvancedPromptConfig {
   toneInstruction: string;
   schemaHint: string;
-  verbosityLevel: 'low' | 'high';
-  reasoningEffort: 'low' | 'medium' | 'high';
+  verbosityLevel: 'low' | 'medium' | 'high';
+  reasoningEffort: 'minimal' | 'low' | 'medium' | 'high';
   tools: any[];
 }
 

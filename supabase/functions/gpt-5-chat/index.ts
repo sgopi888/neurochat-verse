@@ -49,20 +49,18 @@ serve(async (req) => {
       // Note: GPT-5 models don't support temperature parameter
     };
 
-    // Add text settings if provided
+    // Add GPT-5 specific parameters correctly
     if (text?.verbosity) {
-      requestBody.verbosity = text.verbosity;
+      requestBody.text = { verbosity: text.verbosity };
     }
 
-    // Add reasoning settings if provided  
     if (reasoning?.effort) {
-      requestBody.reasoning_effort = reasoning.effort;
+      requestBody.reasoning = { effort: reasoning.effort };
     }
 
-    // Add tools if provided - Note: code_interpreter is a native OpenAI tool
+    // Add tools if provided - GPT-5-nano doesn't support code_interpreter
     if (tools && tools.length > 0) {
       const processedTools = [];
-      let hasCodeInterpreter = false;
       
       for (const tool of tools) {
         if (tool.type === 'web_search_preview') {
@@ -79,23 +77,15 @@ serve(async (req) => {
               }
             }
           });
-        } else if (tool.type === 'code_interpreter') {
-          hasCodeInterpreter = true;
         }
+        // Skip code_interpreter for GPT-5-nano as it's not supported
       }
       
       if (processedTools.length > 0) {
         requestBody.tools = processedTools;
-      }
-      
-      // Code interpreter is a separate parameter for GPT-5
-      if (hasCodeInterpreter) {
-        requestBody.tools = requestBody.tools || [];
-        requestBody.tools.push({ type: 'code_interpreter' });
-      }
-      
-      if (tool_choice) {
-        requestBody.tool_choice = tool_choice;
+        if (tool_choice) {
+          requestBody.tool_choice = tool_choice;
+        }
       }
     }
 

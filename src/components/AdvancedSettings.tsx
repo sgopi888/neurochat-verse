@@ -50,19 +50,20 @@ const AdvancedSettings: React.FC = () => {
               />
             </div>
 
-            {/* Code Interpreter Toggle */}
-            <div className="flex items-center justify-between">
+            {/* Code Interpreter Toggle - Disabled for GPT-5-nano */}
+            <div className="flex items-center justify-between opacity-50">
               <div className="flex items-center space-x-2">
                 <Code className="h-4 w-4 text-green-500" />
                 <div>
                   <Label className="text-sm">Code Interpreter</Label>
                   <div className="text-xs text-muted-foreground">
-                    Analyze health data and generate insights
+                    Not supported in GPT-5-nano
                   </div>
                 </div>
               </div>
               <Switch
-                checked={settings.enableCode}
+                checked={false}
+                disabled={true}
                 onCheckedChange={(checked) => updateSettings({ enableCode: checked })}
               />
             </div>
@@ -79,13 +80,14 @@ const AdvancedSettings: React.FC = () => {
               <Label className="text-sm">Response Length</Label>
               <Select
                 value={settings.verbosityLevel}
-                onValueChange={(value: 'low' | 'high') => updateSettings({ verbosityLevel: value })}
+                onValueChange={(value: 'low' | 'medium' | 'high') => updateSettings({ verbosityLevel: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select verbosity" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Concise</SelectItem>
+                  <SelectItem value="medium">Moderate</SelectItem>
                   <SelectItem value="high">Detailed</SelectItem>
                 </SelectContent>
               </Select>
@@ -96,12 +98,18 @@ const AdvancedSettings: React.FC = () => {
               <Label className="text-sm">Reasoning Depth</Label>
               <Select
                 value={settings.reasoningEffort}
-                onValueChange={(value: 'low' | 'medium' | 'high') => updateSettings({ reasoningEffort: value })}
+                onValueChange={(value: 'minimal' | 'low' | 'medium' | 'high') => updateSettings({ reasoningEffort: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select reasoning effort" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="minimal">
+                    <div>
+                      <div className="font-medium">Minimal</div>
+                      <div className="text-xs text-muted-foreground">Brief, essential points only</div>
+                    </div>
+                  </SelectItem>
                   <SelectItem value="low">
                     <div>
                       <div className="font-medium">Practical</div>

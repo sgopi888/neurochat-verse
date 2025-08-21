@@ -39,10 +39,21 @@ export class AdvancedGPTService {
         return { success: false, error: error.message };
       }
 
+      // Parse structured response if JSON is expected
+      const isStructured = config.schemaHint.includes('JSON');
+      let parsedData = data.response;
+      
+      if (isStructured) {
+        const structuredResponse = this.parseStructuredResponse(data.response);
+        if (structuredResponse) {
+          parsedData = structuredResponse;
+        }
+      }
+
       return { 
         success: true, 
-        data: data.response,
-        structured: config.schemaHint.includes('JSON')
+        data: parsedData,
+        structured: isStructured
       };
     } catch (error) {
       console.error('Advanced GPT service error:', error);
@@ -154,8 +165,10 @@ export class AdvancedGPTService {
   }
 
   // Helper methods
-  private static getToneInstruction(reasoningEffort: 'low' | 'medium' | 'high'): string {
+  private static getToneInstruction(reasoningEffort: 'minimal' | 'low' | 'medium' | 'high'): string {
     switch (reasoningEffort) {
+      case 'minimal':
+        return "Style: very brief, essential points only, minimal explanation.";
       case 'low':
         return "Style: practical, non-esoteric, concrete steps, short cues. Avoid metaphysical/Scripture terms. Keep language plain and actionable.";
       case 'medium':
@@ -187,9 +200,7 @@ export class AdvancedGPTService {
     if (settings.enableWeb) {
       tools.push({ type: "web_search_preview", search_context_size: "low" });
     }
-    if (settings.enableCode) {
-      tools.push({ type: "code_interpreter", container: { type: "auto" } });
-    }
+    // Code interpreter not supported in GPT-5-nano
     return tools;
   }
 
