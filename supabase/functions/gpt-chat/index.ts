@@ -23,8 +23,8 @@ serve(async (req) => {
     console.log(`Making GPT request with provider: ${provider}, model: ${model}`);
     console.log('Processing request with:', { provider, model, verbosity, reasoning, webSearch, codeInterpreter });
     
-    // Auto-activate web search if enabled and not explicitly disabled
-    const shouldUseWebSearch = webSearch || (webSearch !== false && checkShouldUseWebSearch(messages));
+    // Check if web search should be used
+    const useWebSearch = webSearch && checkShouldUseWebSearch(messages, webSearch);
     
     const startTime = Date.now();
 
@@ -34,20 +34,20 @@ serve(async (req) => {
       const aimlApiKey = Deno.env.get('AIMLAPI_KEY');
       if (!aimlApiKey) {
         console.error('AIMLAPI key not found, falling back to OpenAI');
-        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
+        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, useWebSearch, codeInterpreter);
       }
 
       try {
-        const response = await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
+        const response = await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, useWebSearch, codeInterpreter);
         return response; // AIML response already includes response time
       } catch (aimlError) {
         console.error('AIMLAPI error, falling back to OpenAI:', aimlError);
         const fallbackStartTime = Date.now();
-        const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
+        const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, useWebSearch, codeInterpreter);
         return response; // OpenAI response already includes its own response time
       }
     } else {
-      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, shouldUseWebSearch, codeInterpreter);
+      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, useWebSearch, codeInterpreter);
     }
 
   } catch (error) {
@@ -60,18 +60,9 @@ serve(async (req) => {
 });
 
 // Check if web search should be auto-activated based on message content
-function checkShouldUseWebSearch(messages: any[]): boolean {
-  const lastMessage = messages[messages.length - 1];
-  if (!lastMessage || !lastMessage.content) return false;
-  
-  const searchTriggers = [
-    'search online', 'web search', 'latest', 'recent', 'current', 'update this',
-    'what\'s new', 'news', 'today', '2024', '2025', 'recently'
-  ];
-  
-  return searchTriggers.some(trigger => 
-    lastMessage.content.toLowerCase().includes(trigger)
-  );
+function checkShouldUseWebSearch(messages: any[], webSearchEnabled: boolean): boolean {
+  // Simply return the webSearch parameter value - no keyword triggers needed
+  return webSearchEnabled;
 }
 
 async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string, webSearch: boolean, codeInterpreter: boolean): Promise<Response> {
@@ -82,6 +73,22 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     content: msg.content
   }));
   
+  // Add web search status and follow-up questions generation to system prompt
+  let systemPrompt = '';
+  if (webSearch) {
+    systemPrompt += 'Web search is enabled - you can search for current information when needed. ';
+  }
+  if (codeInterpreter) {
+    systemPrompt += 'Code interpreter is available - use it to analyze data and perform calculations when appropriate. ';
+  }
+  
+  if (systemPrompt) {
+    input.unshift({
+      role: 'developer',
+      content: systemPrompt.trim()
+    });
+  }
+
   // Add follow-up questions generation and BMP/HRV analysis instructions
   const lastMessage = input[input.length - 1];
   if (lastMessage && lastMessage.role === 'user') {
@@ -95,7 +102,7 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
                       /\d{4}-\d{2}-\d{2}/.test(lastMessage.content);
     
     if (hasBmpData && codeInterpreter) {
-      additionalInstructions = `\n\nI notice you've shared heart rate or BMP data. Please use the code interpreter tool to analyze this data. Calculate HRV metrics like SDNN, RMSSD, and provide insights about stress and recovery patterns. Show your Python analysis code and explain the results in simple terms.` + additionalInstructions;
+      additionalInstructions = `\n\nI notice you've shared heart rate or BMP data. Please use the code interpreter tool to analyze this data. Calculate HRV metrics like SDNN, RMSSD, and provide insights about stress and recovery patterns. Show your Python analysis code and explain the results in simple terms. Include the analysis results in your main response text.` + additionalInstructions;
     }
     
     input.push({
@@ -151,9 +158,10 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
   const data = await response.json();
   console.log('AIMLAPI GPT-5 response received successfully');
 
-  // Extract text from GPT-5 response format and handle web search results
+  // Extract text from GPT-5 response format and handle web search results + code interpreter
   let outputText = "";
   const sources: any[] = [];
+  let codeInterpreterResults = "";
   
   if (data.output && Array.isArray(data.output)) {
     for (const item of data.output) {
@@ -161,6 +169,24 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
         for (const content of item.content) {
           if (content.text) {
             outputText += content.text;
+          }
+          // Capture code interpreter outputs
+          if (content.type === 'code_interpreter' || content.code_interpreter) {
+            const codeResult = content.code_interpreter || content;
+            if (codeResult.input || codeResult.outputs) {
+              codeInterpreterResults += `\n\n**Code Analysis:**\n`;
+              if (codeResult.input) {
+                codeInterpreterResults += `\`\`\`python\n${codeResult.input}\n\`\`\`\n`;
+              }
+              if (codeResult.outputs && codeResult.outputs.length > 0) {
+                codeInterpreterResults += `**Results:**\n`;
+                for (const output of codeResult.outputs) {
+                  if (output.text) {
+                    codeInterpreterResults += `${output.text}\n`;
+                  }
+                }
+              }
+            }
           }
         }
         
@@ -177,6 +203,11 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
         }
       }
     }
+  }
+  
+  // Append code interpreter results to main output to preserve context
+  if (codeInterpreterResults) {
+    outputText += codeInterpreterResults;
   }
 
   // Parse follow-up questions from the response - comprehensive regex patterns

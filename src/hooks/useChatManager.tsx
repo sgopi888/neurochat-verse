@@ -382,6 +382,21 @@ export const useChatManager = () => {
         .eq('id', currentChatId);
 
       console.log('Meditation script saved to database');
+      
+      // Clear old suggested questions and generate new ones based on meditation
+      setSuggestedQuestions([]);
+      setShowSuggestions(false);
+      
+      // Generate follow-up questions for the meditation
+      setTimeout(() => {
+        setSuggestedQuestions([
+          "Can you guide me through this meditation step by step?",
+          "How often should I practice this meditation?",
+          "What other meditation techniques might complement this one?"
+        ]);
+        setShowSuggestions(true);
+      }, 100);
+      
       setProgress(100);
       toast.success('Your personalized meditation is ready!');
 
