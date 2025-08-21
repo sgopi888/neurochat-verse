@@ -1,73 +1,60 @@
-# Welcome to your Lovable project
+# 🧘 AI Meditation Companion – Powered by GPT-5
 
-## Project info
+A hackathon project built with **GPT-5** to reimagine meditation and wellness through **personalized, multimodal AI guidance**.  
+Built via **Lovable Dev** with a modern stack integrating GPT-5’s reasoning, Supabase, and real-time multimedia.
 
-**URL**: https://lovable.dev/projects/534aeff4-dbfb-4d73-8326-2895cbdc0758
+---
 
-## How can I edit this code?
+## 🌍 Problem
+- Meditation & wellness tools lack deep personalization and adaptive guidance.  
+- Existing apps are either static or limited in multimodal experiences.  
 
-There are several ways of editing your application.
+## 💡 Solution
+- **AI Meditation Companion** that personalizes sessions using GPT-5.  
+- Combines **chat, audio, video, and file uploads** into seamless guided meditation experiences.  
+- Scalable and adaptable for both individuals and enterprises.  
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/534aeff4-dbfb-4d73-8326-2895cbdc0758) and start prompting.
+## ⚙️ Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend**: React + TypeScript + Vite, Tailwind CSS, shadcn/ui (Cards, Buttons, Tabs, Dialogs)  
+- **Backend**: Supabase (Postgres DB, Auth, Edge Functions, Realtime)  
+- **AI Pipeline**: GPT-5 (reasoning, personalization, function calling) + N8N + Vector DB  
+- **Multimedia**: ElevenLabs TTS + Tavus video generation  
+- **UI/UX**: Recharts for visualization, tailwindcss-animate for smooth transitions  
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## ✨ Features
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- 💬 **Real-time meditation chat** with GPT-5 reasoning & context memory  
+- 🎧 **Speech-to-text + TTS** with background music for immersive sessions  
+- 📂 **File uploads** (PDFs, images) integrated into meditation context  
+- 🎥 **Personalized AI video guides** with Tavus avatars  
+- 📱 **Responsive UI / PWA** with light & dark modes  
+- 🔒 **Supabase Auth & RLS** for secure user management  
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📊 Market Potential
+- Global **wellness & mindfulness industry > $100B**  
+- Targeting wellness seekers, therapists, enterprises, and meditation platforms  
+- Differentiated by **GPT-5 reasoning + multimodal UX**, beyond Calm/Headspace  
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🚀 Roadmap
+- 🌐 Multi-language meditation sessions  
+- ⌚ Wearable integrations (Apple Watch, Oura)  
+- 🏢 B2B partnerships & enterprise wellness programs  
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+---
 
-**Edit a file directly in GitHub**
+## 🙌 Team
+Built with ❤️ at [Hackathon Name] using **GPT-5 + Lovable Dev**.  
+- Demo: [Insert Link]  
+- GitHub: [Insert Repo Link]  
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+> **"Meditation reimagined with GPT-5."**
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/534aeff4-dbfb-4d73-8326-2895cbdc0758) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
