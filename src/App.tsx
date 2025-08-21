@@ -103,7 +103,16 @@ function AppContent() {
   // Enhanced handlers that include mobile sidebar management
   const enhancedSendMessage = (text: string) => {
     closeMobileSidebar();
-    handleSendMessage(text);
+    
+    // Auto-inject file content if available
+    let messageWithFile = text;
+    if (fileContent && uploadedFile) {
+      messageWithFile = `[File: ${uploadedFile.name}]\n\n${fileContent}\n\n---\n\nUser query: ${text}`;
+      // Clear file after using it
+      handleClearFile();
+    }
+    
+    handleSendMessage(messageWithFile);
   };
 
   const enhancedChatSelect = (chatId: string) => {
