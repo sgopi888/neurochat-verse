@@ -23,13 +23,17 @@ export class AdvancedGPTService {
     userId?: string
   ): Promise<AdvancedGPTResponse> {
     try {
-      // Create GPT-5-nano compatible request
-      const gpt5Input = createGPT5Input(messages, config);
-
       const { data, error } = await supabase.functions.invoke('gpt-5-chat', {
         body: {
-          model: 'gpt-5-nano',
-          ...gpt5Input,
+          messages: messages.map(msg => ({
+            role: msg.role,
+            content: Array.isArray(msg.content) 
+              ? msg.content.map((c: any) => c.text || c).join('\n')
+              : msg.content
+          })),
+          verbosity: config.verbosityLevel,
+          reasoning: config.reasoningEffort,
+          tools: config.tools,
           userId
         }
       });
@@ -165,10 +169,8 @@ export class AdvancedGPTService {
   }
 
   // Helper methods
-  private static getToneInstruction(reasoningEffort: 'minimal' | 'low' | 'medium' | 'high'): string {
+  private static getToneInstruction(reasoningEffort: 'low' | 'medium' | 'high'): string {
     switch (reasoningEffort) {
-      case 'minimal':
-        return "Style: very brief, essential points only, minimal explanation.";
       case 'low':
         return "Style: practical, non-esoteric, concrete steps, short cues. Avoid metaphysical/Scripture terms. Keep language plain and actionable.";
       case 'medium':
@@ -181,7 +183,17 @@ export class AdvancedGPTService {
   }
 
   private static getSchemaHint(settings: AdvancedSettings): string {
-    const keys = ["meditation", "short_meditation", "followup_questions"];
+    if (!settings.enableMeditation) {
+      const keys = ["chat", "followup_questions"];
+      if (settings.enableWeb) keys.push("fresh_wisdom", "sources");
+      return `Return output strictly as JSON with keys: ${keys.join(", ")}. Do not include any other keys.` +
+        (settings.enableWeb ? " For sources, output an array of objects with fields: title, url, published_date (YYYY-MM-DD). Use the web_search tool to cite 2–3 high-quality, recent sources." : "");
+    }
+    
+    const keys = settings.shortMeditation 
+      ? ["short_meditation", "followup_questions"]
+      : ["meditation", "short_meditation", "followup_questions"];
+      
     if (settings.enableWeb) {
       keys.push("fresh_wisdom", "sources");
     }

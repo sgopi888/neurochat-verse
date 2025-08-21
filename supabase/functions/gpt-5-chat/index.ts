@@ -13,13 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    const { model, input, text, reasoning, tools, tool_choice, userId } = await req.json();
+    const { messages, verbosity, reasoning, tools, userId } = await req.json();
     
-    console.log('GPT-5 Chat request:', { model, userId, toolsCount: tools?.length });
+    console.log('GPT-5 Chat request:', { userId, toolsCount: tools?.length, verbosity, reasoning });
 
-    if (!input || !Array.isArray(input)) {
+    if (!messages || !Array.isArray(messages)) {
       return new Response(
-        JSON.stringify({ error: 'Input array is required' }),
+        JSON.stringify({ error: 'Messages array is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -33,32 +33,14 @@ serve(async (req) => {
       );
     }
 
-    // Use GPT-5-nano as specified
-    const modelName = model || 'gpt-5-nano-2025-08-07';
-    
-    // Build request body for OpenAI GPT-5 format
+    // Build request body for standard OpenAI chat completions
     const requestBody: any = {
-      model: modelName,
-      messages: input.map((msg: any) => ({
-        role: msg.role,
-        content: Array.isArray(msg.content) 
-          ? msg.content.map((c: any) => c.type === 'input_text' ? c.text : c).join('\n')
-          : msg.content
-      })),
+      model: 'gpt-5-nano-2025-08-07',
+      messages: messages,
       max_completion_tokens: 2000,
-      // Note: GPT-5 models don't support temperature parameter
     };
 
-    // Add GPT-5 specific parameters correctly
-    if (text?.verbosity) {
-      requestBody.text = { verbosity: text.verbosity };
-    }
-
-    if (reasoning?.effort) {
-      requestBody.reasoning = { effort: reasoning.effort };
-    }
-
-    // Add tools if provided - GPT-5-nano doesn't support code_interpreter
+    // Add tools if provided - only web search supported
     if (tools && tools.length > 0) {
       const processedTools = [];
       
@@ -73,23 +55,22 @@ serve(async (req) => {
                 type: 'object',
                 properties: {
                   query: { type: 'string', description: 'Search query' }
-                }
+                },
+                required: ['query']
               }
             }
           });
         }
-        // Skip code_interpreter for GPT-5-nano as it's not supported
       }
       
       if (processedTools.length > 0) {
         requestBody.tools = processedTools;
-        if (tool_choice) {
-          requestBody.tool_choice = tool_choice;
-        }
+        requestBody.tool_choice = 'auto';
       }
     }
 
-    console.log('Calling OpenAI with model:', modelName);
+    console.log('Calling OpenAI with model: gpt-5-nano-2025-08-07');
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

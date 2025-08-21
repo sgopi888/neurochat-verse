@@ -168,6 +168,7 @@ export const useChatManager = () => {
       }
 
       // Get AI response using advanced service if enabled
+      const { settings } = useAdvancedSettings();
       let response;
       if (settings.useAdvancedMode) {
         response = await AdvancedGPTService.enhancedMeditationGeneration(
@@ -298,6 +299,7 @@ export const useChatManager = () => {
       // Generate meditation script
       toast.info('Creating your personalized meditation...');
       
+      const { settings } = useAdvancedSettings();
       const meditationResponse = await AdvancedGPTService.enhancedMeditationGeneration(
         keywords, 
         messages, 

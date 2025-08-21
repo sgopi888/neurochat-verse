@@ -33,6 +33,32 @@ const AdvancedSettings: React.FC = () => {
               Feature Toggles
             </h4>
             
+            {/* Meditation Generation Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div>
+                  <Label className="text-sm">Meditation Generation</Label>
+                  <div className="text-xs text-muted-foreground">
+                    Generate structured meditation scripts
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={settings.enableMeditation}
+                onCheckedChange={(checked) => updateSettings({ enableMeditation: checked })}
+              />
+            </div>
+
+            {settings.enableMeditation && (
+              <div className="flex items-center justify-between ml-4">
+                <Label className="text-sm">1-Minute Meditation</Label>
+                <Switch
+                  checked={settings.shortMeditation}
+                  onCheckedChange={(checked) => updateSettings({ shortMeditation: checked })}
+                />
+              </div>
+            )}
+
             {/* Web Search Toggle */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -80,14 +106,13 @@ const AdvancedSettings: React.FC = () => {
               <Label className="text-sm">Response Length</Label>
               <Select
                 value={settings.verbosityLevel}
-                onValueChange={(value: 'low' | 'medium' | 'high') => updateSettings({ verbosityLevel: value })}
+                onValueChange={(value: 'low' | 'high') => updateSettings({ verbosityLevel: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select verbosity" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Concise</SelectItem>
-                  <SelectItem value="medium">Moderate</SelectItem>
                   <SelectItem value="high">Detailed</SelectItem>
                 </SelectContent>
               </Select>
@@ -98,18 +123,12 @@ const AdvancedSettings: React.FC = () => {
               <Label className="text-sm">Reasoning Depth</Label>
               <Select
                 value={settings.reasoningEffort}
-                onValueChange={(value: 'minimal' | 'low' | 'medium' | 'high') => updateSettings({ reasoningEffort: value })}
+                onValueChange={(value: 'low' | 'medium' | 'high') => updateSettings({ reasoningEffort: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select reasoning effort" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="minimal">
-                    <div>
-                      <div className="font-medium">Minimal</div>
-                      <div className="text-xs text-muted-foreground">Brief, essential points only</div>
-                    </div>
-                  </SelectItem>
                   <SelectItem value="low">
                     <div>
                       <div className="font-medium">Practical</div>

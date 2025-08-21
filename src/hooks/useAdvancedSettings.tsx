@@ -1,24 +1,30 @@
 import { useState, useEffect } from 'react';
 
 export interface AdvancedSettings {
-  // Feature toggles - meditation is always enabled
+  // Feature toggles
   enableWeb: boolean;
   enableCode: boolean;
+  enableMeditation: boolean;
   
-  // AI Settings - matching GPT-5 API
-  verbosityLevel: 'low' | 'medium' | 'high';
-  reasoningEffort: 'minimal' | 'low' | 'medium' | 'high';
+  // Meditation settings
+  shortMeditation: boolean; // true = 1 min, false = full length
   
-  // Rollback option
+  // AI Settings - matching Python reference
+  verbosityLevel: 'low' | 'high';
+  reasoningEffort: 'low' | 'medium' | 'high';
+  
+  // Mode toggle
   useAdvancedMode: boolean;
 }
 
 const DEFAULT_SETTINGS: AdvancedSettings = {
-  enableWeb: true,
-  enableCode: false, // Code interpreter not supported in GPT-5-nano
+  enableWeb: false,
+  enableCode: false,
+  enableMeditation: false,
+  shortMeditation: false, // Full meditation by default
   verbosityLevel: 'low',
   reasoningEffort: 'medium',
-  useAdvancedMode: true,
+  useAdvancedMode: false,
 };
 
 export const useAdvancedSettings = () => {
@@ -59,8 +65,6 @@ export const useAdvancedSettings = () => {
     if (!settings.useAdvancedMode) return '';
     
     switch (settings.reasoningEffort) {
-      case 'minimal':
-        return "Style: very brief, essential points only, minimal explanation.";
       case 'low':
         return "Style: practical, non-esoteric, concrete steps, short cues. Avoid metaphysical/Scripture terms. Keep language plain and actionable.";
       case 'medium':
@@ -73,7 +77,14 @@ export const useAdvancedSettings = () => {
   };
 
   const getRequiredKeys = () => {
-    const keys = ["meditation", "short_meditation", "followup_questions"];
+    if (!settings.enableMeditation) {
+      return ["chat", "followup_questions"];
+    }
+    
+    const keys = settings.shortMeditation 
+      ? ["short_meditation", "followup_questions"]
+      : ["meditation", "short_meditation", "followup_questions"];
+      
     if (settings.enableWeb && settings.useAdvancedMode) {
       keys.push("fresh_wisdom", "sources");
     }
@@ -100,7 +111,6 @@ export const useAdvancedSettings = () => {
     if (settings.enableWeb) {
       tools.push({ type: "web_search_preview", search_context_size: "low" });
     }
-    // Code interpreter not supported in GPT-5-nano, so we skip it
     return tools;
   };
 
