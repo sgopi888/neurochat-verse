@@ -23,6 +23,9 @@ interface ChatLayoutProps {
   isLoading: boolean;
   suggestedQuestions: string[];
   showSuggestions: boolean;
+  // New props for sleek suggested questions
+  suggestedQuestionsList?: string[];
+  showSuggestedQuestions?: boolean;
   onSendMessage: (text: string) => void;
   onSuggestionClick: (question: string) => void;
   onChatSelect: (chatId: string) => void;
@@ -90,6 +93,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   isLoading,
   suggestedQuestions,
   showSuggestions,
+  suggestedQuestionsList,
+  showSuggestedQuestions,
   onSendMessage,
   onSuggestionClick,
   onChatSelect,
@@ -215,6 +220,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
             />
           }
           onSuggestionClick={onSuggestionClick}
+          suggestedQuestionsList={suggestedQuestionsList}
+          showSuggestedQuestions={showSuggestedQuestions}
           isMobile={isMobile}
           onToggleMobileSidebar={onToggleMobileSidebar}
           isMobileSidebarOpen={isMobileSidebarOpen}

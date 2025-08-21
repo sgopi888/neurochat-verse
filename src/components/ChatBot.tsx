@@ -7,6 +7,7 @@ import FileUpload from './FileUpload';
 import WebSearchToggle from './WebSearchToggle';
 import CodeInterpreterToggle from './CodeInterpreterToggle';
 import ProcessingSteps from './ProcessingSteps';
+import SleekSuggestedQuestions from './SleekSuggestedQuestions';
 
 interface Message {
   id: string;
@@ -27,6 +28,9 @@ interface ChatBotProps {
   loadingIndicator?: React.ReactNode;
   suggestedQuestions?: React.ReactNode;
   onSuggestionClick?: (question: string) => void;
+  // New props for sleek suggested questions
+  suggestedQuestionsList?: string[];
+  showSuggestedQuestions?: boolean;
   isMobile?: boolean;
   onToggleMobileSidebar?: () => void;
   isMobileSidebarOpen?: boolean;
@@ -59,6 +63,8 @@ const ChatBot: React.FC<ChatBotProps> = ({
   loadingIndicator,
   suggestedQuestions,
   onSuggestionClick,
+  suggestedQuestionsList = [],
+  showSuggestedQuestions = false,
   isMobile = false,
   onToggleMobileSidebar,
   isMobileSidebarOpen = false,
@@ -256,8 +262,15 @@ const ChatBot: React.FC<ChatBotProps> = ({
           />
         )}
 
-        {/* Only show suggestions when not loading and not on mobile with sidebar open */}
-        {!isLoading && (!isMobile || !isMobileSidebarOpen) && clonedSuggestedQuestions}
+        {/* Show new sleek suggested questions */}
+        <SleekSuggestedQuestions
+          questions={suggestedQuestionsList}
+          onQuestionClick={handleSuggestionClick}
+          isVisible={showSuggestedQuestions && !isLoading && (!isMobile || !isMobileSidebarOpen)}
+        />
+
+        {/* Fallback for old suggested questions component */}
+        {!showSuggestedQuestions && !isLoading && (!isMobile || !isMobileSidebarOpen) && clonedSuggestedQuestions}
 
         <div ref={messagesEndRef} />
       </div>

@@ -26,6 +26,8 @@ interface EnhancedChatBotProps {
   loadingIndicator?: React.ReactNode;
   suggestedQuestions?: React.ReactNode;
   onSuggestionClick?: (question: string) => void;
+  suggestedQuestionsList?: string[];
+  showSuggestedQuestions?: boolean;
   isMobile?: boolean;
   onToggleMobileSidebar?: () => void;
   isMobileSidebarOpen?: boolean;
@@ -59,6 +61,8 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
     chunksRetrieved,
     totalTokens,
     progress,
+    suggestedQuestionsList,
+    showSuggestedQuestions,
     ...chatBotProps 
   } = props;
 
@@ -80,6 +84,8 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
           chunksRetrieved={chunksRetrieved}
           totalTokens={totalTokens}
           progress={progress}
+          suggestedQuestionsList={suggestedQuestionsList}
+          showSuggestedQuestions={showSuggestedQuestions}
         />
       </div>
     </div>

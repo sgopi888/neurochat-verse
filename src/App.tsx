@@ -104,15 +104,40 @@ function AppContent() {
   const enhancedSendMessage = (text: string) => {
     closeMobileSidebar();
     
-    // Auto-inject file content if available
-    let messageWithFile = text;
+    // Auto-inject file content if available but keep user message clean
     if (fileContent && uploadedFile) {
-      messageWithFile = `[File: ${uploadedFile.name}]\n\n${fileContent}\n\n---\n\nUser query: ${text}`;
-      // Clear file after using it
+      const excerpt = fileContent.length > 100 ? fileContent.substring(0, 100) + "..." : fileContent;
+      const userDisplayText = `[File: ${uploadedFile.name}] ${excerpt}\n\n${text}`;
+      const fullContextText = `[File: ${uploadedFile.name}]\n\n${fileContent}\n\n---\n\nUser query: ${text}`;
+      
+      // Update the user message after sending to show excerpt
+      handleSendMessage(fullContextText);
+      
+      // Update the last user message to show excerpt after a small delay
+      setTimeout(() => {
+        setMessages(prev => {
+          const updated = [...prev];
+          let lastUserMsgIndex = -1;
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].isUser) {
+              lastUserMsgIndex = i;
+              break;
+            }
+          }
+          if (lastUserMsgIndex !== -1) {
+            updated[lastUserMsgIndex] = {
+              ...updated[lastUserMsgIndex],
+              text: userDisplayText
+            };
+          }
+          return updated;
+        });
+      }, 100);
+      
       handleClearFile();
+    } else {
+      handleSendMessage(text);
     }
-    
-    handleSendMessage(messageWithFile);
   };
 
   const enhancedChatSelect = (chatId: string) => {
@@ -180,6 +205,8 @@ function AppContent() {
       isLoading={isLoading || isGeneratingMeditation}
       suggestedQuestions={suggestedQuestions}
       showSuggestions={showSuggestions}
+      suggestedQuestionsList={suggestedQuestions}
+      showSuggestedQuestions={showSuggestions}
       onSendMessage={enhancedSendMessage}
       onSuggestionClick={enhancedSuggestionClick}
       onChatSelect={enhancedChatSelect}
