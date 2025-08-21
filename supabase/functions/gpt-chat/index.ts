@@ -36,19 +36,12 @@ serve(async (req) => {
 
       try {
         const response = await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, webSearch, codeInterpreter);
-        const endTime = Date.now();
-        const responseTime = endTime - startTime;
-        
-        // Add response time to the response
-        const responseData = await response.json();
-        responseData.responseTime = responseTime;
-        
-        return new Response(JSON.stringify(responseData), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return response; // AIML response already includes response time
       } catch (aimlError) {
         console.error('AIMLAPI error, falling back to OpenAI:', aimlError);
-        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+        const fallbackStartTime = Date.now();
+        const response = await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
+        return response; // OpenAI response already includes its own response time
       }
     } else {
       return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch, codeInterpreter);
@@ -76,7 +69,7 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
   if (lastMessage && lastMessage.role === 'user') {
     input.push({
       role: 'user',
-      content: `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up reflective questions based on our conversation so far. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`
+      content: `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up questions that the user might want to ask next based on our conversation. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`
     });
     // Remove the duplicate user message
     input.splice(-2, 1);
@@ -113,7 +106,15 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
   });
 
   if (!response.ok) {
-    throw new Error(`AIMLAPI error: ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+    console.error('AIMLAPI error:', response.status, errorData);
+    
+    // Check for quota exhaustion
+    if (errorData.error?.message?.includes('exhausted') || errorData.error?.message?.includes('limit')) {
+      console.error('AIMLAPI quota exhausted, will fallback to OpenAI');
+    }
+    
+    throw new Error(`AIMLAPI error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
   }
 
   const data = await response.json();
@@ -185,49 +186,49 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     throw new Error('OpenAI API key not configured');
   }
 
-  // Convert messages to OpenAI format and add follow-up questions generation
-  const openaiMessages = messages.map(msg => ({
+  // Convert messages to OpenAI GPT-5 format (similar to AIML)
+  const input = messages.map(msg => ({
     role: msg.role,
     content: msg.content
   }));
 
-  // Add follow-up questions instruction to the last user message
-  if (openaiMessages.length > 0 && openaiMessages[openaiMessages.length - 1].role === 'user') {
-    const lastMessage = openaiMessages[openaiMessages.length - 1];
-    lastMessage.content = `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up reflective questions based on our conversation so far. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`;
+  // Add follow-up questions generation to the last user message
+  const lastMessage = input[input.length - 1];
+  if (lastMessage && lastMessage.role === 'user') {
+    input.push({
+      role: 'user',
+      content: `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up questions that the user might want to ask next based on our conversation. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`
+    });
+    // Remove the duplicate user message
+    input.splice(-2, 1);
   }
 
   // Build tools array for web search and code interpreter
   const tools = [];
   if (webSearch) {
-    tools.push({ type: "web_search_preview" });
+    tools.push({ type: "web_search_preview", search_context_size: "low" });
   }
   if (codeInterpreter) {
-    tools.push({ type: "code_interpreter" });
+    tools.push({ type: "code_interpreter", container: { type: "auto" } });
   }
 
   const requestBody: any = {
     model: model,
-    messages: openaiMessages,
-    max_completion_tokens: 1000,
-    stream: false
+    input,
+    text: { verbosity },
+    reasoning: { effort: reasoning },
   };
 
-  // Add tools if enabled (OpenAI format)
+  // Add tools if enabled
   if (tools.length > 0) {
-    requestBody.tools = tools.map(tool => {
-      if (tool.type === "web_search_preview") {
-        return { type: "web_search" };
-      }
-      if (tool.type === "code_interpreter") {
-        return { type: "code_interpreter" };
-      }
-      return tool;
-    });
+    requestBody.tools = tools;
+    requestBody.tool_choice = "auto";
   }
 
-  // Use OpenAI Chat Completions API
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  console.log('Making OpenAI GPT-5 request with body:', JSON.stringify(requestBody, null, 2));
+
+  // Use OpenAI Responses API (GPT-5 format)
+  const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openAIApiKey}`,
@@ -249,11 +250,42 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
   }
 
   const data = await response.json();
-  console.log('OpenAI response received successfully');
+  console.log('OpenAI GPT-5 response received successfully');
 
-  // Extract text content from OpenAI Chat Completions response
-  let outputText = data.choices[0]?.message?.content || "";
+  // Extract text from GPT-5 response format (same as AIML)
+  let outputText = "";
   const sources: any[] = [];
+  
+  if (data.output && Array.isArray(data.output)) {
+    for (const item of data.output) {
+      if (item.type === "message" && item.content && Array.isArray(item.content)) {
+        for (const content of item.content) {
+          if (content.type === "output_text" && content.text) {
+            outputText += content.text;
+          }
+        }
+        
+        // Extract citations if present
+        if (item.content[0]?.annotations) {
+          for (const annotation of item.content[0].annotations) {
+            if (annotation.type === 'url_citation') {
+              sources.push({
+                url: annotation.url,
+                title: annotation.title || annotation.url
+              });
+            }
+          }
+        }
+      }
+      // Handle code interpreter outputs
+      else if (item.type === "code_interpreter_call") {
+        console.log('Code executed:', item.code);
+        if (item.outputs) {
+          console.log('Code outputs:', item.outputs);
+        }
+      }
+    }
+  }
 
   if (!outputText) {
     console.error('No response content from OpenAI:', data);
@@ -276,22 +308,22 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     
     followUpQuestions.push(...questions);
     
-  // Remove follow-up questions section from main response
-  outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/, '').trim();
-}
-
-const endTime = Date.now();
-const responseTime = endTime - startTime;
-
-return new Response(
-  JSON.stringify({ 
-    response: outputText,
-    sources,
-    followUpQuestions,
-    responseTime
-  }),
-  { 
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Remove follow-up questions section from main response
+    outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/, '').trim();
   }
-);
+
+  const endTime = Date.now();
+  const responseTime = endTime - startTime;
+
+  return new Response(
+    JSON.stringify({ 
+      response: outputText,
+      sources,
+      followUpQuestions,
+      responseTime
+    }),
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
 }
