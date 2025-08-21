@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy, Volume2, User, Bot, Pause, Loader2 } from 'lucide-react';
+import { Copy, Volume2, User, Bot, Pause, Loader2, ExternalLink } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: {
@@ -9,6 +9,7 @@ interface MessageBubbleProps {
     text: string;
     isUser: boolean;
     timestamp: Date;
+    sources?: { url: string; title: string }[];
   };
   onCopy: (text: string) => void;
   onSpeak: (messageId: string, message: any) => void;
@@ -89,6 +90,27 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               {message.text}
             </p>
           </div>
+
+          {/* Sources - Show if available and not user message */}
+          {!message.isUser && message.sources && message.sources.length > 0 && (
+            <div className="mb-3 pt-2 border-t border-border/50">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Sources:</p>
+              <div className="flex flex-wrap gap-1">
+                {message.sources.map((source, index) => (
+                  <a
+                    key={index}
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs bg-muted/50 hover:bg-muted px-2 py-1 rounded-md transition-colors duration-200 text-muted-foreground hover:text-foreground"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    <span className="max-w-[200px] truncate">{source.title}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${

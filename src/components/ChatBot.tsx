@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import FileUpload from './FileUpload';
+import WebSearchToggle from './WebSearchToggle';
 
 interface Message {
   id: string;
@@ -274,6 +275,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
               disabled={isLoading}
             />
             <div className="absolute right-2 top-2 flex items-center gap-1">
+              <WebSearchToggle disabled={isLoading} />
               <FileUpload
                 onFileContent={onFileContent}
                 onClearFile={onClearFile}

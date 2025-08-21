@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano', verbosity = 'low', reasoning = 'minimal' } = await req.json();
+    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano', verbosity = 'low', reasoning = 'minimal', webSearch = false } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -32,13 +32,13 @@ serve(async (req) => {
       }
 
       try {
-        return await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning);
+        return await makeAIMLRequest(messages, model, aimlApiKey, verbosity, reasoning, webSearch);
       } catch (aimlError) {
         console.error('AIMLAPI error, falling back to OpenAI:', aimlError);
-        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning);
+        return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch);
       }
     } else {
-      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning);
+      return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, webSearch);
     }
 
   } catch (error) {
@@ -50,25 +50,32 @@ serve(async (req) => {
   }
 });
 
-async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string): Promise<Response> {
+async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: string, verbosity: string, reasoning: string, webSearch: boolean): Promise<Response> {
   // Convert messages to GPT-5 format
   const input = messages.map(msg => ({
     role: msg.role === 'system' ? 'developer' : msg.role,
     content: msg.content
   }));
   
+  const requestBody: any = {
+    model: 'gpt-5-nano',
+    input,
+    text: { verbosity },
+    reasoning: { effort: reasoning },
+  };
+
+  // Add web search tools if enabled
+  if (webSearch) {
+    requestBody.tools = [{ type: "web_search_preview" }];
+  }
+
   const response = await fetch('https://api.aimlapi.com/v1/responses', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${aimlApiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'gpt-5-nano',
-      input,
-      text: { verbosity },
-      reasoning: { effort: reasoning },
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -78,8 +85,10 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
   const data = await response.json();
   console.log('AIMLAPI GPT-5 response received successfully');
 
-  // Extract text from GPT-5 response format
+  // Extract text from GPT-5 response format and handle web search results
   let outputText = "";
+  const sources: any[] = [];
+  
   if (data.output && Array.isArray(data.output)) {
     for (const item of data.output) {
       if (item.content && Array.isArray(item.content)) {
@@ -88,19 +97,34 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
             outputText += content.text;
           }
         }
+        
+        // Extract citations if present
+        if (item.content[0]?.annotations) {
+          for (const annotation of item.content[0].annotations) {
+            if (annotation.type === 'url_citation') {
+              sources.push({
+                url: annotation.url,
+                title: annotation.title || annotation.url
+              });
+            }
+          }
+        }
       }
     }
   }
 
   return new Response(
-    JSON.stringify({ response: outputText }),
+    JSON.stringify({ 
+      response: outputText,
+      sources: sources.length > 0 ? sources : undefined
+    }),
     { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     }
   );
 }
 
-async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: string | undefined, verbosity: string, reasoning: string): Promise<Response> {
+async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: string | undefined, verbosity: string, reasoning: string, webSearch: boolean): Promise<Response> {
   if (!openAIApiKey) {
     console.error('OpenAI API key not found');
     return new Response(
@@ -118,6 +142,18 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     content: msg.content
   }));
 
+  const requestBody: any = {
+    model: 'gpt-5-nano-2025-08-07',
+    input,
+    text: { verbosity },
+    reasoning: { effort: reasoning },
+  };
+
+  // Add web search tools if enabled
+  if (webSearch) {
+    requestBody.tools = [{ type: "web_search_preview" }];
+  }
+
   // Use GPT-5 responses API for gpt-5-nano
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -125,12 +161,7 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
       'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'gpt-5-nano-2025-08-07',
-      input,
-      text: { verbosity },
-      reasoning: { effort: reasoning },
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -148,14 +179,28 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
   const data = await response.json();
   console.log('OpenAI GPT-5 response received successfully');
 
-  // Extract text from GPT-5 response format
+  // Extract text from GPT-5 response format and handle web search results
   let outputText = "";
+  const sources: any[] = [];
+  
   if (data.output && Array.isArray(data.output)) {
     for (const item of data.output) {
       if (item.content && Array.isArray(item.content)) {
         for (const content of item.content) {
           if (content.text) {
             outputText += content.text;
+          }
+        }
+        
+        // Extract citations if present
+        if (item.content[0]?.annotations) {
+          for (const annotation of item.content[0].annotations) {
+            if (annotation.type === 'url_citation') {
+              sources.push({
+                url: annotation.url,
+                title: annotation.title || annotation.url
+              });
+            }
           }
         }
       }
@@ -171,7 +216,10 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
   }
 
   return new Response(
-    JSON.stringify({ response: outputText }),
+    JSON.stringify({ 
+      response: outputText,
+      sources: sources.length > 0 ? sources : undefined
+    }),
     { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     }

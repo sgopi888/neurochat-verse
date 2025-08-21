@@ -11,6 +11,7 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  sources?: { url: string; title: string }[];
 }
 
 interface ChatMode {
@@ -175,7 +176,8 @@ export const useChatManager = () => {
         id: (Date.now() + 1).toString(),
         text: response.data || 'I understand. Please tell me more.',
         isUser: false,
-        timestamp: new Date()
+        timestamp: new Date(),
+        sources: response.sources
       };
 
       // Add AI message to state immediately

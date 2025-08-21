@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { GPTService } from '@/services/gptService';
 
 interface AIConfig {
@@ -9,6 +10,7 @@ interface AIConfig {
   model: 'gpt-5-nano';
   verbosity: 'low' | 'medium' | 'high';
   reasoning: 'minimal' | 'low' | 'medium' | 'high';
+  webSearch: boolean;
 }
 
 export const AISettings = () => {
@@ -16,7 +18,8 @@ export const AISettings = () => {
     provider: 'aiml', 
     model: 'gpt-5-nano',
     verbosity: 'low',
-    reasoning: 'minimal'
+    reasoning: 'minimal',
+    webSearch: false
   });
 
   useEffect(() => {
@@ -41,6 +44,12 @@ export const AISettings = () => {
 
   const handleReasoningChange = (reasoning: 'minimal' | 'low' | 'medium' | 'high') => {
     const newConfig = { ...config, reasoning };
+    setConfig(newConfig);
+    GPTService.setConfig(newConfig);
+  };
+
+  const handleWebSearchChange = (webSearch: boolean) => {
+    const newConfig = { ...config, webSearch };
     setConfig(newConfig);
     GPTService.setConfig(newConfig);
   };
@@ -94,6 +103,22 @@ export const AISettings = () => {
               <SelectItem value="high">High (Most Thorough)</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="websearch-toggle" className="text-sm font-medium">
+              Web Search
+            </Label>
+            <Switch
+              id="websearch-toggle"
+              checked={config.webSearch}
+              onCheckedChange={handleWebSearchChange}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Allow GPT-5 to search the web for current information before responding
+          </p>
         </div>
 
         <div className="text-sm text-muted-foreground">
