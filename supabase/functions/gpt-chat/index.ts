@@ -64,12 +64,25 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     content: msg.content
   }));
   
-  // Add follow-up questions generation to the system message
+  // Add follow-up questions generation and BMP/HRV analysis instructions
   const lastMessage = input[input.length - 1];
   if (lastMessage && lastMessage.role === 'user') {
+    let additionalInstructions = `\n\nAfter your main response, also suggest 3 follow-up questions that the user might want to ask next based on our conversation. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`;
+    
+    // Check if user provided BMP/HRV data and code interpreter is enabled
+    const hasBmpData = lastMessage.content.toLowerCase().includes('bmp') || 
+                      lastMessage.content.toLowerCase().includes('hrv') || 
+                      lastMessage.content.toLowerCase().includes('timestamp') ||
+                      /\d+\s*bpm/i.test(lastMessage.content) ||
+                      /\d{4}-\d{2}-\d{2}/.test(lastMessage.content);
+    
+    if (hasBmpData && codeInterpreter) {
+      additionalInstructions = `\n\nI notice you've shared heart rate or BMP data. Please use the code interpreter tool to analyze this data. Calculate HRV metrics like SDNN, RMSSD, and provide insights about stress and recovery patterns. Show your Python analysis code and explain the results in simple terms.` + additionalInstructions;
+    }
+    
     input.push({
       role: 'user',
-      content: `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up questions that the user might want to ask next based on our conversation. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`
+      content: `${lastMessage.content}${additionalInstructions}`
     });
     // Remove the duplicate user message
     input.splice(-2, 1);
@@ -148,22 +161,23 @@ async function makeAIMLRequest(messages: any[], model: string, aimlApiKey: strin
     }
   }
 
-  // Parse follow-up questions from the response
+  // Parse follow-up questions from the response - improved regex
   const followUpQuestions: string[] = [];
-  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/);
+  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/);
   
   if (followUpMatch) {
     const questionsText = followUpMatch[1];
     const questions = questionsText.split('\n')
       .filter(line => line.trim().match(/^\d+\.\s/))
       .map(line => line.replace(/^\d+\.\s/, '').trim())
-      .filter(q => q.length > 0);
+      .filter(q => q.length > 0)
+      .slice(0, 3); // Ensure exactly 3 questions
     
     followUpQuestions.push(...questions);
     
-  // Remove follow-up questions section from main response
-  outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/, '').trim();
-}
+    // Remove follow-up questions section from main response - improved regex
+    outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/g, '').trim();
+  }
 
 const endTime = Date.now();
 const responseTime = endTime - startTime;
@@ -192,12 +206,25 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     content: msg.content
   }));
 
-  // Add follow-up questions generation to the last user message
+  // Add follow-up questions generation and BMP/HRV analysis instructions  
   const lastMessage = input[input.length - 1];
   if (lastMessage && lastMessage.role === 'user') {
+    let additionalInstructions = `\n\nAfter your main response, also suggest 3 follow-up questions that the user might want to ask next based on our conversation. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`;
+    
+    // Check if user provided BMP/HRV data and code interpreter is enabled
+    const hasBmpData = lastMessage.content.toLowerCase().includes('bmp') || 
+                      lastMessage.content.toLowerCase().includes('hrv') || 
+                      lastMessage.content.toLowerCase().includes('timestamp') ||
+                      /\d+\s*bpm/i.test(lastMessage.content) ||
+                      /\d{4}-\d{2}-\d{2}/.test(lastMessage.content);
+    
+    if (hasBmpData && codeInterpreter) {
+      additionalInstructions = `\n\nI notice you've shared heart rate or BMP data. Please use the code interpreter tool to analyze this data. Calculate HRV metrics like SDNN, RMSSD, and provide insights about stress and recovery patterns. Show your Python analysis code and explain the results in simple terms.` + additionalInstructions;
+    }
+    
     input.push({
       role: 'user',
-      content: `${lastMessage.content}\n\nAfter your main response, also suggest 3 follow-up questions that the user might want to ask next based on our conversation. Format them as: \n\n**Follow-up Questions:**\n1. [question 1]\n2. [question 2]\n3. [question 3]`
+      content: `${lastMessage.content}${additionalInstructions}`
     });
     // Remove the duplicate user message
     input.splice(-2, 1);
@@ -295,21 +322,22 @@ async function makeOpenAIRequest(messages: any[], model: string, openAIApiKey: s
     );
   }
 
-  // Parse follow-up questions from OpenAI response
+  // Parse follow-up questions from OpenAI response - improved regex
   const followUpQuestions: string[] = [];
-  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/);
+  const followUpMatch = outputText.match(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/);
   
   if (followUpMatch) {
     const questionsText = followUpMatch[1];
     const questions = questionsText.split('\n')
       .filter(line => line.trim().match(/^\d+\.\s/))
       .map(line => line.replace(/^\d+\.\s/, '').trim())
-      .filter(q => q.length > 0);
+      .filter(q => q.length > 0)
+      .slice(0, 3); // Ensure exactly 3 questions
     
     followUpQuestions.push(...questions);
     
-    // Remove follow-up questions section from main response
-    outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\n((?:\d+\.\s.+\n?)+)/, '').trim();
+    // Remove follow-up questions section from main response - improved regex
+    outputText = outputText.replace(/\*\*Follow-up Questions:\*\*\s*\n((?:\s*\d+\.\s*.+\s*\n?)*)/g, '').trim();
   }
 
   const endTime = Date.now();
