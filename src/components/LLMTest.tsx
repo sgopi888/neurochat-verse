@@ -100,7 +100,7 @@ export default function LLMTest() {
         });
       }
 
-      // Step 3: Get RAG Chunks
+      // Step 3: Get RAG Chunks (Direct webhook call like working Index.tsx)
       addStep({
         id: 'chunks',
         title: 'Retrieving Knowledge Chunks',
@@ -108,7 +108,29 @@ export default function LLMTest() {
         timestamp: new Date()
       });
 
-      const chunks = await GPTService.getRagChunks(userQuery, undefined, 'rag');
+      const WEBHOOK_URL = "https://sreen8n.app.n8n.cloud/webhook/neuroneuro";
+      let chunks: string[] = [];
+      
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_query: userQuery, sessionId: "user_123" }),
+        });
+
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("application/json")) {
+          const data = await res.json();
+          const reply = typeof data === "string" ? data : (data?.reply || data?.message || JSON.stringify(data));
+          chunks = [reply]; // Treat the response as a single chunk
+        } else {
+          const reply = await res.text();
+          chunks = [reply];
+        }
+      } catch (error) {
+        console.error("Webhook error:", error);
+        chunks = [];
+      }
       
       updateStep('chunks', {
         status: 'completed',
