@@ -225,7 +225,7 @@ Please create a healing meditation that addresses their specific needs.`
     return this.callGPT(messages, userId);
   }
 
-  static async getRagChunks(userMessage: string, userId?: string): Promise<any[]> {
+  static async getRagChunks(userMessage: string, userId?: string): Promise<string[]> {
     const config = this.getConfig();
     if (config.mode !== 'rag') return [];
 
@@ -256,36 +256,22 @@ Please create a healing meditation that addresses their specific needs.`
         }
       }
 
-      // Step 2: Call n8n for RAG retrieval
-      console.log('🎯 RAG: Calling n8n with query:', searchQuery);
-      const { data: chunksData, error } = await supabase.functions.invoke('chunks-retrieval', {
-        body: {
-          userMessage: searchQuery, // Pass the extracted concepts as userMessage
-          sessionId: `user_${userId}_${Date.now()}`
-        }
+      // Step 2: Call n8n directly (like working code)
+      console.log('🎯 RAG: Calling n8n directly with query:', searchQuery);
+      const res = await fetch("https://sreen8n.app.n8n.cloud/webhook/neuroneuro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_query: searchQuery,   // n8n expects this
+          sessionId: `user_${userId || 'anon'}_${Date.now()}`
+        })
       });
 
-      if (error) {
-        console.error('❌ RAG: Chunks retrieval error:', error);
-        return [];
-      }
-
-      // Step 3: Extract chunks from response
-      let chunks: string[] = [];
-      if (chunksData) {
-        if (Array.isArray(chunksData.chunks)) {
-          chunks = chunksData.chunks;
-        } else if (Array.isArray(chunksData.reply)) {
-          chunks = chunksData.reply;
-        } else if (typeof chunksData.reply === 'string') {
-          chunks = [chunksData.reply];
-        } else if (typeof chunksData === 'string') {
-          chunks = [chunksData];
-        }
-      }
-
-      console.log('✅ RAG: Retrieved chunks:', chunks.length);
-      return chunks;
+      const data = await res.json();
+      const reply = data?.reply || data?.message || "";
+      console.log('✅ RAG: Retrieved from n8n:', reply ? 'success' : 'no reply');
+      
+      return reply ? [reply] : [];
     } catch (error) {
       console.error('❌ RAG: getRagChunks error:', error);
       return [];
