@@ -202,7 +202,7 @@ export const useChatManager = () => {
           setProcessingStep('Extracting key concepts...');
           console.log('🎯 RAG: Starting simplified RAG retrieval...');
           
-          retrievedChunks = await GPTService.getRagChunks(text, user.id, config.mode);
+          retrievedChunks = await GPTService.getRagChunks(text, user.id, 'rag');
           
           if (retrievedChunks.length > 0) {
             console.log('✅ RAG: Successfully retrieved chunks:', retrievedChunks.length);
