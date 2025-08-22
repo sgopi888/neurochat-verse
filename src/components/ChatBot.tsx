@@ -5,9 +5,11 @@ import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import FileUpload from './FileUpload';
 import CodeInterpreterToggle from './CodeInterpreterToggle';
-import { RetrievalModeToggle } from './RetrievalModeToggle';
+import { RAGToggle } from './RAGToggle';
+import { RAGProgressIndicator } from './RAGProgressIndicator';
 import ProcessingSteps from './ProcessingSteps';
 import SleekSuggestedQuestions from './SleekSuggestedQuestions';
+import { RagRunner, RagStep } from '@/utils/ragRunner';
 
 interface Message {
   id: string;
@@ -49,6 +51,9 @@ interface ChatBotProps {
   chunksRetrieved?: number;
   totalTokens?: number;
   progress?: number;
+  // RAG props
+  isRagEnabled?: boolean;
+  onRagToggle?: (enabled: boolean) => void;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -80,10 +85,14 @@ const ChatBot: React.FC<ChatBotProps> = ({
   processingStep,
   chunksRetrieved,
   totalTokens,
-  progress
+  progress,
+  isRagEnabled = false,
+  onRagToggle
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [ragSteps, setRagSteps] = useState<RagStep[]>([]);
+  const [isRagProcessing, setIsRagProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -95,11 +104,41 @@ const ChatBot: React.FC<ChatBotProps> = ({
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      onSendMessage(input.trim());
+      const query = input.trim();
       setInput('');
+      
+      if (isRagEnabled && onRagToggle) {
+        // Use RAG pipeline
+        setIsRagProcessing(true);
+        setRagSteps([]);
+        
+        try {
+          const ragRunner = new RagRunner((steps) => {
+            setRagSteps([...steps]);
+          });
+          
+          const result = await ragRunner.runRagFlow(query);
+          
+          // Send the RAG-enhanced response through normal message flow
+          // This allows the existing audio/TTS system to work
+          onSendMessage(query + ' [RAG_PROCESSED]');
+          
+        } catch (error) {
+          console.error('RAG processing failed:', error);
+          // Fallback to normal message processing
+          onSendMessage(query);
+        } finally {
+          setIsRagProcessing(false);
+          // Clear RAG steps after a delay to show final result
+          setTimeout(() => setRagSteps([]), 5000);
+        }
+      } else {
+        // Normal message processing
+        onSendMessage(query);
+      }
     }
   };
 
@@ -262,6 +301,14 @@ const ChatBot: React.FC<ChatBotProps> = ({
           />
         )}
 
+        {/* RAG Progress Indicator */}
+        {isRagProcessing && ragSteps.length > 0 && (
+          <RAGProgressIndicator 
+            steps={ragSteps}
+            className="mb-4"
+          />
+        )}
+
         {/* Show new sleek suggested questions */}
         <SleekSuggestedQuestions
           questions={suggestedQuestionsList}
@@ -309,7 +356,12 @@ const ChatBot: React.FC<ChatBotProps> = ({
             />
             <div className="absolute right-2 top-2 flex items-center gap-1">
               <CodeInterpreterToggle disabled={isLoading} />
-              <RetrievalModeToggle />
+              {onRagToggle && (
+                <RAGToggle 
+                  isEnabled={isRagEnabled} 
+                  onToggle={onRagToggle}
+                />
+              )}
               <FileUpload
                 onFileContent={onFileContent}
                 onClearFile={onClearFile}
