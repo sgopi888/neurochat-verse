@@ -102,7 +102,7 @@ export default function LLMTest() {
         });
       }
 
-      // Step 3: Get RAG Chunks (direct webhook, Index.tsx style)
+      // Step 3: Get RAG Chunks (direct webhook)
       addStep({
         id: 'chunks',
         title: 'Retrieving Knowledge Chunks',
@@ -152,7 +152,7 @@ export default function LLMTest() {
         }
       });
 
-      // Step 4: Build LLM Context
+      // Step 4: Build LLM Context (chunks separate from system)
       addStep({
         id: 'context',
         title: 'Building LLM Context',
@@ -161,22 +161,19 @@ export default function LLMTest() {
       });
 
       const systemPrompt = "You are a warm, compassionate mindfulness coach and guide...";
-      let contextualPrompt = systemPrompt;
-      
-      if (chunks.length > 0) {
-        const chunksContext = chunks.join('\n\n---\n\n');
-        contextualPrompt += `\n\nRELEVANT KNOWLEDGE BASE CONTEXT:\n${chunksContext}\n\nUse this context to inform your response, but maintain your warm, conversational tone.`;
-      }
 
       const messages = [
-        { role: 'system', content: contextualPrompt },
+        { role: 'system', content: systemPrompt },
+        ...(chunks.length > 0
+          ? [{ role: 'user', content: `Here is retrieved knowledge context. Use it if relevant:\n\n${chunks.join("\n\n---\n\n")}` }]
+          : []),
         { role: 'user', content: userQuery }
       ];
 
       const totalTokens = messages.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
 
       const context: LLMContext = {
-        systemPrompt: contextualPrompt,
+        systemPrompt,
         messages,
         totalTokens
       };
@@ -235,17 +232,9 @@ export default function LLMTest() {
 
     switch (step.id) {
       case 'query':
-        return (
-          <div className="bg-muted/30 p-3 rounded-md">
-            <pre className="text-sm whitespace-pre-wrap">{step.data}</pre>
-          </div>
-        );
+        return <pre className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-md">{step.data}</pre>;
       case 'concepts':
-        return (
-          <div className="bg-muted/30 p-3 rounded-md">
-            <pre className="text-sm whitespace-pre-wrap font-mono">{step.data}</pre>
-          </div>
-        );
+        return <pre className="text-sm whitespace-pre-wrap font-mono bg-muted/30 p-3 rounded-md">{step.data}</pre>;
       case 'chunks':
         return (
           <div className="space-y-2">
@@ -270,17 +259,15 @@ export default function LLMTest() {
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">System Prompt:</p>
-              <div className="bg-muted/30 p-3 rounded-md max-h-40 overflow-y-auto">
-                <pre className="text-xs whitespace-pre-wrap">{step.data.systemPrompt}</pre>
-              </div>
+              <pre className="text-xs whitespace-pre-wrap bg-muted/30 p-3 rounded-md max-h-40 overflow-y-auto">
+                {step.data.systemPrompt}
+              </pre>
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Messages Array:</p>
-              <div className="bg-muted/30 p-3 rounded-md">
-                <pre className="text-xs whitespace-pre-wrap font-mono">
-                  {JSON.stringify(step.data.messages, null, 2)}
-                </pre>
-              </div>
+              <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/30 p-3 rounded-md">
+                {JSON.stringify(step.data.messages, null, 2)}
+              </pre>
             </div>
           </div>
         );
@@ -288,15 +275,11 @@ export default function LLMTest() {
         return (
           <div className="space-y-2">
             <div className="flex gap-2">
-              {step.data.responseTime && (
-                <Badge variant="outline">{step.data.responseTime}ms</Badge>
-              )}
+              {step.data.responseTime && <Badge variant="outline">{step.data.responseTime}ms</Badge>}
               <Badge variant="secondary">{step.tokens} tokens</Badge>
             </div>
-            <div className="bg-muted/30 p-3 rounded-md">
-              <pre className="text-sm whitespace-pre-wrap">{step.data.response}</pre>
-            </div>
-            {step.data.followUpQuestions && step.data.followUpQuestions.length > 0 && (
+            <pre className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-md">{step.data.response}</pre>
+            {step.data.followUpQuestions?.length > 0 && (
               <div>
                 <p className="text-sm font-medium mb-1">Follow-up Questions:</p>
                 <ul className="text-sm space-y-1">
@@ -309,17 +292,9 @@ export default function LLMTest() {
           </div>
         );
       case 'error':
-        return (
-          <div className="bg-destructive/10 p-3 rounded-md">
-            <p className="text-destructive text-sm">{step.data}</p>
-          </div>
-        );
+        return <p className="text-destructive text-sm bg-destructive/10 p-3 rounded-md">{step.data}</p>;
       default:
-        return (
-          <div className="bg-muted/30 p-3 rounded-md">
-            <pre className="text-xs">{JSON.stringify(step.data, null, 2)}</pre>
-          </div>
-        );
+        return <pre className="text-xs bg-muted/30 p-3 rounded-md">{JSON.stringify(step.data, null, 2)}</pre>;
     }
   };
 
@@ -327,52 +302,27 @@ export default function LLMTest() {
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">LLM Test & Debug Interface</h1>
-        <p className="text-muted-foreground">
-          Test the complete RAG flow and see exactly what context the LLM receives
-        </p>
+        <p className="text-muted-foreground">Test the complete RAG flow and see exactly what context the LLM receives</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Input Panel */}
         <Card>
-          <CardHeader>
-            <CardTitle>Test Input</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Test Input</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">User Query</label>
-              <Input
-                value={userQuery}
-                onChange={(e) => setUserQuery(e.target.value)}
-                placeholder="Enter your test query..."
-                onKeyPress={(e) => e.key === 'Enter' && !isProcessing && testLLMFlow()}
-              />
-            </div>
-            <Button 
-              onClick={testLLMFlow} 
-              disabled={isProcessing || !userQuery.trim()}
-              className="w-full"
-            >
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                  Test RAG Flow
-                </>
-              )}
+            <Input
+              value={userQuery}
+              onChange={(e) => setUserQuery(e.target.value)}
+              placeholder="Enter your test query..."
+              onKeyPress={(e) => e.key === 'Enter' && !isProcessing && testLLMFlow()}
+            />
+            <Button onClick={testLLMFlow} disabled={isProcessing || !userQuery.trim()} className="w-full">
+              {isProcessing ? (<><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Processing...</>) : (<><ArrowRight className="w-4 h-4 mr-2" />Test RAG Flow</>)}
             </Button>
           </CardContent>
         </Card>
 
-        {/* Results Panel */}
         <Card>
-          <CardHeader>
-            <CardTitle>Processing Steps</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Processing Steps</CardTitle></CardHeader>
           <CardContent>
             <ScrollArea className="h-96" ref={scrollAreaRef}>
               <div className="space-y-4">
@@ -383,22 +333,13 @@ export default function LLMTest() {
                         <div className={`w-2 h-2 rounded-full ${
                           step.status === 'completed' ? 'bg-green-500' :
                           step.status === 'processing' ? 'bg-yellow-500 animate-pulse' :
-                          step.status === 'error' ? 'bg-red-500' :
-                          'bg-gray-300'
+                          step.status === 'error' ? 'bg-red-500' : 'bg-gray-300'
                         }`} />
                         <span className="font-medium text-sm">{step.title}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {step.tokens && (
-                          <Badge variant="outline" className="text-xs">
-                            {step.tokens} tokens
-                          </Badge>
-                        )}
-                        {step.timestamp && (
-                          <span className="text-xs text-muted-foreground">
-                            {step.timestamp.toLocaleTimeString()}
-                          </span>
-                        )}
+                        {step.tokens && <Badge variant="outline" className="text-xs">{step.tokens} tokens</Badge>}
+                        {step.timestamp && <span className="text-xs text-muted-foreground">{step.timestamp.toLocaleTimeString()}</span>}
                       </div>
                     </div>
                     {step.data && <div className="ml-4">{renderStepData(step)}</div>}
@@ -411,19 +352,13 @@ export default function LLMTest() {
         </Card>
       </div>
 
-      {/* LLM Context Details */}
       {llmContext && (
         <Card className="mt-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Final LLM Context</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleCopy(JSON.stringify(llmContext, null, 2))}
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy JSON
+              <Button variant="outline" size="sm" onClick={() => handleCopy(JSON.stringify(llmContext, null, 2))}>
+                <Copy className="w-4 h-4 mr-2" />Copy JSON
               </Button>
             </div>
           </CardHeader>
@@ -433,36 +368,26 @@ export default function LLMTest() {
                 <Badge variant="secondary">{llmContext.messages.length} messages</Badge>
                 <Badge variant="outline">{llmContext.totalTokens} total tokens</Badge>
               </div>
-              <div className="bg-muted/30 p-4 rounded-md">
-                <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto">
-                  {JSON.stringify(llmContext, null, 2)}
-                </pre>
-              </div>
+              <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/30 p-4 rounded-md overflow-x-auto">
+                {JSON.stringify(llmContext, null, 2)}
+              </pre>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Final Response */}
       {llmResponse && (
         <Card className="mt-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>LLM Response</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleCopy(llmResponse)}
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Response
+              <Button variant="outline" size="sm" onClick={() => handleCopy(llmResponse)}>
+                <Copy className="w-4 h-4 mr-2" />Copy Response
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="bg-muted/30 p-4 rounded-md">
-              <pre className="text-sm whitespace-pre-wrap">{llmResponse}</pre>
-            </div>
+            <pre className="text-sm whitespace-pre-wrap bg-muted/30 p-4 rounded-md">{llmResponse}</pre>
           </CardContent>
         </Card>
       )}
