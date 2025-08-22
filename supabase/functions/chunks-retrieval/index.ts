@@ -20,13 +20,13 @@ serve(async (req: Request) => {
     console.log('🎯 Chunks retrieval function called');
     
     // Parse request body
-    const { user_query, sessionId } = await req.json();
+    const { userMessage, sessionId } = await req.json();
     
-    if (!user_query) {
-      console.error('❌ Missing user_query in request');
+    if (!userMessage) {
+      console.error('❌ Missing userMessage in request');
       return new Response(JSON.stringify({
         success: false,
-        error: 'user_query is required'
+        error: 'userMessage is required'
       }), {
         status: 400,
         headers: corsHeaders
@@ -37,7 +37,7 @@ serve(async (req: Request) => {
     
     // Use the working payload format from user's test
     const n8nPayload = {
-      user_query: user_query,
+      user_query: userMessage, // Pass concepts as user_query to n8n
       sessionId: sessionId || `user_${Date.now()}`
     };
 

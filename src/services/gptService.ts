@@ -260,7 +260,7 @@ Please create a healing meditation that addresses their specific needs.`
       console.log('🎯 RAG: Calling n8n with query:', searchQuery);
       const { data: chunksData, error } = await supabase.functions.invoke('chunks-retrieval', {
         body: {
-          user_query: searchQuery,
+          userMessage: searchQuery, // Pass the extracted concepts as userMessage
           sessionId: `user_${userId}_${Date.now()}`
         }
       });
