@@ -44,6 +44,11 @@ interface EnhancedChatBotProps {
   chunksRetrieved?: number;
   totalTokens?: number;
   progress?: number;
+  // RAG props
+  isRagEnabled?: boolean;
+  onRagToggle?: () => void;
+  ragSteps?: any[];
+  isRagProcessing?: boolean;
 }
 
 const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
@@ -58,9 +63,14 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
     isMessagePlaying,
     isMessageLoading,
     processingStep,
-    chunksRetrieved,
-    totalTokens,
-    progress,
+  chunksRetrieved,
+  totalTokens,
+  progress,
+  // RAG props
+  isRagEnabled,
+  onRagToggle,
+  ragSteps,
+  isRagProcessing,
     suggestedQuestionsList,
     showSuggestedQuestions,
     ...chatBotProps 
@@ -81,9 +91,14 @@ const EnhancedChatBot: React.FC<EnhancedChatBotProps> = (props) => {
           isMessagePlaying={isMessagePlaying}
           isMessageLoading={isMessageLoading}
           processingStep={processingStep}
-          chunksRetrieved={chunksRetrieved}
-          totalTokens={totalTokens}
-          progress={progress}
+        chunksRetrieved={chunksRetrieved}
+        totalTokens={totalTokens}
+        progress={progress}
+        // RAG props
+        isRagEnabled={isRagEnabled}
+        onRagToggle={onRagToggle}
+        ragSteps={ragSteps}
+        isRagProcessing={isRagProcessing}
           suggestedQuestionsList={suggestedQuestionsList}
           showSuggestedQuestions={showSuggestedQuestions}
         />

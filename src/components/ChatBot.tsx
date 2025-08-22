@@ -5,7 +5,8 @@ import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import FileUpload from './FileUpload';
 import CodeInterpreterToggle from './CodeInterpreterToggle';
-import { RetrievalModeToggle } from './RetrievalModeToggle';
+import RAGToggle from './RAGToggle';
+import RAGProgressIndicator from './RAGProgressIndicator';
 import ProcessingSteps from './ProcessingSteps';
 import SleekSuggestedQuestions from './SleekSuggestedQuestions';
 
@@ -49,6 +50,11 @@ interface ChatBotProps {
   chunksRetrieved?: number;
   totalTokens?: number;
   progress?: number;
+  // RAG props
+  isRagEnabled?: boolean;
+  onRagToggle?: () => void;
+  ragSteps?: any[];
+  isRagProcessing?: boolean;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
@@ -80,7 +86,12 @@ const ChatBot: React.FC<ChatBotProps> = ({
   processingStep,
   chunksRetrieved,
   totalTokens,
-  progress
+  progress,
+  // RAG props
+  isRagEnabled = false,
+  onRagToggle,
+  ragSteps = [],
+  isRagProcessing = false
 }) => {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -252,13 +263,20 @@ const ChatBot: React.FC<ChatBotProps> = ({
           />
         ))}
 
-        {isLoading && (
+        {isLoading && !isRagProcessing && (
           <ProcessingSteps 
             isVisible={true} 
             currentStep={processingStep}
             chunksRetrieved={chunksRetrieved}
             totalTokens={totalTokens}
             progress={progress}
+          />
+        )}
+
+        {isRagProcessing && (
+          <RAGProgressIndicator 
+            steps={ragSteps}
+            isVisible={true}
           />
         )}
 
@@ -309,7 +327,11 @@ const ChatBot: React.FC<ChatBotProps> = ({
             />
             <div className="absolute right-2 top-2 flex items-center gap-1">
               <CodeInterpreterToggle disabled={isLoading} />
-              <RetrievalModeToggle />
+              <RAGToggle 
+                isEnabled={isRagEnabled}
+                onToggle={onRagToggle}
+                disabled={isLoading || isRagProcessing}
+              />
               <FileUpload
                 onFileContent={onFileContent}
                 onClearFile={onClearFile}

@@ -27,6 +27,11 @@ function AppContent() {
   const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
   const [fileContent, setFileContent] = React.useState<string>('');
 
+  // RAG state
+  const [isRagEnabled, setIsRagEnabled] = React.useState(false);
+  const [ragSteps, setRagSteps] = React.useState<any[]>([]);
+  const [isRagProcessing, setIsRagProcessing] = React.useState(false);
+
   // Chat message management
   const {
     messages,
@@ -102,9 +107,58 @@ function AppContent() {
     async () => stopCurrentAudio()
   );
 
+  // RAG handler
+  const handleRagToggle = () => {
+    setIsRagEnabled(prev => !prev);
+  };
+
   // Enhanced handlers that include mobile sidebar management
-  const enhancedSendMessage = (text: string) => {
+  const enhancedSendMessage = async (text: string) => {
     closeMobileSidebar();
+
+    // If RAG is enabled, use RAG pipeline
+    if (isRagEnabled) {
+      setIsRagProcessing(true);
+      setRagSteps([]);
+      
+      try {
+        const { runRagFlow } = await import('@/utils/ragRunner');
+        const result = await runRagFlow(text, (steps) => {
+          setRagSteps(steps);
+        });
+        
+        // Add user message and RAG response to chat
+        const userMessage = {
+          id: Date.now().toString(),
+          text: text,
+          isUser: true,
+          timestamp: new Date()
+        };
+        
+        const aiMessage = {
+          id: (Date.now() + 1).toString(),
+          text: result.response,
+          isUser: false,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, userMessage, aiMessage]);
+        
+        // Set suggested questions if available
+        if (result.followUpQuestions && result.followUpQuestions.length > 0) {
+          setSuggestedQuestions(result.followUpQuestions);
+          setShowSuggestions(true);
+        }
+        
+      } catch (error) {
+        console.error('RAG Error:', error);
+        // Fall back to normal chat if RAG fails
+        handleSendMessage(text);
+      } finally {
+        setIsRagProcessing(false);
+      }
+      return;
+    }
     
     // Auto-inject file content if available but keep user message clean
     if (fileContent && uploadedFile) {
@@ -253,6 +307,11 @@ function AppContent() {
       chunksRetrieved={chunksRetrieved}
       totalTokens={totalTokens}
       progress={progress}
+      // RAG props
+      isRagEnabled={isRagEnabled}
+      onRagToggle={handleRagToggle}
+      ragSteps={ragSteps}
+      isRagProcessing={isRagProcessing}
     />
   );
 }
