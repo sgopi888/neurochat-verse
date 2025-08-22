@@ -8,7 +8,7 @@ export function AISettings() {
   const { config, updateConfig } = useConfigManager();
 
   const handleProviderChange = (value: string) => {
-    updateConfig({ provider: value });
+    updateConfig({ provider: value as 'aiml' | 'openai' });
   };
 
   const handleModelChange = (value: string) => {
@@ -16,11 +16,11 @@ export function AISettings() {
   };
 
   const handleVerbosityChange = (value: string) => {
-    updateConfig({ verbosity: value });
+    updateConfig({ verbosity: value as 'low' | 'medium' | 'high' });
   };
 
   const handleReasoningChange = (value: string) => {
-    updateConfig({ reasoning: value });
+    updateConfig({ reasoning: value as 'low' | 'medium' | 'high' });
   };
 
   const handleWebSearchChange = (checked: boolean) => {

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { GPTService } from '@/services/gptService';
 
 export interface AppConfig {
-  provider: string;
+  provider: 'aiml' | 'openai';
   model: string;
-  verbosity: string;
-  reasoning: string;
+  verbosity: 'low' | 'medium' | 'high';
+  reasoning: 'low' | 'medium' | 'high';
   webSearch: boolean;
   codeInterpreter: boolean;
   ragEnabled: boolean;
@@ -12,7 +13,7 @@ export interface AppConfig {
 
 const defaultConfig: AppConfig = {
   provider: 'openai',
-  model: 'gpt-5-nano',
+  model: 'gpt-5-nano-2025-08-07',
   verbosity: 'low',
   reasoning: 'medium',
   webSearch: false,
@@ -41,17 +42,8 @@ export const useConfigManager = () => {
     setConfig(prev => {
       let newConfig = { ...prev, ...updates };
       
-      // Implement mutual exclusivity between RAG and web search
-      if (updates.ragEnabled === true && prev.webSearch === true) {
-        newConfig.webSearch = false;
-        console.log('🔄 Auto-disabled web search (RAG enabled)');
-      } else if (updates.webSearch === true && prev.ragEnabled === true) {
-        newConfig.ragEnabled = false;
-        console.log('🔄 Auto-disabled RAG (web search enabled)');
-      }
-      
-      // Save to localStorage
-      localStorage.setItem('gpt-config', JSON.stringify(newConfig));
+      // Use GPTService.setConfig for centralized persistence and exclusivity rules
+      GPTService.setConfig(newConfig);
       
       console.log('⚙️ Config updated:', newConfig);
       

@@ -53,7 +53,17 @@ export class GPTService {
   }
 
   static setConfig(config: GPTConfig): void {
-    localStorage.setItem('gpt-config', JSON.stringify(config));
+    // enforce mutual exclusivity
+    let next = { ...config };
+
+    if (next.webSearch) {
+      next.ragEnabled = false;
+    }
+    if (next.ragEnabled) {
+      next.webSearch = false;
+    }
+
+    localStorage.setItem('gpt-config', JSON.stringify(next));
   }
 
   private static async callGPT(
