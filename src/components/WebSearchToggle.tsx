@@ -1,39 +1,17 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Globe } from 'lucide-react';
-import { GPTService } from '@/services/gptService';
+import { useConfigManager } from '@/hooks/useConfigManager';
 
 interface WebSearchToggleProps {
   disabled?: boolean;
 }
 
 const WebSearchToggle: React.FC<WebSearchToggleProps> = ({ disabled = false }) => {
-  const [isWebSearchEnabled, setIsWebSearchEnabled] = React.useState(false);
-
-  React.useEffect(() => {
-    // Load current config
-    const savedConfig = localStorage.getItem('gpt-config');
-    if (savedConfig) {
-      const config = JSON.parse(savedConfig);
-      setIsWebSearchEnabled(config.webSearch || false);
-    }
-  }, []);
+  const { config, updateConfig } = useConfigManager();
 
   const toggleWebSearch = () => {
-    const savedConfig = localStorage.getItem('gpt-config');
-    const config = savedConfig ? JSON.parse(savedConfig) : {
-      provider: 'openai',
-      model: 'gpt-5-nano',
-      verbosity: 'low',
-      reasoning: 'medium',
-      webSearch: false
-    };
-    
-    const newWebSearchState = !isWebSearchEnabled;
-    const newConfig = { ...config, webSearch: newWebSearchState };
-    
-    setIsWebSearchEnabled(newWebSearchState);
-    GPTService.setConfig(newConfig);
+    updateConfig({ webSearch: !config.webSearch });
   };
 
   return (
@@ -43,12 +21,12 @@ const WebSearchToggle: React.FC<WebSearchToggleProps> = ({ disabled = false }) =
       size="sm"
       variant="ghost"
       className={`h-8 w-8 p-0 ${
-        isWebSearchEnabled
+        config.webSearch
           ? 'text-primary hover:text-primary/80'
           : 'text-muted-foreground hover:text-foreground'
       }`}
       disabled={disabled}
-      title={isWebSearchEnabled ? 'Web search enabled' : 'Web search disabled'}
+      title={config.webSearch ? 'Web search enabled' : 'Web search disabled'}
     >
       <Globe className="h-4 w-4" />
     </Button>

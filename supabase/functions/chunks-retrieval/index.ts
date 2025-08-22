@@ -1,111 +1,113 @@
-// Supabase Edge Function: chunks-retrieval
-// Retrieves relevant chunks from knowledge base via n8n webhook
-// Processes chat history to find contextually relevant information
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+// Use the working n8n webhook URL from the user's test
+const CHUNKS_WEBHOOK_URL = 'https://sreen8n.app.n8n.cloud/webhook/neuroneuro';
 
-const CHUNKS_WEBHOOK_URL = "https://sreen8n.app.n8n.cloud/webhook/chunks-retrieval";
-
+// CORS headers
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with',
+  'Content-Type': 'application/json'
 };
 
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('🎯 Chunks retrieval function called');
+    
+    // Parse request body
     const { chatHistory, userMessage } = await req.json();
     
-    console.log('Chunks retrieval request:', { 
-      chatHistoryLength: chatHistory?.length || 0,
-      userMessage: userMessage?.substring(0, 100) + '...' 
-    });
+    if (!userMessage) {
+      console.error('❌ Missing userMessage in request');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'userMessage is required'
+      }), {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
 
-    // Prepare the request for n8n chunks retrieval
-    const chunksRequest = {
+    console.log('📨 Using working n8n payload format');
+    
+    // Use the working payload format from user's test
+    const n8nPayload = {
       user_query: userMessage,
-      chat_history: chatHistory || [],
-      sessionId: "chunks_" + Date.now(),
-      timestamp: new Date().toISOString()
+      sessionId: `user_${Date.now()}`
     };
 
-    // Call n8n chunks retrieval webhook
-    const response = await fetch(CHUNKS_WEBHOOK_URL, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
+    console.log('🌐 Calling working n8n webhook:', CHUNKS_WEBHOOK_URL);
+    
+    // Call n8n webhook with working format
+    const n8nResponse = await fetch(CHUNKS_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(chunksRequest),
+      body: JSON.stringify(n8nPayload)
     });
 
-    console.log('N8N chunks response status:', response.status);
-
-    if (!response.ok) {
-      console.error('N8N chunks error:', response.status, response.statusText);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          chunks: [], 
-          error: `N8N webhook error: ${response.status}` 
-        }),
-        {
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-          status: 200 // Return 200 to frontend with error info in body
-        }
-      );
+    if (!n8nResponse.ok) {
+      console.error('❌ n8n webhook failed:', n8nResponse.status, n8nResponse.statusText);
+      return new Response(JSON.stringify({
+        success: false,
+        error: `n8n webhook failed: ${n8nResponse.status}`,
+        chunks: []
+      }), {
+        status: 500,
+        headers: corsHeaders
+      });
     }
 
-    const contentType = response.headers.get("content-type") || "";
-    let chunksData;
-
-    if (contentType.includes("application/json")) {
-      chunksData = await response.json();
-    } else {
-      const textResponse = await response.text();
-      // Try to parse as JSON, fallback to text wrapper
-      try {
-        chunksData = JSON.parse(textResponse);
-      } catch {
-        chunksData = { chunks: [textResponse] };
+    const n8nData = await n8nResponse.json();
+    console.log('✅ n8n response received:', { data: n8nData });
+    
+    // Extract chunks from n8n response - adapt to whatever format n8n returns
+    let chunks: string[] = [];
+    
+    if (n8nData.reply) {
+      // Split reply into chunks if it's long, or use as single chunk
+      const reply = n8nData.reply.toString();
+      if (reply.length > 200) {
+        // Split into sentences and group
+        const sentences = reply.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        chunks = sentences.map(s => s.trim()).filter(s => s.length > 0);
+      } else {
+        chunks = [reply];
       }
+    } else if (n8nData.chunks && Array.isArray(n8nData.chunks)) {
+      chunks = n8nData.chunks;
+    } else if (n8nData.message) {
+      chunks = [n8nData.message];
+    } else if (typeof n8nData === 'string') {
+      chunks = [n8nData];
     }
 
-    console.log('Processed chunks data:', chunksData);
+    console.log('📚 Extracted chunks:', chunks.length, 'chunks');
 
-    // Ensure consistent response format
-    const formattedResponse = {
+    return new Response(JSON.stringify({
       success: true,
-      chunks: Array.isArray(chunksData?.chunks) ? chunksData.chunks : 
-             Array.isArray(chunksData) ? chunksData :
-             chunksData?.content ? [chunksData.content] :
-             typeof chunksData === 'string' ? [chunksData] : [],
-      metadata: chunksData?.metadata || {},
-      timestamp: new Date().toISOString()
-    };
-
-    return new Response(JSON.stringify(formattedResponse), {
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-      status: 200,
+      chunks: chunks,
+      message: `Retrieved ${chunks.length} relevant chunks`
+    }), {
+      headers: corsHeaders
     });
 
   } catch (error) {
-    console.error("Chunks retrieval error:", error);
-    return new Response(
-      JSON.stringify({ 
-        success: false,
-        chunks: [],
-        error: "Failed to retrieve chunks",
-        details: (error as Error).message 
-      }),
-      { 
-        headers: { "Content-Type": "application/json", ...corsHeaders }, 
-        status: 200 // Return 200 with error info for graceful handling
-      }
-    );
+    console.error('❌ Chunks retrieval error:', error);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Internal server error',
+      chunks: []
+    }), {
+      status: 500,
+      headers: corsHeaders
+    });
   }
 });

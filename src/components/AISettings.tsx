@@ -1,73 +1,38 @@
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { GPTService } from '@/services/gptService';
+import { Label } from '@/components/ui/label';
+import { useConfigManager } from '@/hooks/useConfigManager';
 
-interface AIConfig {
-  provider: 'aiml' | 'openai';
-  model: 'gpt-5-nano';
-  verbosity: 'low' | 'medium' | 'high';
-  reasoning: 'low' | 'medium' | 'high';
-  webSearch: boolean;
-  codeInterpreter: boolean;
-  ragEnabled: boolean;
-}
+export function AISettings() {
+  const { config, updateConfig } = useConfigManager();
 
-export const AISettings = () => {
-  const [config, setConfig] = useState<AIConfig>({ 
-    provider: 'openai', 
-    model: 'gpt-5-nano',
-    verbosity: 'low',
-    reasoning: 'medium',
-    webSearch: false,
-    codeInterpreter: false,
-    ragEnabled: true
-  });
-
-  useEffect(() => {
-    // Load saved config on mount
-    const savedConfig = localStorage.getItem('gpt-config');
-    if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
-    }
-  }, []);
-
-  const handleProviderChange = (provider: 'aiml' | 'openai') => {
-    const newConfig = { ...config, provider };
-    setConfig(newConfig);
-    GPTService.setConfig(newConfig);
+  const handleProviderChange = (value: string) => {
+    updateConfig({ provider: value });
   };
 
-  const handleVerbosityChange = (verbosity: 'low' | 'medium' | 'high') => {
-    const newConfig = { ...config, verbosity };
-    setConfig(newConfig);
-    GPTService.setConfig(newConfig);
+  const handleModelChange = (value: string) => {
+    updateConfig({ model: value });
   };
 
-  const handleReasoningChange = (reasoning: 'low' | 'medium' | 'high') => {
-    const newConfig = { ...config, reasoning };
-    setConfig(newConfig);
-    GPTService.setConfig(newConfig);
+  const handleVerbosityChange = (value: string) => {
+    updateConfig({ verbosity: value });
   };
 
-  const handleWebSearchChange = (webSearch: boolean) => {
-    const newConfig = { ...config, webSearch };
-    setConfig(newConfig);
-    GPTService.setConfig(newConfig);
+  const handleReasoningChange = (value: string) => {
+    updateConfig({ reasoning: value });
   };
 
-  const handleCodeInterpreterChange = (codeInterpreter: boolean) => {
-    const newConfig = { ...config, codeInterpreter };
-    setConfig(newConfig);
-    GPTService.setConfig(newConfig);
+  const handleWebSearchChange = (checked: boolean) => {
+    updateConfig({ webSearch: checked });
   };
 
-  const handleRAGChange = (ragEnabled: boolean) => {
-    const newConfig = { ...config, ragEnabled };
-    setConfig(newConfig);
-    GPTService.setConfig(newConfig);
+  const handleCodeInterpreterChange = (checked: boolean) => {
+    updateConfig({ codeInterpreter: checked });
+  };
+
+  const handleRAGChange = (checked: boolean) => {
+    updateConfig({ ragEnabled: checked });
   };
 
   return (

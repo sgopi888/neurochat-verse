@@ -29,12 +29,27 @@ interface GPTConfig {
 
 export class GPTService {
   private static getConfig(): GPTConfig {
-    // Get from localStorage or default to OpenAI + GPT-5 nano
     const savedConfig = localStorage.getItem('gpt-config');
+    const defaultConfig: GPTConfig = {
+      provider: 'openai',
+      model: 'gpt-5-nano-2025-08-07',
+      verbosity: 'low',
+      reasoning: 'medium',
+      webSearch: false,
+      codeInterpreter: false,
+      ragEnabled: false // Default to OFF as requested
+    };
+    
     if (savedConfig) {
-      return JSON.parse(savedConfig);
+      try {
+        return { ...defaultConfig, ...JSON.parse(savedConfig) };
+      } catch (error) {
+        console.error('Failed to parse GPT config:', error);
+        return defaultConfig;
+      }
     }
-    return { provider: 'openai', model: 'gpt-5-nano-2025-08-07', verbosity: 'low', reasoning: 'medium', webSearch: false, codeInterpreter: false, ragEnabled: true };
+    
+    return defaultConfig;
   }
 
   static setConfig(config: GPTConfig): void {

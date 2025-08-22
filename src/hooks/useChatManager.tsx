@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { GPTService } from '@/services/gptService';
+import { useConfigManager } from '@/hooks/useConfigManager';
 import { generateContextualQuestions } from '@/utils/contextualQuestions';
 import { toast } from 'sonner';
 
@@ -24,6 +25,7 @@ interface ChatMode {
 export const useChatManager = () => {
   const { user } = useAuth();
   const { hasAgreed } = useUserAgreement();
+  const { config } = useConfigManager();
   
   // Local state - single source of truth for current session
   const [messages, setMessages] = useState<Message[]>([]);
@@ -185,15 +187,12 @@ export const useChatManager = () => {
       setProcessingStep('Checking configuration...');
       setProgress(30);
       
-      // Check if RAG is enabled
-      const config = JSON.parse(localStorage.getItem('gpt-config') || '{}');
-      const ragEnabled = config.ragEnabled !== false; // Default to true
+      // Check if RAG is enabled using centralized config
+      const ragEnabled = config.ragEnabled;
       
-      console.log('🔍 Chat config check:', {
-        fullConfig: config,
+      console.log('🔍 RAG Check - using centralized config:', {
         ragEnabled,
-        webSearch: config.webSearch,
-        codeInterpreter: config.codeInterpreter
+        webSearchEnabled: config.webSearch
       });
       
       // Try to retrieve relevant chunks first (only if RAG is enabled)
@@ -375,10 +374,8 @@ export const useChatManager = () => {
       let chunkCount = 0;
 
       try {
-        // Check if RAG is enabled
-        const config = JSON.parse(localStorage.getItem('gpt-config') || '{}');
-        
-        if (config.ragEnabled !== false) {
+        // Check if RAG is enabled using centralized config
+        if (config.ragEnabled) {
           const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
             body: {
               chatHistory: messages,
