@@ -199,17 +199,17 @@ export const useChatManager = () => {
       let retrievedChunks: string[] = [];
       if (ragEnabled) {
         try {
-          setProcessingStep('RAG: Extracting concepts and retrieving chunks...');
+          setProcessingStep('Extracting key concepts...');
           console.log('🎯 RAG: Starting simplified RAG retrieval...');
           
           retrievedChunks = await GPTService.getRagChunks(text, user.id);
           
           if (retrievedChunks.length > 0) {
             console.log('✅ RAG: Successfully retrieved chunks:', retrievedChunks.length);
-            setProcessingStep('RAG: Chunks retrieved successfully');
+            setProcessingStep(`Found ${retrievedChunks.length} relevant documents`);
           } else {
             console.log('⚠️ RAG: No chunks retrieved');
-            setProcessingStep('RAG: No relevant chunks found');
+            setProcessingStep('No relevant documents found');
           }
         } catch (error) {
           console.error('❌ RAG: Error during retrieval:', error);

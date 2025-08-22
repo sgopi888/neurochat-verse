@@ -20,13 +20,13 @@ serve(async (req: Request) => {
     console.log('🎯 Chunks retrieval function called');
     
     // Parse request body
-    const { chatHistory, userMessage } = await req.json();
+    const { user_query, sessionId } = await req.json();
     
-    if (!userMessage) {
-      console.error('❌ Missing userMessage in request');
+    if (!user_query) {
+      console.error('❌ Missing user_query in request');
       return new Response(JSON.stringify({
         success: false,
-        error: 'userMessage is required'
+        error: 'user_query is required'
       }), {
         status: 400,
         headers: corsHeaders
@@ -37,8 +37,8 @@ serve(async (req: Request) => {
     
     // Use the working payload format from user's test
     const n8nPayload = {
-      user_query: userMessage,
-      sessionId: `user_${Date.now()}`
+      user_query: user_query,
+      sessionId: sessionId || `user_${Date.now()}`
     };
 
     console.log('🌐 Calling working n8n webhook:', CHUNKS_WEBHOOK_URL);
