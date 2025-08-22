@@ -33,6 +33,8 @@ export default function LLMTest() {
   const [llmResponse, setLlmResponse] = useState<string>('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  const WEBHOOK_URL = "https://sreen8n.app.n8n.cloud/webhook/neuroneuro";
+
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
@@ -100,7 +102,7 @@ export default function LLMTest() {
         });
       }
 
-      // Step 3: Get RAG Chunks (Direct webhook call like working Index.tsx)
+      // Step 3: Get RAG Chunks (direct webhook, Index.tsx style)
       addStep({
         id: 'chunks',
         title: 'Retrieving Knowledge Chunks',
@@ -108,9 +110,7 @@ export default function LLMTest() {
         timestamp: new Date()
       });
 
-      const WEBHOOK_URL = "https://sreen8n.app.n8n.cloud/webhook/neuroneuro";
       let chunks: string[] = [];
-      
       try {
         const res = await fetch(WEBHOOK_URL, {
           method: "POST",
@@ -121,8 +121,19 @@ export default function LLMTest() {
         const ct = res.headers.get("content-type") || "";
         if (ct.includes("application/json")) {
           const data = await res.json();
-          const reply = typeof data === "string" ? data : (data?.reply || data?.message || JSON.stringify(data));
-          chunks = [reply]; // Treat the response as a single chunk
+          console.log("🔍 Raw webhook response:", data);
+
+          if (Array.isArray(data)) {
+            chunks = data;
+          } else if (data?.chunks) {
+            chunks = data.chunks;
+          } else if (data?.reply) {
+            chunks = [data.reply];
+          } else if (data?.message) {
+            chunks = [data.message];
+          } else {
+            chunks = [JSON.stringify(data)];
+          }
         } else {
           const reply = await res.text();
           chunks = [reply];
@@ -149,7 +160,6 @@ export default function LLMTest() {
         timestamp: new Date()
       });
 
-      // Simulate the context building (normally done in probingChatWithChunks)
       const systemPrompt = "You are a warm, compassionate mindfulness coach and guide...";
       let contextualPrompt = systemPrompt;
       
@@ -230,14 +240,12 @@ export default function LLMTest() {
             <pre className="text-sm whitespace-pre-wrap">{step.data}</pre>
           </div>
         );
-
       case 'concepts':
         return (
           <div className="bg-muted/30 p-3 rounded-md">
             <pre className="text-sm whitespace-pre-wrap font-mono">{step.data}</pre>
           </div>
         );
-
       case 'chunks':
         return (
           <div className="space-y-2">
@@ -253,7 +261,6 @@ export default function LLMTest() {
             ))}
           </div>
         );
-
       case 'context':
         return (
           <div className="space-y-3">
@@ -261,14 +268,12 @@ export default function LLMTest() {
               <Badge variant="secondary">{step.data.messages.length} messages</Badge>
               <Badge variant="outline">{step.data.totalTokens} total tokens</Badge>
             </div>
-            
             <div className="space-y-2">
               <p className="text-sm font-medium">System Prompt:</p>
               <div className="bg-muted/30 p-3 rounded-md max-h-40 overflow-y-auto">
                 <pre className="text-xs whitespace-pre-wrap">{step.data.systemPrompt}</pre>
               </div>
             </div>
-
             <div className="space-y-2">
               <p className="text-sm font-medium">Messages Array:</p>
               <div className="bg-muted/30 p-3 rounded-md">
@@ -279,7 +284,6 @@ export default function LLMTest() {
             </div>
           </div>
         );
-
       case 'llm':
         return (
           <div className="space-y-2">
@@ -304,14 +308,12 @@ export default function LLMTest() {
             )}
           </div>
         );
-
       case 'error':
         return (
           <div className="bg-destructive/10 p-3 rounded-md">
             <p className="text-destructive text-sm">{step.data}</p>
           </div>
         );
-
       default:
         return (
           <div className="bg-muted/30 p-3 rounded-md">
@@ -346,7 +348,6 @@ export default function LLMTest() {
                 onKeyPress={(e) => e.key === 'Enter' && !isProcessing && testLLMFlow()}
               />
             </div>
-            
             <Button 
               onClick={testLLMFlow} 
               disabled={isProcessing || !userQuery.trim()}
@@ -400,13 +401,7 @@ export default function LLMTest() {
                         )}
                       </div>
                     </div>
-                    
-                    {step.data && (
-                      <div className="ml-4">
-                        {renderStepData(step)}
-                      </div>
-                    )}
-                    
+                    {step.data && <div className="ml-4">{renderStepData(step)}</div>}
                     {idx < steps.length - 1 && <Separator className="my-2" />}
                   </div>
                 ))}
@@ -435,14 +430,9 @@ export default function LLMTest() {
           <CardContent>
             <div className="space-y-4">
               <div className="flex gap-4">
-                <Badge variant="secondary">
-                  {llmContext.messages.length} messages
-                </Badge>
-                <Badge variant="outline">
-                  {llmContext.totalTokens} total tokens
-                </Badge>
+                <Badge variant="secondary">{llmContext.messages.length} messages</Badge>
+                <Badge variant="outline">{llmContext.totalTokens} total tokens</Badge>
               </div>
-              
               <div className="bg-muted/30 p-4 rounded-md">
                 <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto">
                   {JSON.stringify(llmContext, null, 2)}
