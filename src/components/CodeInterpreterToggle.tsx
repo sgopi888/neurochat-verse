@@ -4,13 +4,20 @@ import { useConfigManager } from '@/hooks/useConfigManager';
 
 interface CodeInterpreterToggleProps {
   disabled?: boolean;
+  onCounselModeOff?: () => void;
 }
 
-export const CodeInterpreterToggle = ({ disabled = false }: CodeInterpreterToggleProps) => {
+export const CodeInterpreterToggle = ({ disabled = false, onCounselModeOff }: CodeInterpreterToggleProps) => {
   const { config, updateConfig } = useConfigManager();
 
   const toggleCodeInterpreter = () => {
-    updateConfig({ codeInterpreter: !config.codeInterpreter });
+    const newValue = !config.codeInterpreter;
+    updateConfig({ codeInterpreter: newValue });
+    
+    // Turn off counsel mode when activating code interpreter
+    if (newValue && onCounselModeOff) {
+      onCounselModeOff();
+    }
   };
 
   return (

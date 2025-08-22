@@ -5,6 +5,7 @@ import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { GPTService } from '@/services/gptService';
 import { useConfigManager } from '@/hooks/useConfigManager';
 import { generateContextualQuestions } from '@/utils/contextualQuestions';
+import { PROMPTS } from '@/config/prompts';
 import { toast } from 'sonner';
 
 interface Message {
@@ -325,79 +326,46 @@ export const useChatManager = () => {
     setProgress(10);
 
     try {
-      // Extract keywords from conversation
+      // Use the new RAG pipeline for meditation generation
       toast.info('Analyzing your conversation...');
-      const keywordResponse = await GPTService.extractKeywords(messages, user.id);
       
-      if (!keywordResponse.success) {
-        throw new Error(keywordResponse.error || 'Failed to analyze conversation');
-      }
-
-      const keywords = keywordResponse.data || '';
-      console.log('Extracted keywords:', keywords);
-
-      // Update progress
+      // Create a meditation-specific query from the conversation
+      const lastMessage = messages[messages.length - 1]?.text || '';
+      const conversationContext = messages
+        .slice(-5) // Get last 5 messages for context
+        .map(msg => `${msg.isUser ? 'User' : 'Assistant'}: ${msg.text}`)
+        .join('\n');
+      
+      const meditationQuery = `Generate personalized meditation based on: ${lastMessage}\n\nContext:\n${conversationContext}`;
+      
       setProcessingStep('Finding relevant guidance...');
-      setProgress(40);
+      setProgress(30);
 
-      // Get relevant chunks
-      toast.info('Finding relevant guidance...');
-      
-      if (!currentChatId) {
-        throw new Error('No chat session found');
-      }
-
-      let retrievedChunks = '';
-      let chunkCount = 0;
-
-      try {
-        // Check if RAG is enabled using centralized config
-        if (config.mode === 'rag') {
-          const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
-            body: {
-              chatHistory: messages,
-              userMessage: `${messages[messages.length - 1]?.text || ''} Keywords: ${keywords}`
-            }
-          });
-
-          if (chunksError) {
-            console.warn('Chunks retrieval failed, continuing without reference documents:', chunksError.message);
-            toast.info('Generating from conversation history (reference service unavailable)');
-            setProcessingStep('Skipping reference documents (service unavailable)');
-          } else if (chunksData?.chunks && chunksData.chunks.length > 0) {
-            retrievedChunks = chunksData.chunks.join('\n\n---\n\n');
-            chunkCount = chunksData.chunks.length;
-            
-            // Show excerpt from chunks
-            const firstChunk = chunksData.chunks[0];
-            const excerpt = firstChunk.length > 150 ? 
-              firstChunk.substring(0, 150) + '...' : firstChunk;
-            
-            toast.success(`Found ${chunkCount} relevant references: "${excerpt}"`);
-            console.log(`Retrieved ${chunkCount} chunks for meditation generation`);
-          } else {
-            console.log('No chunks retrieved, generating from conversation only');
-            toast.info('No specific references found, generating from conversation');
-          }
-        } else {
-          console.log('RAG is disabled, generating from conversation only');
-          toast.info('Generating from conversation history (RAG disabled)');
+      // Use the new standalone RAG pipeline
+      const { runRagFlow } = await import('@/utils/ragRunner');
+      const ragResult = await runRagFlow(meditationQuery, (steps) => {
+        // Update progress based on RAG steps
+        const currentStep = steps[steps.length - 1];
+        if (currentStep) {
+          setProcessingStep(currentStep.title);
+          setProgress(30 + (steps.length * 15)); // Progress from 30% to 75%
         }
-      } catch (error) {
-        console.error('Error retrieving chunks:', error);
-        toast.info('Generating from conversation history (reference service unavailable)');
-        setProcessingStep('Skipping reference documents (service unavailable)');
-      }
+      });
 
-      setChunksRetrieved(chunkCount);
-      setProgress(70);
-
-      // Generate meditation script
-      toast.info('Creating your personalized meditation...');
+      setProgress(80);
+      setProcessingStep('Creating your personalized meditation...');
       
+      // Now generate meditation script using the RAG chunks and meditation prompt
+      const chatText = messages
+        .map(msg => `${msg.isUser ? 'User' : 'Assistant'}: ${msg.text}`)
+        .join('\n');
+
+      const systemPrompt = PROMPTS.MEDITATION_GENERATION;
+      const contextualPrompt = `${systemPrompt}\n\n=== CONVERSATION CONTEXT ===\n${chatText}\n\n=== RELEVANT GUIDANCE ===\n${ragResult.chunks}\n\n=== INSTRUCTION ===\nBased on the conversation above and the relevant guidance provided, create a personalized meditation script that addresses the user's specific needs and situation.`;
+
       const meditationResponse = await GPTService.generateMeditationScript(
         messages, 
-        retrievedChunks, 
+        Array.isArray(ragResult.chunks) ? ragResult.chunks.join('\n\n---\n\n') : (ragResult.chunks || ''), 
         user.id
       );
 

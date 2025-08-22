@@ -4,13 +4,19 @@ import { useConfigManager } from '@/hooks/useConfigManager';
 
 interface CounselModeToggleProps {
   disabled?: boolean;
+  isRagEnabled?: boolean;
+  onRagToggle?: () => void;
 }
 
-export const CounselModeToggle = ({ disabled = false }: CounselModeToggleProps) => {
+export const CounselModeToggle = ({ 
+  disabled = false, 
+  isRagEnabled = false, 
+  onRagToggle 
+}: CounselModeToggleProps) => {
   const { config, updateConfig } = useConfigManager();
 
-  // Counsel mode is active when all modes are off
-  const isCounselMode = config.mode === 'none' && !config.codeInterpreter;
+  // Counsel mode is active when all modes are off (including RAG)
+  const isCounselMode = config.mode === 'none' && !config.codeInterpreter && !isRagEnabled;
 
   const toggleCounselMode = () => {
     // Turn off all modes for pure LLM chat
@@ -18,6 +24,11 @@ export const CounselModeToggle = ({ disabled = false }: CounselModeToggleProps) 
       mode: 'none', 
       codeInterpreter: false 
     });
+    
+    // Also turn off RAG if it's enabled
+    if (isRagEnabled && onRagToggle) {
+      onRagToggle();
+    }
   };
 
   return (

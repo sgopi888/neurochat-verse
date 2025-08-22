@@ -328,13 +328,24 @@ const ChatBot: React.FC<ChatBotProps> = ({
               disabled={isLoading}
             />
             <div className="absolute right-2 top-2 flex items-center gap-1">
-              <CounselModeToggle disabled={isLoading} />
-              <WebSearchToggle disabled={isLoading} />
-              <CodeInterpreterToggle disabled={isLoading} />
+              <CounselModeToggle 
+                disabled={isLoading} 
+                isRagEnabled={isRagEnabled}
+                onRagToggle={onRagToggle}
+              />
+              <WebSearchToggle 
+                disabled={isLoading} 
+                onCounselModeOff={() => {/* handled by master switch */}}
+              />
+              <CodeInterpreterToggle 
+                disabled={isLoading} 
+                onCounselModeOff={() => {/* handled by master switch */}}
+              />
               <RAGToggle 
                 isEnabled={isRagEnabled}
                 onToggle={onRagToggle}
                 disabled={isLoading || isRagProcessing}
+                onCounselModeOff={() => {/* handled by master switch */}}
               />
               <FileUpload
                 onFileContent={onFileContent}

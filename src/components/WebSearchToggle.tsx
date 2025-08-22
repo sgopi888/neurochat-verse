@@ -4,17 +4,22 @@ import { useConfigManager } from '@/hooks/useConfigManager';
 
 interface WebSearchToggleProps {
   disabled?: boolean;
+  onCounselModeOff?: () => void;
 }
 
-export const WebSearchToggle = ({ disabled = false }: WebSearchToggleProps) => {
+export const WebSearchToggle = ({ disabled = false, onCounselModeOff }: WebSearchToggleProps) => {
   const { config, updateConfig } = useConfigManager();
 
   const isWebEnabled = config.mode === 'web';
 
   const toggleWebSearch = () => {
-    updateConfig({ 
-      mode: isWebEnabled ? 'none' : 'web' 
-    });
+    const newMode = isWebEnabled ? 'none' : 'web';
+    updateConfig({ mode: newMode });
+    
+    // Turn off counsel mode when activating web search
+    if (newMode === 'web' && onCounselModeOff) {
+      onCounselModeOff();
+    }
   };
 
   return (

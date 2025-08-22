@@ -6,17 +6,27 @@ interface RAGToggleProps {
   isEnabled: boolean;
   onToggle: () => void;
   disabled?: boolean;
+  onCounselModeOff?: () => void;
 }
 
 export const RAGToggle: React.FC<RAGToggleProps> = ({ 
   isEnabled, 
   onToggle, 
-  disabled = false 
+  disabled = false,
+  onCounselModeOff
 }) => {
+  const handleToggle = () => {
+    onToggle();
+    
+    // Turn off counsel mode when activating RAG
+    if (!isEnabled && onCounselModeOff) {
+      onCounselModeOff();
+    }
+  };
   return (
     <Button
       type="button"
-      onClick={onToggle}
+      onClick={handleToggle}
       variant={isEnabled ? "default" : "ghost"}
       size="sm"
       className={`h-8 w-8 p-0 transition-all duration-200 ${
