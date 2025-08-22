@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import ChatMessage, { ChatMessageData } from "@/components/chat/ChatMessage";
 import ChatInput from "@/components/chat/ChatInput";
 import { supabase } from "@/integrations/supabase/client";
+import { estimateTokens, calculateChunkTokens, createChunkExcerpt } from '@/utils/tokenCounter';
 
 const WEBHOOK_URL = "https://sreen8n.app.n8n.cloud/webhook/neuroneuro";
 
@@ -116,11 +117,8 @@ Knowledge chunks:
 ${chunks.join('\n\n')}
 
 Answer the user's question using this knowledge when relevant.`
-            },
-            {
-              role: 'user',
-              content: userMessage
             }
+            // Note: Not including original user message to avoid duplication with chunks
           ]
         }
       });
@@ -182,12 +180,24 @@ Answer the user's question using this knowledge when relevant.`
           : m
       ));
 
-      // Step 3: Generate final response
+      // Step 3: Generate final response with metrics
       const finalResponse = await generateResponseWithChunks(text, chunks);
+      
+      // Calculate metrics for display
+      const chunkCount = chunks.length;
+      const tokenCount = calculateChunkTokens(chunks);
+      const chunkExcerpt = createChunkExcerpt(chunks, 80);
       
       setMessages((prev) => prev.map((m) => 
         m.id === assistantId 
-          ? { ...m, content: finalResponse, status: "done" } 
+          ? { 
+              ...m, 
+              content: finalResponse, 
+              status: "done",
+              chunkCount: chunkCount > 0 ? chunkCount : undefined,
+              tokenCount: tokenCount > 0 ? tokenCount : undefined,
+              chunkExcerpt: chunkExcerpt || undefined
+            } 
           : m
       ));
 
@@ -236,7 +246,7 @@ Answer the user's question using this knowledge when relevant.`
 
     setMessages((prev) => prev.map((m) => 
       m.id === target.id 
-        ? { ...m, status: "sending" as const, content: "", concepts: undefined, chunks: undefined } 
+        ? { ...m, status: "sending" as const, content: "", concepts: undefined, chunks: undefined, chunkCount: undefined, tokenCount: undefined, chunkExcerpt: undefined } 
         : m
     ));
     setIsSending(true);

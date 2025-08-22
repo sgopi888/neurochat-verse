@@ -129,8 +129,8 @@ export class GPTService {
       ...chatHistory.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
         content: msg.text
-      })),
-      { role: 'user', content: userMessage }
+      }))
+      // Note: Original user message is NOT included - chunks provide the context
     ];
 
     return this.callGPT(messages, userId);
@@ -225,9 +225,10 @@ Please create a healing meditation that addresses their specific needs.`
     return this.callGPT(messages, userId);
   }
 
-  static async getRagChunks(userMessage: string, userId?: string): Promise<string[]> {
+  static async getRagChunks(userMessage: string, userId?: string, mode?: string): Promise<string[]> {
     const config = this.getConfig();
-    if (config.mode !== 'rag') return [];
+    const ragMode = mode || config.mode;
+    if (ragMode !== 'rag') return [];
 
     try {
       console.log('🎯 RAG: Extracting concepts for search...');

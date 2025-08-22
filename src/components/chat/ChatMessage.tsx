@@ -10,6 +10,9 @@ export interface ChatMessageData {
   linkedUserId?: string;
   chunks?: string[];
   concepts?: string[];
+  chunkCount?: number;
+  tokenCount?: number;
+  chunkExcerpt?: string;
 }
 
 interface ChatMessageProps {
@@ -32,19 +35,21 @@ const ChatMessage = ({ message, onCopy, onRetry }: ChatMessageProps) => {
               {isUser ? "You" : "Assistant"}
             </div>
             
-            {/* Show concepts if available */}
-            {message.concepts && message.concepts.length > 0 && (
-              <div className="mb-2 p-2 bg-background/50 rounded text-xs">
-                <div className="font-medium">Extracted Concepts:</div>
-                <div className="text-muted-foreground">{message.concepts.join(", ")}</div>
-              </div>
-            )}
-            
-            {/* Show chunks if available */}
-            {message.chunks && message.chunks.length > 0 && (
-              <div className="mb-2 p-2 bg-background/50 rounded text-xs">
-                <div className="font-medium">Retrieved Chunks:</div>
-                <div className="text-muted-foreground">{message.chunks.join(" | ")}</div>
+            {/* Compact RAG indicator */}
+            {message.chunkCount && message.chunkCount > 0 && (
+              <div className="mb-2 px-2 py-1 bg-primary/10 border border-primary/20 rounded-md text-xs flex items-center gap-2">
+                <div className="flex items-center gap-1 text-primary font-medium">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                  RAG: {message.chunkCount} chunks
+                </div>
+                {message.tokenCount && (
+                  <div className="text-muted-foreground">• {message.tokenCount} tokens</div>
+                )}
+                {message.chunkExcerpt && (
+                  <div className="text-muted-foreground italic truncate flex-1">
+                    • "{message.chunkExcerpt}"
+                  </div>
+                )}
               </div>
             )}
             
