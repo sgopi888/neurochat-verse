@@ -199,16 +199,27 @@ export const useChatManager = () => {
       let retrievedChunks: string[] = [];
       if (ragEnabled) {
         try {
+          setProcessingStep('Extracting concepts for RAG search...');
+          console.log('🎯 RAG: Extracting concepts from user message...');
+          
+          // Extract concepts instead of sending full chat history
+          const conceptsResponse = await GPTService.extractConcepts(text, messages, user.id);
+          let searchQuery = text; // fallback to original message
+          
+          if (conceptsResponse.success && conceptsResponse.data) {
+            console.log('✅ Extracted concepts:', conceptsResponse.data);
+            searchQuery = conceptsResponse.data;
+          } else {
+            console.log('⚠️ Concept extraction failed, using original message');
+          }
+          
           setProcessingStep('RAG Retrieval in progress...');
-          console.log('🎯 RAG: Starting chunks retrieval...');
+          console.log('🎯 RAG: Starting chunks retrieval with concepts...');
           
           const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
             body: {
-              chatHistory: messages.map(msg => ({
-                role: msg.isUser ? 'user' : 'assistant',
-                content: msg.text
-              })),
-              userMessage: text
+              user_query: searchQuery, // Use extracted concepts instead of full chat
+              sessionId: `user_${user.id}_${Date.now()}`
             }
           });
 
@@ -246,11 +257,13 @@ export const useChatManager = () => {
       setProcessingStep('Getting AI response...');
       setProgress(60);
       
-      // Get AI response with or without chunks
+      // Get AI response - use RAG method if RAG is enabled, regardless of chunks
       let response;
-      if (retrievedChunks.length > 0) {
+      if (ragEnabled) {
+        console.log('🎯 RAG: Calling probingChatWithChunks (RAG enabled)');
         response = await GPTService.probingChatWithChunks(text, messages, retrievedChunks, user.id);
       } else {
+        console.log('💬 Regular: Calling probingChat (RAG disabled)');
         response = await GPTService.probingChat(text, messages, user.id);
       }
       

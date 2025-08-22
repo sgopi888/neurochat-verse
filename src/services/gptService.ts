@@ -163,6 +163,50 @@ export class GPTService {
     return this.callGPT(messages, userId);
   }
 
+  static async extractConcepts(userMessage: string, chatHistory: Message[] = [], userId?: string): Promise<GPTResponse> {
+    const conceptPrompt = `You are a concept extractor for conversational queries.  
+Your task:  
+1. Remove stopwords, filler, and conversational chatter.  
+2. Identify **all core concepts** explicitly present in the query.  
+3. Suggest **additional potential related concepts** that might appear in relevant documents.  
+4. Provide output in three fields:  
+   - explicit_concepts = [...]  
+   - potential_concepts = [...]  
+   - concepts = [...] (union of both lists, unique, lowercased)  
+5. Ignore URLs, links, emojis, and greetings.  
+
+### Examples
+
+Query: "I am feeling stressed and headache today. Too much work pressure"  
+Output:  
+explicit_concepts = ["stress", "headache", "work pressure"]  
+potential_concepts = ["mental health", "burnout", "anxiety", "fatigue", "overwork", "job stress"]  
+concepts = ["stress", "headache", "work pressure", "mental health", "burnout", "anxiety", "fatigue", "overwork", "job stress"]
+
+Query: "Can't sleep, I watched some random videos on youtube and now my eyes hurt badly"  
+Output:  
+explicit_concepts = ["insomnia", "eye pain"]  
+potential_concepts = ["sleep disorder", "screen fatigue", "circadian rhythm", "digital eye strain"]  
+concepts = ["insomnia", "eye pain", "sleep disorder", "screen fatigue", "circadian rhythm", "digital eye strain"]
+
+Query: "Been anxious and nervous lately, link here: https://reddit.com/something"  
+Output:  
+explicit_concepts = ["anxiety", "nervousness"]  
+potential_concepts = ["panic", "stress", "mental health", "emotional regulation"]  
+concepts = ["anxiety", "nervousness", "panic", "stress", "mental health", "emotional regulation"]
+
+### Now process the following query:
+
+{user_query}`;
+
+    const messages = [
+      { role: 'system', content: conceptPrompt },
+      { role: 'user', content: userMessage }
+    ];
+
+    return this.callGPT(messages, userId);
+  }
+
   static async generateMeditationScript(
     chatHistory: Message[], 
     retrievedChunks: string, 
