@@ -129,8 +129,8 @@ export class GPTService {
       ...chatHistory.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
         content: msg.text
-      }))
-      // Note: Original user message is NOT included - chunks provide the context
+      })),
+      { role: 'user', content: userMessage } // Include current user message so LLM knows what to answer
     ];
 
     return this.callGPT(messages, userId);

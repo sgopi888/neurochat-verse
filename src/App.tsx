@@ -8,6 +8,7 @@ import LoadingIndicator from '@/components/LoadingIndicator';
 import DisclaimerModal from '@/components/DisclaimerModal';
 import ChatLayout from '@/components/ChatLayout';
 import SimpleRAGTest from '@/components/SimpleRAGTest';
+import LLMTest from '@/components/LLMTest';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAgreement } from '@/hooks/useUserAgreement';
 import { useChatManager } from '@/hooks/useChatManager';
@@ -264,6 +265,7 @@ function App() {
           <Routes>
             <Route path="/" element={<AppContent />} />
             <Route path="/rag-test" element={<SimpleRAGTest />} />
+            <Route path="/llm-test" element={<LLMTest />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <Toaster />
