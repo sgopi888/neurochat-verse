@@ -116,21 +116,17 @@ export class GPTService {
     userId?: string
   ): Promise<GPTResponse> {
     const systemPrompt = PROMPTS.PROBING_CHAT;
-    
-    // Add chunks context if available
-    let contextualPrompt = systemPrompt;
-    if (chunks.length > 0) {
-      const chunksContext = chunks.join('\n\n---\n\n');
-      contextualPrompt += `\n\nRELEVANT KNOWLEDGE BASE CONTEXT:\n${chunksContext}\n\nUse this context to inform your response, but maintain your warm, conversational tone.`;
-    }
 
     const messages = [
-      { role: 'system', content: contextualPrompt },
+      { role: 'system', content: systemPrompt },
+      ...(chunks.length > 0
+        ? [{ role: 'user', content: `Here is retrieved knowledge context. Use it if relevant:\n\n${chunks.join("\n\n---\n\n")}` }]
+        : []),
       ...chatHistory.map(msg => ({
         role: msg.isUser ? 'user' : 'assistant',
         content: msg.text
       })),
-      { role: 'user', content: userMessage } // Include current user message so LLM knows what to answer
+      { role: 'user', content: userMessage }
     ];
 
     return this.callGPT(messages, userId);
