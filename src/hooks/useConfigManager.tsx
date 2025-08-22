@@ -16,7 +16,7 @@ const defaultConfig: AppConfig = {
   verbosity: 'low',
   reasoning: 'medium',
   codeInterpreter: false,
-  mode: 'none'
+  mode: 'rag'
 };
 
 export const useConfigManager = () => {
