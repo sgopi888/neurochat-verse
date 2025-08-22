@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useConfigManager } from '@/hooks/useConfigManager';
 
@@ -23,16 +24,12 @@ export function AISettings() {
     updateConfig({ reasoning: value as 'low' | 'medium' | 'high' });
   };
 
-  const handleWebSearchChange = (checked: boolean) => {
-    updateConfig({ webSearch: checked });
-  };
-
   const handleCodeInterpreterChange = (checked: boolean) => {
     updateConfig({ codeInterpreter: checked });
   };
 
-  const handleRAGChange = (checked: boolean) => {
-    updateConfig({ ragEnabled: checked });
+  const handleModeChange = (mode: 'none' | 'rag' | 'web') => {
+    updateConfig({ mode });
   };
 
   return (
@@ -87,22 +84,6 @@ export function AISettings() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="websearch-toggle" className="text-sm font-medium">
-              Web Search
-            </Label>
-            <Switch
-              id="websearch-toggle"
-              checked={config.webSearch}
-              onCheckedChange={handleWebSearchChange}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Allow GPT-5 to search the web for current information before responding
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
             <Label htmlFor="code-interpreter-toggle" className="text-sm font-medium">
               Smartwatch Data Analysis
             </Label>
@@ -118,18 +99,40 @@ export function AISettings() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="rag-toggle" className="text-sm font-medium">
-              Knowledge Retrieval (RAG)
-            </Label>
-            <Switch
-              id="rag-toggle"
-              checked={config.ragEnabled}
-              onCheckedChange={handleRAGChange}
-            />
+          <Label className="text-sm font-medium">
+            Knowledge Mode
+          </Label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={config.mode === 'none' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleModeChange('none')}
+              className="flex-1"
+            >
+              None
+            </Button>
+            <Button
+              type="button"
+              variant={config.mode === 'rag' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleModeChange('rag')}
+              className="flex-1"
+            >
+              RAG
+            </Button>
+            <Button
+              type="button"
+              variant={config.mode === 'web' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleModeChange('web')}
+              className="flex-1"
+            >
+              Web
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Retrieve relevant information from knowledge base to enhance responses
+            Choose knowledge retrieval mode: None (no external data), RAG (knowledge base), or Web (search internet)
           </p>
         </div>
       </CardContent>

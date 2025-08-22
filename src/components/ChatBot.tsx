@@ -4,9 +4,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Send, Mic, MicOff, Menu, Settings } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import FileUpload from './FileUpload';
-import WebSearchToggle from './WebSearchToggle';
 import CodeInterpreterToggle from './CodeInterpreterToggle';
-import RAGToggle from './RAGToggle';
+import { RetrievalModeToggle } from './RetrievalModeToggle';
 import ProcessingSteps from './ProcessingSteps';
 import SleekSuggestedQuestions from './SleekSuggestedQuestions';
 
@@ -310,8 +309,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
             />
             <div className="absolute right-2 top-2 flex items-center gap-1">
               <CodeInterpreterToggle disabled={isLoading} />
-              <WebSearchToggle disabled={isLoading} />
-              <RAGToggle disabled={isLoading} />
+              <RetrievalModeToggle />
               <FileUpload
                 onFileContent={onFileContent}
                 onClearFile={onClearFile}

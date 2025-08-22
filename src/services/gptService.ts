@@ -22,9 +22,8 @@ interface GPTConfig {
   model: string;
   verbosity: 'low' | 'medium' | 'high';
   reasoning: 'low' | 'medium' | 'high';
-  webSearch: boolean;
   codeInterpreter: boolean;
-  ragEnabled: boolean;
+  mode: 'none' | 'rag' | 'web';
 }
 
 export class GPTService {
@@ -35,9 +34,8 @@ export class GPTService {
       model: 'gpt-5-nano-2025-08-07',
       verbosity: 'low',
       reasoning: 'medium',
-      webSearch: false,
       codeInterpreter: false,
-      ragEnabled: false // Default to OFF as requested
+      mode: 'none'
     };
     
     if (savedConfig) {
@@ -53,17 +51,7 @@ export class GPTService {
   }
 
   static setConfig(config: GPTConfig): void {
-    // enforce mutual exclusivity
-    let next = { ...config };
-
-    if (next.webSearch) {
-      next.ragEnabled = false;
-    }
-    if (next.ragEnabled) {
-      next.webSearch = false;
-    }
-
-    localStorage.setItem('gpt-config', JSON.stringify(next));
+    localStorage.setItem('gpt-config', JSON.stringify(config));
   }
 
   private static async callGPT(
@@ -83,7 +71,7 @@ export class GPTService {
           model: config.model,
           verbosity: config.verbosity,
           reasoning: config.reasoning,
-          webSearch: config.webSearch,
+          webSearch: config.mode === 'web',
           codeInterpreter: config.codeInterpreter
         }
       });
@@ -236,4 +224,72 @@ Please create a healing meditation that addresses their specific needs.`
 
     return this.callGPT(messages, userId);
   }
+
+  static async getRagChunks(userMessage: string, userId?: string): Promise<any[]> {
+    const config = this.getConfig();
+    if (config.mode !== 'rag') return [];
+
+    try {
+      console.log('🎯 RAG: Extracting concepts for search...');
+      
+      // Step 1: Extract concepts
+      const conceptsResponse = await this.extractConcepts(userMessage, [], userId);
+      let searchQuery = userMessage; // fallback
+      
+      if (conceptsResponse.success && conceptsResponse.data) {
+        try {
+          // Try to parse the concepts from the response
+          const conceptsText = conceptsResponse.data;
+          // Look for the concepts array in the response
+          const conceptsMatch = conceptsText.match(/concepts\s*=\s*\[(.*?)\]/);
+          if (conceptsMatch) {
+            const conceptsStr = conceptsMatch[1];
+            // Extract quoted concepts
+            const concepts = conceptsStr.match(/"([^"]+)"/g)?.map(c => c.replace(/"/g, '')) || [];
+            if (concepts.length > 0) {
+              searchQuery = concepts.join(' ');
+              console.log('✅ Using extracted concepts:', concepts);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ Failed to parse concepts, using original message');
+        }
+      }
+
+      // Step 2: Call n8n for RAG retrieval
+      console.log('🎯 RAG: Calling n8n with query:', searchQuery);
+      const { data: chunksData, error } = await supabase.functions.invoke('chunks-retrieval', {
+        body: {
+          user_query: searchQuery,
+          sessionId: `user_${userId}_${Date.now()}`
+        }
+      });
+
+      if (error) {
+        console.error('❌ RAG: Chunks retrieval error:', error);
+        return [];
+      }
+
+      // Step 3: Extract chunks from response
+      let chunks: string[] = [];
+      if (chunksData) {
+        if (Array.isArray(chunksData.chunks)) {
+          chunks = chunksData.chunks;
+        } else if (Array.isArray(chunksData.reply)) {
+          chunks = chunksData.reply;
+        } else if (typeof chunksData.reply === 'string') {
+          chunks = [chunksData.reply];
+        } else if (typeof chunksData === 'string') {
+          chunks = [chunksData];
+        }
+      }
+
+      console.log('✅ RAG: Retrieved chunks:', chunks.length);
+      return chunks;
+    } catch (error) {
+      console.error('❌ RAG: getRagChunks error:', error);
+      return [];
+    }
+  }
+
 }

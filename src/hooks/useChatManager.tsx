@@ -188,69 +188,33 @@ export const useChatManager = () => {
       setProgress(30);
       
       // Check if RAG is enabled using centralized config
-      const ragEnabled = config.ragEnabled;
+      const ragEnabled = config.mode === 'rag';
       
       console.log('🔍 RAG Check - using centralized config:', {
         ragEnabled,
-        webSearchEnabled: config.webSearch
+        mode: config.mode
       });
       
-      // Try to retrieve relevant chunks first (only if RAG is enabled)
+      // For RAG mode, use the new simplified approach
       let retrievedChunks: string[] = [];
       if (ragEnabled) {
         try {
-          setProcessingStep('Extracting concepts for RAG search...');
-          console.log('🎯 RAG: Extracting concepts from user message...');
+          setProcessingStep('RAG: Extracting concepts and retrieving chunks...');
+          console.log('🎯 RAG: Starting simplified RAG retrieval...');
           
-          // Extract concepts instead of sending full chat history
-          const conceptsResponse = await GPTService.extractConcepts(text, messages, user.id);
-          let searchQuery = text; // fallback to original message
+          retrievedChunks = await GPTService.getRagChunks(text, user.id);
           
-          if (conceptsResponse.success && conceptsResponse.data) {
-            console.log('✅ Extracted concepts:', conceptsResponse.data);
-            searchQuery = conceptsResponse.data;
+          if (retrievedChunks.length > 0) {
+            console.log('✅ RAG: Successfully retrieved chunks:', retrievedChunks.length);
+            setProcessingStep('RAG: Chunks retrieved successfully');
           } else {
-            console.log('⚠️ Concept extraction failed, using original message');
-          }
-          
-          setProcessingStep('RAG Retrieval in progress...');
-          console.log('🎯 RAG: Starting chunks retrieval with concepts...');
-          
-          const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
-            body: {
-              user_query: searchQuery, // Use extracted concepts instead of full chat
-              sessionId: `user_${user.id}_${Date.now()}`
-            }
-          });
-
-          console.log('🎯 RAG: chunks response:', { chunksData, chunksError });
-          
-          if (!chunksError && chunksData?.success && chunksData.chunks) {
-            retrievedChunks = chunksData.chunks;
-            setChunksRetrieved(retrievedChunks.length);
-            console.log('✅ RAG: Retrieved chunks for conversation:', retrievedChunks.length);
-            
-            // Create 20-30 word excerpt from first chunk for display
-            const chunksExcerpt = retrievedChunks.length > 0 
-              ? retrievedChunks[0].split(' ').slice(0, 25).join(' ') + (retrievedChunks[0].split(' ').length > 25 ? '...' : '')
-              : '';
-            
-            if (chunksExcerpt) {
-              setProcessingStep(`RAG Retrieved: "${chunksExcerpt}"`);
-            } else {
-              setProcessingStep(`Using ${retrievedChunks.length} knowledge chunks...`);
-            }
-          } else {
-            console.log('❌ RAG: No chunks retrieved, proceeding with conversation only');
-            setProcessingStep('No relevant knowledge found, using conversation context...');
+            console.log('⚠️ RAG: No chunks retrieved');
+            setProcessingStep('RAG: No relevant chunks found');
           }
         } catch (error) {
-          console.error('❌ RAG: Chunks retrieval failed, proceeding without:', error);
-          setProcessingStep('Knowledge retrieval unavailable, continuing...');
+          console.error('❌ RAG: Error during retrieval:', error);
+          setProcessingStep('RAG: Retrieval failed');
         }
-      } else {
-        setProcessingStep('RAG disabled, using conversation context only...');
-        console.log('⚠️ RAG: Disabled in settings, skipping chunks retrieval');
       }
 
       // Update progress
@@ -388,7 +352,7 @@ export const useChatManager = () => {
 
       try {
         // Check if RAG is enabled using centralized config
-        if (config.ragEnabled) {
+        if (config.mode === 'rag') {
           const { data: chunksData, error: chunksError } = await supabase.functions.invoke('chunks-retrieval', {
             body: {
               chatHistory: messages,
@@ -539,7 +503,7 @@ export const useChatManager = () => {
   };
 
   // Computed values
-  const canGenerateMeditation = messages.length > 0 && !isLoading && !isGeneratingMeditation;
+  const canGenerateMeditation = messages.length > 0 && !isGeneratingMeditation && config.mode === 'rag';
   const canStopOperation = isLoading || isGeneratingMeditation;
 
   const deleteChat = () => {
@@ -570,7 +534,7 @@ export const useChatManager = () => {
     stopCurrentOperation,
     
     // Computed
-    canGenerateMeditation: messages.length > 0 && !isGeneratingMeditation,
+    canGenerateMeditation,
     canStopOperation,
     allDisplayMessages: messages, // Now it's just messages since everything is in DB
     

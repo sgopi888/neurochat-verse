@@ -6,9 +6,8 @@ export interface AppConfig {
   model: string;
   verbosity: 'low' | 'medium' | 'high';
   reasoning: 'low' | 'medium' | 'high';
-  webSearch: boolean;
   codeInterpreter: boolean;
-  ragEnabled: boolean;
+  mode: 'none' | 'rag' | 'web';
 }
 
 const defaultConfig: AppConfig = {
@@ -16,9 +15,8 @@ const defaultConfig: AppConfig = {
   model: 'gpt-5-nano-2025-08-07',
   verbosity: 'low',
   reasoning: 'medium',
-  webSearch: false,
   codeInterpreter: false,
-  ragEnabled: false // Default to OFF as requested
+  mode: 'none'
 };
 
 export const useConfigManager = () => {
