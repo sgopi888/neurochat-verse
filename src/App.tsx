@@ -27,9 +27,6 @@ function AppContent() {
   const [uploadedFile, setUploadedFile] = React.useState<{ name: string; type: 'pdf' | 'image' } | null>(null);
   const [fileContent, setFileContent] = React.useState<string>('');
 
-  // RAG state
-  const [isRagEnabled, setIsRagEnabled] = React.useState<boolean>(false);
-
   // Chat message management
   const {
     messages,
@@ -187,11 +184,6 @@ function AppContent() {
     setUploadedFile(null);
   };
 
-  // RAG toggle handler
-  const handleRagToggle = (enabled: boolean) => {
-    setIsRagEnabled(enabled);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -261,9 +253,6 @@ function AppContent() {
       chunksRetrieved={chunksRetrieved}
       totalTokens={totalTokens}
       progress={progress}
-      // RAG props
-      isRagEnabled={isRagEnabled}
-      onRagToggle={handleRagToggle}
     />
   );
 }

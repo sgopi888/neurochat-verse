@@ -85,10 +85,6 @@ interface ChatLayoutProps {
   chunksRetrieved?: number;
   totalTokens?: number;
   progress?: number;
-
-  // RAG props
-  isRagEnabled?: boolean;
-  onRagToggle?: (enabled: boolean) => void;
 }
 
 const ChatLayout: React.FC<ChatLayoutProps> = ({
@@ -139,9 +135,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
   processingStep,
   chunksRetrieved,
   totalTokens,
-  progress,
-  isRagEnabled,
-  onRagToggle
+  progress
 }) => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
@@ -244,8 +238,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
           chunksRetrieved={chunksRetrieved}
           totalTokens={totalTokens}
           progress={progress}
-          isRagEnabled={isRagEnabled}
-          onRagToggle={onRagToggle}
         />
       </div>
     </div>
