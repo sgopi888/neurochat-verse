@@ -108,7 +108,7 @@ export default function LLMTest() {
         timestamp: new Date()
       });
 
-      const chunks = await GPTService.getRagChunks(userQuery);
+      const chunks = await GPTService.getRagChunks(userQuery, undefined, 'rag');
       
       updateStep('chunks', {
         status: 'completed',
