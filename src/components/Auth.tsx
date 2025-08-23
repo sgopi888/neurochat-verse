@@ -4,11 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Bot, ArrowLeft, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Bot, ArrowLeft, ExternalLink } from 'lucide-react';
 import { DISCLAIMER_TEXT } from '@/components/DisclaimerModal';
+import DisclaimerModal from '@/components/DisclaimerModal';
 
 interface PasswordValidation {
   minLength: boolean;
@@ -26,39 +26,29 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [hasReadAgreement, setHasReadAgreement] = useState(false);
-  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
     minLength: false,
     hasUppercase: false,
     hasSpecialChar: false,
     isValid: false
   });
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
 
   // Enhanced special character regex - includes all common special characters
   const specialCharRegex = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/;
 
   const validatePassword = (pwd: string): PasswordValidation => {
-    console.log('Validating password:', {
-      length: pwd.length,
-      hasUpper: /[A-Z]/.test(pwd),
-      hasSpecial: specialCharRegex.test(pwd),
-      password: pwd.substring(0, 3) + '...' // Log first 3 chars for debugging
-    });
-
     const minLength = pwd.length >= 8;
     const hasUppercase = /[A-Z]/.test(pwd);
     const hasSpecialChar = specialCharRegex.test(pwd);
     const isValid = minLength && hasUppercase && hasSpecialChar;
 
-    const validation = {
+    return {
       minLength,
       hasUppercase,
       hasSpecialChar,
       isValid
     };
-
-    console.log('Password validation result:', validation);
-    return validation;
   };
 
   // Real-time password validation on every keystroke
@@ -66,7 +56,6 @@ const Auth = () => {
     if (isSignUp) {
       const validation = validatePassword(password);
       setPasswordValidation(validation);
-      console.log('Real-time validation update:', validation);
     }
   }, [password, isSignUp]);
 
@@ -97,17 +86,14 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        // Triple-check validation at form submission
         const finalValidation = validatePassword(password);
-        console.log('Final password validation at submission:', finalValidation);
 
-        if (!hasReadAgreement || !hasAgreedToTerms) {
+        if (!hasReadAgreement) {
           toast.error('Please read and agree to the terms and disclaimer');
           setIsLoading(false);
           return;
         }
 
-        // Detailed password validation with specific error messages
         if (!finalValidation.isValid) {
           const missingRequirements = [];
           if (!finalValidation.minLength) {
@@ -117,17 +103,14 @@ const Auth = () => {
             missingRequirements.push('one uppercase letter');
           }
           if (!finalValidation.hasSpecialChar) {
-            missingRequirements.push('one special character (!@#$%^&*()_+-=[]{};\':"|,.&lt;&gt;/?~`)');
+            missingRequirements.push('one special character');
           }
 
           const errorMessage = `Password must contain: ${missingRequirements.join(', ')}`;
-          console.error('Password validation failed:', errorMessage);
           toast.error(errorMessage);
           setIsLoading(false);
           return;
         }
-
-        console.log('Password validation passed, proceeding with signup');
 
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -147,7 +130,6 @@ const Auth = () => {
             toast.error(error.message);
           }
         } else {
-          // Save user agreement if signup was successful
           if (data.user) {
             await saveUserAgreement(data.user.id);
           }
@@ -196,33 +178,31 @@ const Auth = () => {
     }
   };
 
-  const ValidationIcon = ({ isValid }: { isValid: boolean }) => (
-    isValid ? (
-      <Check className="h-4 w-4 text-green-500" />
-    ) : (
-      <X className="h-4 w-4 text-red-500" />
-    )
-  );
+  const handleDisclaimerAccept = () => {
+    setHasReadAgreement(true);
+    setShowDisclaimerModal(false);
+  };
 
   if (isForgotPassword) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="bg-blue-600 p-3 rounded-lg">
-                <Bot className="h-8 w-8 text-white" />
+      <div className="min-h-screen bg-[var(--gradient-bg)] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm border-border">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex flex-col items-center space-y-2">
+              <div className="bg-gradient-to-r from-primary to-accent p-3 rounded-full">
+                <Bot className="h-8 w-8 text-primary-foreground" />
               </div>
+              <h1 className="text-xl font-bold text-primary">NeuroChat</h1>
             </div>
-            <CardTitle className="text-2xl">Reset Password</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl text-foreground">Reset Password</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Enter your email to receive a password reset link
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-foreground">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -230,12 +210,13 @@ const Auth = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="bg-input border-border text-foreground"
                 />
               </div>
 
               <Button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700" 
+                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/80 hover:to-accent/80 text-primary-foreground" 
                 disabled={isLoading}
               >
                 {isLoading ? 'Sending...' : 'Send Reset Link'}
@@ -246,7 +227,7 @@ const Auth = () => {
               <Button
                 variant="link"
                 onClick={() => setIsForgotPassword(false)}
-                className="text-sm flex items-center justify-center"
+                className="text-sm flex items-center justify-center text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back to Sign In
@@ -259,131 +240,108 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-blue-600 p-3 rounded-lg">
-              <Bot className="h-8 w-8 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl">
-            {isSignUp ? 'Create Account' : 'Welcome Back'}
-          </CardTitle>
-          <CardDescription>
-            {isSignUp 
-              ? 'Sign up to start using NeuroHeart.AI Meditative Process Generator' 
-              : 'Sign in to access your meditation sessions'
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required={isSignUp}
-                />
+    <>
+      <div className="min-h-screen bg-[var(--gradient-bg)] flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl bg-card/80 backdrop-blur-sm border-border">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="bg-gradient-to-r from-primary to-accent p-4 rounded-full">
+                <Bot className="h-10 w-10 text-primary-foreground" />
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                NeuroChat
+              </h1>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={isSignUp ? 8 : 6}
-                  className={isSignUp && password ? (
-                    passwordValidation.isValid ? 'border-green-500' : 'border-red-500'
-                  ) : ''}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-
-              {/* Password Requirements - Only show during sign up */}
+            <CardTitle className="text-2xl text-foreground">
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">
+              {isSignUp 
+                ? 'Sign up to start using NeuroChat Meditative Process Generator' 
+                : 'Sign in to access your meditation sessions'
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <form onSubmit={handleAuth} className="space-y-4">
               {isSignUp && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-md border">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <ValidationIcon isValid={passwordValidation.minLength} />
-                      <span className={`text-sm ${passwordValidation.minLength ? 'text-green-600' : 'text-red-600'}`}>
-                        At least 8 characters
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <ValidationIcon isValid={passwordValidation.hasUppercase} />
-                      <span className={`text-sm ${passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-600'}`}>
-                        One uppercase letter (A-Z)
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <ValidationIcon isValid={passwordValidation.hasSpecialChar} />
-                      <span className={`text-sm ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-600'}`}>
-                        One special character (!@#$%^&*()_+-=[]{};\':"|,.&lt;&gt;/?~`)
-                      </span>
-                    </div>
-                  </div>
-                  {passwordValidation.isValid && (
-                    <div className="mt-2 flex items-center space-x-2">
-                      <Check className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-green-600 font-medium">Password meets all requirements!</span>
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required={isSignUp}
+                    className="bg-input border-border text-foreground"
+                  />
                 </div>
               )}
-            </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-foreground">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-input border-border text-foreground"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={isSignUp ? 8 : 6}
+                    className={`bg-input border-border text-foreground ${
+                      isSignUp && password ? (
+                        passwordValidation.isValid ? 'border-green-500' : 'border-red-500'
+                      ) : ''
+                    }`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
 
-            {isSignUp && (
-              <div className="space-y-4 border-t pt-4">
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Important Disclaimer & Terms</h3>
-                  <ScrollArea className="h-32 w-full border rounded-md p-3 bg-gray-50">
-                    <div className="text-xs leading-relaxed space-y-2">
-                      {DISCLAIMER_TEXT.split('\n\n').map((paragraph, index) => (
-                        <p key={index} className="text-gray-700">
-                          {paragraph}
-                        </p>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  
-                  <div className="space-y-2">
+                {/* Show password validation errors only when password doesn't meet requirements */}
+                {isSignUp && password && !passwordValidation.isValid && (
+                  <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <p className="text-sm text-destructive font-medium">Password must contain:</p>
+                    <ul className="text-sm text-destructive mt-1 space-y-1">
+                      {!passwordValidation.minLength && <li>• At least 8 characters</li>}
+                      {!passwordValidation.hasUppercase && <li>• One uppercase letter</li>}
+                      {!passwordValidation.hasSpecialChar && <li>• One special character</li>}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {isSignUp && (
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg text-foreground">Terms & Agreement</h3>
+                    
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="hasReadAgreement"
@@ -392,63 +350,65 @@ const Auth = () => {
                       />
                       <label
                         htmlFor="hasReadAgreement"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-foreground flex items-center"
                       >
-                        I have read and understood the disclaimer above
-                      </label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="hasAgreedToTerms"
-                        checked={hasAgreedToTerms}
-                        onCheckedChange={(checked) => setHasAgreedToTerms(checked as boolean)}
-                      />
-                      <label
-                        htmlFor="hasAgreedToTerms"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        I agree to the terms and acknowledge that this platform does not provide medical or therapeutic services
+                        I have read and understood the{' '}
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="p-0 h-auto ml-1 text-primary hover:text-accent"
+                          onClick={() => setShowDisclaimerModal(true)}
+                        >
+                          disclaimer and terms
+                          <ExternalLink className="h-3 w-3 ml-1" />
+                        </Button>
                       </label>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700" 
-              disabled={isLoading || (isSignUp && (!hasReadAgreement || !hasAgreedToTerms || !passwordValidation.isValid))}
-            >
-              {isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-            </Button>
-          </form>
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/80 hover:to-accent/80 text-primary-foreground" 
+                disabled={isLoading || (isSignUp && (!hasReadAgreement || !passwordValidation.isValid))}
+              >
+                {isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+              </Button>
+            </form>
 
-          <div className="mt-4 space-y-2 text-center">
-            {!isSignUp && (
+            <div className="space-y-2 text-center">
+              {!isSignUp && (
+                <Button
+                  variant="link"
+                  onClick={() => setIsForgotPassword(true)}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Forgot your password?
+                </Button>
+              )}
               <Button
                 variant="link"
-                onClick={() => setIsForgotPassword(true)}
-                className="text-sm"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-muted-foreground hover:text-foreground"
               >
-                Forgot your password?
+                {isSignUp 
+                  ? 'Already have an account? Sign In' 
+                  : "Don't have an account? Sign Up"
+                }
               </Button>
-            )}
-            <Button
-              variant="link"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm"
-            >
-              {isSignUp 
-                ? 'Already have an account? Sign In' 
-                : "Don't have an account? Sign Up"
-              }
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <DisclaimerModal
+        isOpen={showDisclaimerModal}
+        onAccept={handleDisclaimerAccept}
+        onDecline={() => setShowDisclaimerModal(false)}
+        onAgree={handleDisclaimerAccept}
+      />
+    </>
   );
 };
 
