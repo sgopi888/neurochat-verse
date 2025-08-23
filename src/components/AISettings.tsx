@@ -48,8 +48,8 @@ export function AISettings() {
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="openai">OpenAI Direct (Default)</SelectItem>
-              <SelectItem value="aiml">AIML API</SelectItem>
+              <SelectItem value="aiml">AIML API (Default)</SelectItem>
+              <SelectItem value="openai">OpenAI Direct</SelectItem>
             </SelectContent>
           </Select>
         </div>

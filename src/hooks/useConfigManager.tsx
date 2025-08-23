@@ -11,7 +11,7 @@ export interface AppConfig {
 }
 
 const defaultConfig: AppConfig = {
-  provider: 'openai',
+  provider: 'aiml',
   model: 'gpt-5-nano-2025-08-07',
   verbosity: 'low',
   reasoning: 'medium',

@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userId, provider = 'openai', model = 'gpt-5-nano-2025-08-07', verbosity = 'low', reasoning = 'medium', webSearch = false, codeInterpreter = false, onProgress } = await req.json();
+    const { messages, userId, provider = 'aiml', model = 'gpt-5-nano-2025-08-07', verbosity = 'low', reasoning = 'medium', webSearch = false, codeInterpreter = false, onProgress } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -46,9 +46,18 @@ serve(async (req) => {
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     
     if (provider === 'aiml') {
-      const aimlApiKey = Deno.env.get('AIMLAPI_KEY');
-      if (!aimlApiKey) {
-        console.error('AIMLAPI key not found, falling back to OpenAI');
+      // Try multiple AIML API keys in sequence
+      let aimlApiKey = Deno.env.get('AIMLAPI_KEY');
+      if (!aimlApiKey || aimlApiKey.trim() === '') {
+        console.log('🔄 AIMLAPI_KEY not available, trying AIMLAPI_KEY_2');
+        aimlApiKey = Deno.env.get('AIMLAPI_KEY_2');
+      }
+      if (!aimlApiKey || aimlApiKey.trim() === '') {
+        console.log('🔄 AIMLAPI_KEY_2 not available, trying AIMLAPI_KEY_3');
+        aimlApiKey = Deno.env.get('AIMLAPI_KEY_3');
+      }
+      if (!aimlApiKey || aimlApiKey.trim() === '') {
+        console.log('🔄 All AIML API keys unavailable, falling back to OpenAI');
         return await makeOpenAIRequest(messages, model, openAIApiKey, verbosity, reasoning, useWebSearch, codeInterpreter);
       }
 

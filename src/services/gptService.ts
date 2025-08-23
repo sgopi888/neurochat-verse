@@ -30,7 +30,7 @@ export class GPTService {
   private static getConfig(): GPTConfig {
     const savedConfig = localStorage.getItem('gpt-config');
     const defaultConfig: GPTConfig = {
-      provider: 'openai',
+      provider: 'aiml',
       model: 'gpt-5-nano-2025-08-07',
       verbosity: 'low',
       reasoning: 'medium',
