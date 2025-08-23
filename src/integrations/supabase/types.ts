@@ -281,6 +281,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      increment_chat_usage: {
+        Args: { p_user_id: string }
+        Returns: {
+          limit_reached: boolean
+          remaining_requests: number
+          success: boolean
+        }[]
+      }
       reactivate_user_account: {
         Args: { p_original_email: string; p_profile_id: string }
         Returns: undefined
