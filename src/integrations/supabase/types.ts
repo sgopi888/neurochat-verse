@@ -273,8 +273,10 @@ export type Database = {
           chat_queries_count: number
           date: string
           id: string
+          limit_reached: boolean
           monthly_chat_count: number
           monthly_tts_count: number
+          remaining_requests: number
           tts_requests_count: number
           user_id: string
         }[]
