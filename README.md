@@ -8,9 +8,8 @@ Built via **Lovable Dev** with a modern stack integrating GPT-5’s reasoning, S
 ## 🎥 Demo & Resources  
 
 - 🌐 **Live Demo**: [neuro.neuroheart.ai](https://neuro.neuroheart.ai/)  
-- 🎥 **Video Presentation**: [YouTube](https://youtu.be/KF_3iLzhWp4)  
-- 💻 **GitHub Repository**: [neurochat-verse](https://github.com/sgopi888/neurochat-verse)  
-
+- 🎥 **Video Presentation**: GPT-5 Lablab Hackathon - Neurochat Video Presentation! 
+[![Click to watch](https://img.youtube.com/vi/KF_3iLzhWp4/hqdefault.jpg)](https://youtu.be/KF_3iLzhWp4)
 ---
 
 ## 🌍 Problem  
